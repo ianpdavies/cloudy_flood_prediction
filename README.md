@@ -1,2 +1,1 @@
-# CPR
-Cloudy pixel recovery
+# Cloudy pixel recovery for rapid response flood mapping
