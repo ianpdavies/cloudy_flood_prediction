@@ -1,11 +1,7 @@
 # Ignore (folders) #
-data/
-notebooks/
 learning/
+data/
 
 # Ignore (files)#
 *.txt
-
-# Don't ignore (files) # 
-notebooks/!.ipynb
 
