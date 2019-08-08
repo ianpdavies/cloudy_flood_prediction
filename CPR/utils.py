@@ -1,4 +1,7 @@
 from pathlib import Path
+import zipfile
+import pandas as pd
+
 def tif_stacker(data_path, img, feat_list_new, overwrite=False): 
     """ 
     Reorders the tifs (i.e. individual bands) downloaded from GEE according to feature order in feat_list_new, 
@@ -27,21 +30,21 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     file_list = []
     img_path = data_path / 'images' / img
     stack_path = img_path / 'stack' / 'stack.tif'
-    
+
     # This gets the name of all files in the zip folder, and formats them into a full path readable by rasterio.open()
-    with ZipFile((img_path / img).with_suffix('.zip'), 'r') as f:
+    with zipfile.ZipFile(str((img_path / img).with_suffix('.zip')), 'r') as f:
         names = f.namelist()
-        zip_path = Path('zip://'+str(img_path)) / img # Format needed by rasterio
+        zip_path = Path('zip:/'+str(img_path)) / img # Format needed by rasterio
         zip_path = zip_path.with_suffix('.zip!')
         names = [str(zip_path) + name for name in names]
         for file in names:
             if file.endswith('.tif'):
                 file_list.append(file)
-    
+
     feat_list_files = list(map(lambda x: x.split('.')[-2], file_list)) # Grabs a list of features in file order        
     
     if overwrite==False:
-            if os.path.exists(stack_path) == True:
+            if stack_path.exists() == True:
                 print('"stack.tif" already exists for '+ img)
                 return
             else:
@@ -50,7 +53,7 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     if overwrite==True:
         # Remove stack file if already exists
         try:
-            os.remove(stack_path)
+            stack_path.unlink()
             print('Removing existing "stack.tif" and creating new one')
         except FileNotFoundError:
             print('No existing "stack.tif" for '+img+', creating one')
@@ -64,9 +67,10 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     # The take this re-ordered row as a list - the new file_list
     file_list = list(file_arr.iloc[0,:])
 
+    print(file_list)
     # Read metadata of first file. This needs to be a band in float32 dtype, because it sets the metadata for the entire stack
     # and we are converting the other bands to float64
-    with rasterio.open(file_list[1]) as src0:
+    with rasterio.open(file_list[0]) as src0:
         meta = src0.meta
         meta['dtype'] = 'float32'
     #         print(meta)
@@ -121,14 +125,14 @@ def preprocessing(data_path, img, pctl, gaps):
     stack_path = img_path / 'stack' / 'stack.tif'
 
     # Get local image
-    with rasterio.open(stack_path, 'r') as ds:
+    with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0)) # Not sure why the rasterio.read output is originally (D, W, H)
     
     # load cloudmasks
     cloudMaskDir = data_path / 'clouds'
     
-    cloudMask = np.load(cloudMaskDir / img / '_clouds.npy')
+    cloudMask = np.load(cloudMaskDir / '{0}'.format(img+'_clouds.npy'))
 
     if gaps==False:
         cloudMask = cloudMask < np.percentile(cloudMask, pctl)
@@ -178,10 +182,6 @@ def train_val(data, holdout):
 
     # Reshape into a single vector of pixels.
     data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
-
-    # Remove NaNs
-    data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-    data_vector.shape
 
     # Select only the valid data and shuffle it.
     # valid_data = data_vector[numpy.equal(data_vector[:,8], 1)]
@@ -250,11 +250,11 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
     
     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
     file_name = img + '_clouds.npy'
-    cloud_dir = path / 'clouds'
+    cloud_dir = data_path / 'clouds'
     cloud_file = cloud_dir / file_name
 
     if overwrite==False:
-            if (cloud_file).exists() == True:
+            if cloud_file.exists() == True:
                 print('Cloud image already exists for '+ img)
                 return
             else:
@@ -297,3 +297,6 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
+
+
+
