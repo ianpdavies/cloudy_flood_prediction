@@ -116,9 +116,11 @@ def preprocessing(data_path, img, pctl, gaps):
     Returns
     ----------
     data : array
-        3D array identical to input stacked image but with cloudy pixels masked
-    data_ind : list?
-        List? of indices in 'data' where cloudy pixels/cloud gaps were masked. Used for reconstructing the image later 
+        3D array identical to input stacked image but with cloudy pixels removed
+    data_vector : array
+        2D array of data, standardized, with NaNs removed
+    data_ind : tuple
+        Tuple of row/col indices in 'data' where cloudy pixels/cloud gaps were masked. Used for reconstructing the image later.
     """
     
     img_path = data_path / 'images' / img
@@ -148,21 +150,34 @@ def preprocessing(data_path, img, pctl, gaps):
 
     # Get indices of non-nan values. These are the indices of the original image array
     data_ind = np.where(~np.isnan(data[:,:,1]))
-        
-    return data, data_ind
+    
+    # Reshape into a 2D array, where rows = pixels and cols = features
+    data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+
+    # Remove NaNs
+    data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+
+    # Compute per-band means and standard deviations of the input bands.
+    data_mean = data_vector[:,0:14].mean(0)
+    data_std = data_vector[:,0:14].std(0)
+    
+    # Normalize data - only the non-binary variables
+    data_vector[:,0:14] = (data_vector[:,0:14] - data_mean) / data_std
+
+    return data, data_vector, data_ind
 
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
 
-def train_val(data, holdout):
+def train_val(data_vector, holdout):
     """
     Splits data into train/validation sets after standardizing and removing NaNs
     
     Parameters
     ----------
-    data : np.arr 
-        np.array of data
+    data_vector : np.arr 
+        Output of preprocessing(). 
     holdout : float
         Fraction of data to be used for validation (e.g. 0.3)   
         
@@ -180,26 +195,12 @@ def train_val(data, holdout):
     """    
     HOLDOUT_FRACTION = holdout
 
-    # Reshape into a single vector of pixels.
-    data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
-
-    # Select only the valid data and shuffle it.
-    # valid_data = data_vector[numpy.equal(data_vector[:,8], 1)]
-    # np.random.shuffle(data_vector)
-
     # Hold out a fraction of the labeled data for validation.
     training_size = int(data_vector.shape[0] * (1 - HOLDOUT_FRACTION))
     training_data = data_vector[0:training_size,:]
     validation_data = data_vector[training_size:-1,:]
-
-    # Compute per-band means and standard deviations of the input bands.
-    data_mean = training_data[:,0:14].mean(0)
-    data_std = training_data[:,0:14].std(0)
     
-    # Normalize data - only the non-binary variables
-    data_vector[:,0:14] = (data_vector[:,0:14] - data_mean) / data_std
-    
-    return [data_vector, training_data, validation_data, training_size]
+    return [training_data, validation_data]
 
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
