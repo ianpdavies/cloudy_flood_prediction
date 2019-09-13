@@ -299,35 +299,36 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
 import time
-"""
-Returns formatted elapsed time of time.time() calls.
 
-Parameters
-----------
-start : float
-    Starting time
-end : float
-    Ending time
-formatted : bool
-    If True, returns formatted time in hours, minutes, seconds. If False, returns minutes plus remainder as fraction of a minute. 
-
-Returns
-----------
-See 'formatted' parameter
-
-Example
-----------
-start = time.time()
-end = time.time()
-timer(start, end, formatted = True)
-"""
 def timer(start,end, formatted = True):
+    """
+    Returns formatted elapsed time of time.time() calls.
+
+    Parameters
+    ----------
+    start : float
+        Starting time
+    end : float
+        Ending time
+    formatted : bool
+        If True, returns formatted time in hours, minutes, seconds. If False, returns minutes plus remainder as fraction of a minute. 
+
+    Returns
+    ----------
+    See 'formatted' parameter
+
+    Example
+    ----------
+    start = time.time()
+    end = time.time()
+    timer(start, end, formatted = True)
+    """
     if formatted == True: # Returns full formated time in hours, minutes, seconds
         hours, rem = divmod(end-start, 3600)
         minutes, seconds = divmod(rem, 60)
         return str("{:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
     else: # Returns minutes + fraction of minute
-        minutes, seconds = divmod(time.time() - start_time, 60)
+        minutes, seconds = divmod(time.time() - start, 60)
         seconds = seconds/60
         minutes = minutes + seconds
         return str(minutes)

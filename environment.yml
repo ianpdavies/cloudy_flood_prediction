@@ -1,6 +1,6 @@
 name: thesis
 channels:
-  - pip
+  - conda-forge
 dependencies:
   # Core scientific python libraries
   - numpy

@@ -1,0 +1,26 @@
+name: thesis
+channels:
+  - conda-forge
+dependencies:
+  # Core scientific python libraries
+  - numpy
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+
+  # Spatial libraries
+  - gdal
+  - pip::earthengine-api
+  - rasterio
+
+  # Machine learning libraries
+  - tensorflow
+  - keras
+
+  # Libraries for cloud generation
+  - nbformat
+  - noise
+
+  # Other libraries
+  - zipfile36
