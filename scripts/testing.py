@@ -2,6 +2,8 @@ import pickle
 import pandas as pd
 import numpy as np
 import time
+import h5py
+import dask.array as da
 import tensorflow as tf
 from tensorflow import keras
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -14,15 +16,15 @@ from CPR.utils import preprocessing, timer
 # Parameters
 
 # Image to predict on
-img_list = ['4115_LC08_021033_20131227_test']
-# img_list = ['4101_LC08_027038_20131103_1',
-#             '4101_LC08_027038_20131103_2',
-#             '4101_LC08_027039_20131103_1',
-#             '4115_LC08_021033_20131227_1',
-#             '4337_LC08_026038_20160325_1']
+# img_list = ['4115_LC08_021033_20131227_test']
+img_list = ['4101_LC08_027038_20131103_1',
+            '4101_LC08_027038_20131103_2',
+            '4101_LC08_027039_20131103_1',
+            '4115_LC08_021033_20131227_1',
+            '4337_LC08_026038_20160325_1']
 
-# pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-pctls = [50]
+pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+# pctls = [50]
 MC_PASSES = 100
 DROPOUT_RATE = 0.3
 
@@ -30,6 +32,29 @@ DROPOUT_RATE = 0.3
 # Functions
 
 def predict_with_uncertainty(model, X, MC_PASSES):
+    """
+    Runs a number of forward passes through the model as Monte Carlo simulations, then computes average prediction
+    and variance of predictions using dask.
+
+    Reqs: tensorflow.keras
+
+    Parameters
+    ----------
+    model : trained tensorflow.keras model
+    X : np.array
+        Input features
+    MC_PASSES : int
+        Number of Monte Carlo simulations to run
+
+    Returns
+    ----------
+    preds : list
+        Average prediction for each set of MC simulations (shape = (X,)
+    variances : list
+        Variance of MC predictions (shape = (X,)
+    mc_preds.h5 : h5 file
+        Binary file of all predictions from MC simulations (shape = (MC_PASSES, X))
+    """
     preds_path = data_path / 'predictions' / img / '{}'.format(img + '_clouds_' + str(pctl))
     bin_file = preds_path / 'mc_preds.h5'
     try:
