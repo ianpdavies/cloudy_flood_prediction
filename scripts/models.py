@@ -31,7 +31,7 @@ tf.keras.backend.clear_session()
 
 tf.keras.backend.clear_session()
 
-def get_NN_MCD1():
+def get_nn_mcd1(INPUT_DIMS, DROPOUT_RATE):
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_DIMS)),
     model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=DROPOUT_RATE))),
