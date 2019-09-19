@@ -17,14 +17,15 @@ from CPR.utils import preprocessing, timer
 
 # Image to predict on
 img_list = ['4115_LC08_021033_20131227_test']
+# img_list = ['4101_LC08_027038_20131103_2']
 # img_list = ['4101_LC08_027038_20131103_1',
 #             '4101_LC08_027038_20131103_2',
 #             '4101_LC08_027039_20131103_1',
 #             '4115_LC08_021033_20131227_1',
 #             '4337_LC08_026038_20160325_1']
 
-# pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-pctls = [50]
+pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+# pctls = [90]
 MC_PASSES = 5
 DROPOUT_RATE = 0.3
 
@@ -53,10 +54,12 @@ def predict_with_uncertainty(model, X, MC_PASSES):
             if k < MC_PASSES-1:  # Resize to append next pass, if there is one
                 f['mc_preds'].resize((f['mc_preds'].shape[1] + 1), axis=1)
 
+    print('Calculating statistics on MC predictions')
+
     # Calculate statistics
     with h5py.File(bin_file, 'r') as f:
         dset = f['mc_preds']
-        preds_da = da.from_array(dset)  # Open h5 file as dask array
+        preds_da = da.from_array(dset, chunks="400 MiB")  # Open h5 file as dask array
         means = preds_da.mean(axis=1)
         means = means.compute()
         variance = preds_da.var(axis=1)
@@ -74,11 +77,20 @@ for j, img in enumerate(img_list):
     f1 = []
     accuracy = []
     times = []
-    predictions = []
+    # pred_list = []
     gapMetricsList = []
     variances = []
+    preds_path = data_path / 'predictions' / img
+    bin_file = preds_path / 'mean_predictions.h5'
+    metrics_path = data_path / 'metrics' / 'testing' / img
+
+    try:
+        metrics_path.mkdir(parents=True)
+    except FileExistsError:
+        print('Metrics directory already exists')
 
     for i, pctl in enumerate(pctls):
+
         data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True)
         X_test, y_test = data_vector_test[:, 0:14], data_vector_test[:, 14]
         INPUT_DIMS = X_test.shape[1]
@@ -93,26 +105,22 @@ for j, img in enumerate(img_list):
         NN_MCD.load_weights(str(model_path))
         preds, variances = predict_with_uncertainty(NN_MCD, X_test, MC_PASSES)
 
+        with h5py.File(bin_file, 'a') as f:
+            if str(pctl) in f:
+                print('Deleting earlier mean predictions')
+                del f[str(pctl)]
+            f.create_dataset(str(pctl), data=preds)
+
         times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
-        predictions.append(list(preds))
+        # pred_list.append(list(preds))
         accuracy.append(accuracy_score(y_test, preds))
         precision.append(precision_score(y_test, preds))
         recall.append(recall_score(y_test, preds))
         f1.append(f1_score(y_test, preds))
 
-    metrics_path = data_path / 'metrics' / 'testing' / img
+        times = [float(i) for i in times]  # Need to convert time objects to float, otherwise valMetrics will be non-numeric
 
-    try:
-        metrics_path.mkdir(parents=True)
-    except FileExistsError:
-        print('Metrics directory already exists')
+        gapMetrics = pd.DataFrame(np.column_stack([pctls[0:i+1], accuracy, precision, recall, f1, times]),
+                                  columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'time'])
 
-    with open(str(metrics_path / 'predictions.pkl'), 'wb') as outfile:
-        pickle.dump(predictions, outfile, pickle.HIGHEST_PROTOCOL)
-
-    times = [float(i) for i in times]  # Need to convert time objects to float, otherwise valMetrics will be non-numeric
-
-    gapMetrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, times]),
-                              columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'time'])
-
-    gapMetrics.to_csv(metrics_path / 'gapMetrics.csv', index=False)
+        gapMetrics.to_csv(metrics_path / 'gapMetrics.csv', index=False)
