@@ -4,6 +4,7 @@ import numpy as np
 import time
 import h5py
 import dask.array as da
+import os
 import tensorflow as tf
 from tensorflow import keras
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -16,17 +17,14 @@ from CPR.utils import preprocessing, timer
 # Parameters
 
 # Image to predict on
-img_list = ['4115_LC08_021033_20131227_test']
+# img_list = ['4115_LC08_021033_20131227_test']
 # img_list = ['4101_LC08_027038_20131103_2']
-# img_list = ['4101_LC08_027038_20131103_1',
-#             '4101_LC08_027038_20131103_2',
-#             '4101_LC08_027039_20131103_1',
-#             '4115_LC08_021033_20131227_1',
-#             '4337_LC08_026038_20160325_1']
+# already did '4101_LC08_027038_20131103_1', '4101_LC08_027038_20131103_2', '4101_LC08_027039_20131103_1'
+img_list = ['4115_LC08_021033_20131227_1', '4337_LC08_026038_20160325_1']
 
 pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 # pctls = [90]
-MC_PASSES = 5
+MC_PASSES = 100
 DROPOUT_RATE = 0.3
 
 # ==================================================================================
@@ -65,6 +63,9 @@ def predict_with_uncertainty(model, X, MC_PASSES):
         variance = preds_da.var(axis=1)
         variance = variance.compute()
         preds = means.round()
+        del(f)
+
+    os.remove(bin_file) # Delete predictions to save space on disk
 
     return preds, variance
 
