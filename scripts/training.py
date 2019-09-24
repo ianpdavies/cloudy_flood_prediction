@@ -7,7 +7,8 @@ import sys
 sys.path.append('../')
 from CPR.configs import data_path
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, train_val, timer
-from models import get_nn_mcd1 as get_model
+# from models import get_nn_uncertainty1 as get_model
+from models import get_nn1 as get_model
 
 # Version numbers
 print('Tensorflow version:', tf.__version__)
@@ -16,13 +17,15 @@ print('Python Version:', sys.version)
 # ==================================================================================
 # Parameters
 
+uncertainty = False
+
 # Image to predict on
-# img_list = ['4115_LC08_021033_20131227_test']
-img_list = ['4101_LC08_027038_20131103_1',
-            '4101_LC08_027038_20131103_2',
-            '4101_LC08_027039_20131103_1',
-            '4115_LC08_021033_20131227_1',
-            '4337_LC08_026038_20160325_1']
+img_list = ['4115_LC08_021033_20131227_test']
+# img_list = ['4101_LC08_027038_20131103_1',
+#             '4101_LC08_027038_20131103_2',
+#             '4101_LC08_027039_20131103_1',
+#             '4115_LC08_021033_20131227_1',
+#             '4337_LC08_026038_20160325_1']
 
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['aspect','curve', 'developed', 'GSW_distExtent', 'elevation', 'forest',
@@ -56,22 +59,31 @@ for j, img in enumerate(img_list):
         X_val, y_val = validation_data[:, 0:14], validation_data[:, 14]
         INPUT_DIMS = X_train.shape[1]
 
-        model_path = data_path / 'models' / 'cnn_vary_clouds' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
-        metrics_path = data_path / 'metrics' / 'training' / img / '{}'.format(img + '_clouds_' + str(pctl))
+        if uncertainty:
+            model_path = data_path / 'models' / 'nn_mcd' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            metrics_path = data_path / 'metrics' / 'training_nn_mcd' / img / '{}'.format(img + '_clouds_' + str(pctl))
+        else:
+            model_path = data_path / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            metrics_path = data_path / 'metrics' / 'training_nn' / img / '{}'.format(img + '_clouds_' + str(pctl))
 
         try:
             metrics_path.mkdir(parents=True)
+            model_path.mkdir(parents=True)
         except FileExistsError:
-            print('Metrics directory already exists')
+            pass
 
         csv_logger = CSVLogger(metrics_path / 'training_log.log')
 
         print('~~~~~', img, pctl, '% CLOUD COVER')
 
-        NN_MCD = get_model(INPUT_DIMS, DROPOUT_RATE)
+        if uncertainty:
+            model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
+        else:
+            model = get_model(INPUT_DIMS)  # Model without uncertainty
+
         start_time = time.time()
 
-        NN_MCD.fit(X_train, y_train,
+        model.fit(X_train, y_train,
                    batch_size=BATCH_SIZE,
                    epochs=EPOCHS,
                    verbose=1,
@@ -82,7 +94,7 @@ for j, img in enumerate(img_list):
         end_time = time.time()
         times.append(timer(start_time, end_time, False))
 
-        NN_MCD.save(model_path)
+        model.save(model_path)
 
     times = [float(i) for i in times]
     times_df = pd.DataFrame(times, columns=['times'])

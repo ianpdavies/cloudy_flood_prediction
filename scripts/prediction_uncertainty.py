@@ -1,17 +1,14 @@
-import pickle
 import pandas as pd
 import numpy as np
 import time
 import h5py
 import dask.array as da
 import os
-import tensorflow as tf
-from tensorflow import keras
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import sys
 sys.path.append('../')
 from CPR.configs import data_path
-from models import get_nn_mcd1 as get_model
+from models import get_nn_uncertainty1 as get_model
 from CPR.utils import preprocessing, timer
 # ==================================================================================
 # Parameters
@@ -83,7 +80,7 @@ for j, img in enumerate(img_list):
     variances = []
     preds_path = data_path / 'predictions' / img
     bin_file = preds_path / 'mean_predictions.h5'
-    metrics_path = data_path / 'metrics' / 'testing' / img
+    metrics_path = data_path / 'metrics' / 'testing_mcd' / img
 
     try:
         metrics_path.mkdir(parents=True)
@@ -101,10 +98,10 @@ for j, img in enumerate(img_list):
         # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
         # But loading the trained weights into an identical compiled (but untrained) model works
         start_time = time.time()
-        NN_MCD = get_model(INPUT_DIMS, DROPOUT_RATE)  # Get untrained model to add trained weights into
-        model_path = data_path / 'models' / 'cnn_vary_clouds' / img / '{0}'.format(img + '_clouds_' + str(pctl) + '.h5')
-        NN_MCD.load_weights(str(model_path))
-        preds, variances = predict_with_uncertainty(NN_MCD, X_test, MC_PASSES)
+        trained_model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Get untrained model to add trained weights into
+        model_path = data_path / 'models' / 'nn_mcd' / img / '{0}'.format(img + '_clouds_' + str(pctl) + '.h5')
+        trained_model.load_weights(str(model_path))
+        preds, variances = predict_with_uncertainty(trained_model, X_test, MC_PASSES)
 
         with h5py.File(bin_file, 'a') as f:
             if str(pctl) in f:

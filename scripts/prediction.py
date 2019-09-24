@@ -39,7 +39,7 @@ for j, img in enumerate(img_list):
     variances = []
     preds_path = data_path / 'predictions' / img
     bin_file = preds_path / 'mean_predictions.h5'
-    metrics_path = data_path / 'metrics' / 'testing' / img
+    metrics_path = data_path / 'metrics' / 'testing_nn' / img
 
     try:
         metrics_path.mkdir(parents=True)
@@ -58,10 +58,10 @@ for j, img in enumerate(img_list):
         # But loading the trained weights into an identical compiled (but untrained) model works
         start_time = time.time()
         trained_model = get_model(INPUT_DIMS)  # Get untrained model to add trained weights into
-        model_path = data_path / 'models' / 'cnn_vary_clouds' / img / '{0}'.format(img + '_clouds_' + str(pctl) + '.h5')
+        model_path = data_path / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
         trained_model.load_weights(str(model_path))
         preds = trained_model.predict(X_test, batch_size=7000, use_multiprocessing=True)
-        preds = preds[:, 0] # Drop probability of not flooded (0) to save space
+        preds = np.argmax(preds, axis=1)  # Display most probable value
 
         with h5py.File(bin_file, 'a') as f:
             if str(pctl) in f:
