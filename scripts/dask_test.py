@@ -58,8 +58,8 @@ def predict_with_uncertainty2(model, X, MC_PASSES):
         pass
     # Initialize binary file to hold predictions
     with h5py.File(bin_file, 'w') as f:
-        mc_preds = f.create_dataset('mc_preds', shape=(1, X.shape[1]),
-                                    maxshape=(None, X.shape[1]),
+        mc_preds = f.create_dataset('mc_preds', shape=(X.shape[0], 1),
+                                    maxshape=(X.shape[0], None),
                                     chunks=True, compression='gzip')  # Create empty dataset with shape of data
     for i in range(MC_PASSES):
         if i % 10 == 0 or i == MC_PASSES - 1:
@@ -67,9 +67,9 @@ def predict_with_uncertainty2(model, X, MC_PASSES):
         flood_prob = model.predict(X, batch_size=7000, use_multiprocessing=True)  # Predict
         flood_prob = flood_prob[0]  # Drop probability of not flooded (0) to save space
         with h5py.File(bin_file, 'a') as f:
-            f['mc_preds'][-flood_prob.shape[0]:] = flood_prob  # Append preds to h5 file
+            f['mc_preds'][:, -1] = flood_prob  # Append preds to h5 file
             if i < MC_PASSES:  # Resize to append next pass, if there is one
-                f['mc_preds'].resize((f['mc_preds'].shape[0] + flood_prob.shape[0]), axis=0)
+                f['mc_preds'].resize((f['mc_preds'].shape[1] + 1), axis=1)
 
     # Calculate statistics
     with h5py.File('mc_preds.h5', 'r') as f:
@@ -87,23 +87,59 @@ def predict_with_uncertainty2(model, X, MC_PASSES):
 # Y = np.random.rand(100, 10000)
 
 
-X = np.zeros(shape=(50, 5000000)) + 1
-Y = np.zeros(shape=(50, 5000000)) + 2
+X = np.zeros(shape=(50000,)) + 1
+Y = np.zeros(shape=(50000,)) + 2
 
 with h5py.File('mc_preds.h5', 'w') as f:  # initialize h5 file
-    mc_preds = f.create_dataset('mc_preds', shape=(X.shape[0], X.shape[1]), maxshape=(None, X.shape[1]),
+    mc_preds = f.create_dataset('mc_preds', shape=(X.shape[0], 1), maxshape=(X.shape[0], None),
                                 chunks=True, compression='gzip')  # create empty dataset with shape
 
 with h5py.File('mc_preds.h5', 'a') as f:  # initialize h5 file
-    f['mc_preds'][-X.shape[0]:] = Y
-    f['mc_preds'].resize((f['mc_preds'].shape[0] + Y.shape[0]), axis=0)
+    for i in range(0,100):
+        f['mc_preds'][:, -1] = Y
+        f['mc_preds'].resize((f['mc_preds'].shape[1] + 1), axis=1)
+        # f['mc_preds'][-X.shape[0]:] = Y
+        # f['mc_preds'].resize((f['mc_preds'].shape[0] + Y.shape[0]), axis=0)
     print(f['mc_preds'].shape)
 
 with h5py.File('mc_preds.h5', 'r') as f:
     dset = f['mc_preds']
-    preds_da = da.from_array(dset)
+    preds_da = da.from_array(dset, chunks="100 MiB")
     means = preds_da.mean(axis=0)
     means = means.compute()
     variances = preds_da.var(axis=0)
     variances = variances.compute()
     preds = means.round()
+    del(f)
+
+metrics = []
+X = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+for i in range(10):
+    metrics.append(X[i])
+    metrics.append(X[i])
+    metrics.append(X[i])
+    metrics.append(X[i])
+    metrics.append(X[i])
+
+print(metrics)
+
+# ===================================================================
+# Testing model
+import sys
+sys.path.append('../')
+from CPR.configs import data_path
+from models import get_nn1 as get_model
+from CPR.utils import preprocessing, timer
+img = '4115_LC08_021033_20131227_test'
+pctl = 50
+data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True)
+X_test, y_test = data_vector_test[:, 0:14], data_vector_test[:, 14]
+INPUT_DIMS = X_test.shape[1]
+trained_model = get_model(INPUT_DIMS)
+model_path = data_path / 'models' / 'cnn_vary_clouds' / img / '{0}'.format(img + '_clouds_' + str(pctl) + '.h5')
+trained_model.load_weights(str(model_path))
+preds = trained_model.predict(X_test, batch_size=7000, use_multiprocessing=True)
+
+
+
+
