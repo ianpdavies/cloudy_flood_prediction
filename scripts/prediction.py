@@ -11,16 +11,15 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import sys
 sys.path.append('../')
 from CPR.configs import data_path
-from models import get_nn_uncertainty1 as get_model
+from models import get_nn1 as get_model
 from CPR.utils import preprocessing, timer
 # ==================================================================================
 # Parameters
 
 # Image to predict on
-img_list = ['4115_LC08_021033_20131227_test']
-# img_list = ['4101_LC08_027038_20131103_2']
-# already did '4101_LC08_027038_20131103_1', '4101_LC08_027038_20131103_2', '4101_LC08_027039_20131103_1'
-# img_list = ['4115_LC08_021033_20131227_1', '4337_LC08_026038_20160325_1']
+# img_list = ['4115_LC08_021033_20131227_test']
+# img_list = ['4101_LC08_027038_20131103_1']
+img_list = ['4337_LC08_026038_20160325_1']
 
 pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 # pctls = [90]
@@ -62,6 +61,11 @@ for j, img in enumerate(img_list):
         trained_model.load_weights(str(model_path))
         preds = trained_model.predict(X_test, batch_size=7000, use_multiprocessing=True)
         preds = np.argmax(preds, axis=1)  # Display most probable value
+
+        try:
+            preds_path.mkdir(parents=True)
+        except FileExistsError:
+            pass
 
         with h5py.File(bin_file, 'a') as f:
             if str(pctl) in f:
