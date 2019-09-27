@@ -124,7 +124,7 @@ for i in range(10):
 print(metrics)
 
 # ===================================================================
-# Testing model
+# Examining prediction output
 import sys
 sys.path.append('../')
 from CPR.configs import data_path
@@ -140,6 +140,31 @@ model_path = data_path / 'models' / 'cnn_vary_clouds' / img / '{0}'.format(img +
 trained_model.load_weights(str(model_path))
 preds = trained_model.predict(X_test, batch_size=7000, use_multiprocessing=True)
 
+# ===================================================================
+# Testing creation of h5 pred file
+img = '4337_LC08_026038_20160325_1'
+preds_path = data_path / 'predictions' / img
+bin_file = preds_path / 'mean_predictions.h5'
+
+with h5py.File(bin_file, 'a') as f:
+    if str(pctl) in f:
+        print('Deleting earlier mean predictions')
+        del f[str(pctl)]
+    f.create_dataset(str(pctl), data=preds)
 
 
 
+with rasterio.open('zip://C:/Users/ipdavies/CPR/data/images/4115_LC08_021033_20131227_test/4115_LC08_021033_20131227_test.zip!4115_LC08_021033_20131227_test.GSW_maxExtent.tif') as src0:
+    print(src0.shape)
+
+with rasterio.open('zip://C:\\Users\\ipdavies\\CPR\\data\\images\\4115_LC08_021033_20131227_test\\4115_LC08_021033_20131227_test.zip!4115_LC08_021033_20131227_test.wetlands.tif') as src0:
+    print(src0.shape)
+
+img = '4115_LC08_021033_20131227_test'
+img_file = img_path / '{}'.format('spectra_' + img)
+feat_list_new = ['B2', 'B3', 'B4', 'B5', 'B6', 'B7']
+file_list=[]
+with zipfile.ZipFile(str(img_file.with_suffix('.zip')), 'r') as f:
+    names = f.namelist()
+    names = [str(img_file.with_suffix('.zip!')) + name for name in names]
+    names = ['zip://' + name for name in names]

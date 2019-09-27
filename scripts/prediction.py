@@ -18,8 +18,8 @@ from CPR.utils import preprocessing, timer
 
 # Image to predict on
 # img_list = ['4115_LC08_021033_20131227_test']
-# img_list = ['4101_LC08_027038_20131103_1']
-img_list = ['4337_LC08_026038_20160325_1']
+img_list = ['4101_LC08_027039_20131103_1']
+# img_list = ['4337_LC08_026038_20160325_1']
 
 pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 # pctls = [90]
@@ -36,8 +36,8 @@ for j, img in enumerate(img_list):
     # pred_list = []
     gapMetricsList = []
     variances = []
-    preds_path = data_path / 'predictions' / img
-    bin_file = preds_path / 'mean_predictions.h5'
+    preds_path = data_path / 'predictions' / 'nn' / img
+    bin_file = preds_path / 'predictions.h5'
     metrics_path = data_path / 'metrics' / 'testing_nn' / img
 
     try:
@@ -86,3 +86,6 @@ for j, img in enumerate(img_list):
                                   columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'time'])
 
         gapMetrics.to_csv(metrics_path / 'gapMetrics.csv', index=False)
+
+feat_list_new = ['aspect','curve', 'developed', 'GSW_distExtent', 'elevation', 'forest',
+ 'GSW_maxExtent', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']

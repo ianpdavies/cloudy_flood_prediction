@@ -28,7 +28,7 @@ DROPOUT_RATE = 0.3
 # Functions
 
 def predict_with_uncertainty(model, X, MC_PASSES):
-    preds_path = data_path / 'predictions' / img / '{}'.format(img + '_clouds_' + str(pctl))
+    preds_path = data_path / 'predictions' / 'nn_mcd' / img / '{}'.format(img + '_clouds_' + str(pctl))
     bin_file = preds_path / 'mc_preds.h5'
     try:
         preds_path.mkdir(parents=True)

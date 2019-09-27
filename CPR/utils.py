@@ -2,62 +2,72 @@ from pathlib import Path
 import zipfile
 import pandas as pd
 
-def tif_stacker(data_path, img, feat_list_new, overwrite=False): 
-    """ 
-    Reorders the tifs (i.e. individual bands) downloaded from GEE according to feature order in feat_list_new, 
-    then stacks them all into one multiband image called 'stack.tif' located in input path. Requires rasterio, 
+
+def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
+    """
+    Reorders the tifs (i.e. individual bands) downloaded from GEE according to feature order in feat_list_new,
+    then stacks them all into one multiband image called 'stack.tif' located in input path. Requires rasterio,
     os, from zipfile import *
-    
+
     Reqs: zipfile, Path from pathlib
-    
+
     Parameters
     ----------
-    data_path : str 
+    data_path : str
         Path to image folder
-    img :str 
+    img :str
         Name of image file (without file extension)
     feat_list_new : list
         List of feature names (str) to be the desired order of the output stacked .tif - target feature must be last
-    
+    features : Bool
+        Whether stacking feature layers (True) or spectra layers (False)
+    overwrite : Bool
+        Whether existing stacked image should be overwritten (True)
+
     Returns
     ----------
-    "stack.tif" in 'path' location 
-    feat_list_files : list 
-        Not sure what that is or what it's for 
-    
+    "stack.tif" in 'path' location
+    feat_list_files : list
+        Not sure what that is or what it's for
+
     """
-    
+
     file_list = []
     img_path = data_path / 'images' / img
-    stack_path = img_path / 'stack' / 'stack.tif'
+
+    if features:
+        stack_path = img_path / 'stack' / 'stack.tif'
+        img_file = img_path / img
+    else:
+        stack_path = img_path / 'stack' / 'spectra_stack.tif'
+        img_file = img_path / '{}'.format('spectra_' + img)
 
     # This gets the name of all files in the zip folder, and formats them into a full path readable by rasterio.open()
-    with zipfile.ZipFile(str((img_path / img).with_suffix('.zip')), 'r') as f:
+    with zipfile.ZipFile(str(img_file.with_suffix('.zip')), 'r') as f:
         names = f.namelist()
-        zip_path = Path('zip:/'+str(img_path)) / img # Format needed by rasterio
-        zip_path = zip_path.with_suffix('.zip!')
-        names = [str(zip_path) + name for name in names]
+        names = [str(img_file.with_suffix('.zip!')) + name for name in names]
+        names = ['zip://' + name for name in names]
         for file in names:
             if file.endswith('.tif'):
                 file_list.append(file)
 
-    feat_list_files = list(map(lambda x: x.split('.')[-2], file_list)) # Grabs a list of features in file order        
-    
-    if overwrite==False:
-            if stack_path.exists() == True:
-                print('"stack.tif" already exists for '+ img)
-                return
-            else:
-                print('No existing "stack.tif" for '+img+', creating one')
-        
-    if overwrite==True:
+    feat_list_files = list(map(lambda x: x.split('.')[-2], file_list))  # Grabs a list of features in file order
+
+    if not overwrite:
+        if stack_path.exists():
+            print('Stack already exists for ' + img)
+            return
+        else:
+            print('No existing stack for ' + img + ', creating one')
+
+    if overwrite:
         # Remove stack file if already exists
         try:
             stack_path.unlink()
-            print('Removing existing "stack.tif" and creating new one')
+            print('Removing existing stack and creating new one')
         except FileNotFoundError:
-            print('No existing "stack.tif" for '+img+', creating one')
-            
+            print('No existing stack for ' + img + ', creating one')
+
     # Create 1 row df of file names where each col is a feature name, in the order files are stored locally
     file_arr = pd.DataFrame(data=[file_list], columns=feat_list_files)
 
@@ -65,10 +75,11 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     file_arr = file_arr.loc[:, feat_list_new]
 
     # The take this re-ordered row as a list - the new file_list
-    file_list = list(file_arr.iloc[0,:])
+    file_list = list(file_arr.iloc[0, :])
 
     print(file_list)
-    # Read metadata of first file. This needs to be a band in float32 dtype, because it sets the metadata for the entire stack
+    # Read metadata of first file.
+    # This needs to be a band in float32 dtype, because it sets the metadata for the entire stack
     # and we are converting the other bands to float64
     with rasterio.open(file_list[0]) as src0:
         meta = src0.meta
@@ -76,21 +87,22 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     #         print(meta)
 
     # Update meta to reflect the number of layers
-    meta.update(count = len(file_list))
+    meta.update(count=len(file_list))
 
     # Read each layer, convert to float, and write it to stack
-    # There's also a gdal way to do this, but unsure how to convert to float: https://gis.stackexchange.com/questions/223910/using-rasterio-or-gdal-to-stack-multiple-bands-without-using-subprocess-commands
+    # There's also a gdal way to do this, but unsure how to convert to float:
+    # https://gis.stackexchange.com/questions/223910/using-rasterio-or-gdal-to-stack-multiple-bands-without-using-subprocess-commands
 
     # Make new directory for stacked tif if it doesn't already exist
     try:
         (img_path / 'stack').mkdir()
     except FileExistsError:
-        print('Stack directory already exists') 
+        print('Stack directory already exists')
 
     with rasterio.open(stack_path, 'w', **meta) as dst:
         for id, layer in enumerate(file_list, start=0):
             with rasterio.open(layer) as src1:
-                dst.write_band(id+1, src1.read(1).astype('float32'))
+                dst.write_band(id + 1, src1.read(1).astype('float32'))
 
     return feat_list_files
 
