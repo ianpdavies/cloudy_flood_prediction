@@ -77,6 +77,7 @@ class VizFuncs:
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
             # Get RGB image
+            print('Stacking RGB image')
             band_list = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7']
             tif_stacker(data_path, img, band_list, features=False, overwrite=True)
             spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
@@ -87,6 +88,7 @@ class VizFuncs:
                 array_min, array_max = np.nanmin(array), np.nanmax(array)
                 return ((array - array_min) / (array_max - array_min))
 
+            print('Processing RGB image')
             with rasterio.open(spectra_stack_path, 'r') as f:
                 red, green, blue = f.read(4), f.read(3), f.read(2)
                 red[red == -999999] = np.nan
@@ -101,8 +103,9 @@ class VizFuncs:
             rgb_img = Image.fromarray((rgb * 255).astype(np.uint8()))
             rgb_img = ImageEnhance.Contrast(rgb_img).enhance(1.5)
             rgb_img = ImageEnhance.Sharpness(rgb_img).enhance(2)
-            rgb_img = ImageEnhance.Brightness(rgb_img).enhance(3.5)
+            rgb_img = ImageEnhance.Brightness(rgb_img).enhance(2)
 
+            print('Saving RGB image')
             rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
             rgb_img.save(rgb_file)
 
@@ -111,6 +114,7 @@ class VizFuncs:
                 shape = ds.read(1).shape  # Shape of full original image
 
             for j, pctl in enumerate(self.pctls):
+                print('Fetching flood predictions for', str(pctl)+'{}'.format('%'))
                 # Read predictions
                 with h5py.File(bin_file, 'r') as f:
                     predictions = f[str(pctl)]
@@ -139,6 +143,7 @@ class VizFuncs:
                 # Saving FN/FP comparison image
                 comparison_img = np.dstack((red_actual, green_combo, blue_preds))
                 comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
+                print('Saving FN/FP image for', str(pctl) + '{}'.format('%'))
                 matplotlib.image.imsave(comparison_img_file, comparison_img)
 
                 # Load comparison image
@@ -157,11 +162,13 @@ class VizFuncs:
                 # Superimpose comparison image and RGB image, then save and close
                 rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
                 plt.imshow(rgb_img)
+                print('Saving overlay image for', str(pctl) + '{}'.format('%'))
                 rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'))
                 plt.close('all')
 
     def metric_plots_multi(self):
         plt.ioff()
+        data_path = self.data_path
         if self.uncertainty:
             metrics_path = data_path / 'metrics' / 'testing_nn_mcd'
             plot_path = data_path / 'plots' / 'nn_mcd'
@@ -174,7 +181,7 @@ class VizFuncs:
         except FileExistsError:
             pass
 
-        file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
+        file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
         df_concat = pd.concat(pd.read_csv(file) for file in file_list)
         # Average of metric values together in one plot
         mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
@@ -183,12 +190,12 @@ class VizFuncs:
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
         for j, val in enumerate(df_concat.columns):
-            name = val + 's.csv'
+            name = val + 's.png'
             all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
             all_metric_fig = all_metric.get_figure()
             all_metric_fig.savefig(plot_path / name)
 
-        file_list_np = [metrics_path / img / 'metrics_np.csv' for img in img_list]
+        file_list_np = [metrics_path / img / 'metrics_np.csv' for img in self.img_list]
         df_concat_np = pd.concat(pd.read_csv(file) for file in file_list_np)
         # Average of metric values together in one plot
         mean_plot_np = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
@@ -196,10 +203,49 @@ class VizFuncs:
         mean_plot_np_fig.savefig(plot_path / 'mean_metrics_np.png')
 
         for j, val in enumerate(df_concat_np.columns):
-            name = val + 's_np.csv'
+            name = val + 's_np.png'
             all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
             all_metric_fig = all_metric.get_figure()
             all_metric_fig.savefig(plot_path / name)
+
+        plt.close('all')
+
+    def time_size(self):
+        plt.ioff()
+        data_path = self.data_path
+        if self.uncertainty:
+            metrics_path = data_path / 'metrics' / 'training_nn_mcd'
+            plot_path = data_path / 'plots' / 'nn_mcd'
+        else:
+            metrics_path = data_path / 'metrics' / 'training_nn'
+            plot_path = data_path / 'plots' / 'nn'
+
+        stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in self.img_list]
+        pixel_counts = []
+        for j, stack in enumerate(stack_list):
+            with rasterio.open(stack, 'r') as ds:
+                shape = ds.read().shape
+                pixel_count = shape[0] * shape[1] * shape[2]
+                pixel_counts.append(pixel_count)
+
+        pixel_counts = np.tile(pixel_counts, len(self.pctls))
+        times_sizes = np.column_stack([np.tile(self.pctls, len(self.img_list)),
+                                       # np.repeat(img_list, len(pctls)),
+                                       pixel_counts])
+        times_sizes[:, 1] = times_sizes[:, 1].astype(np.int) / times_sizes[:, 0].astype(np.int)
+
+        file_list = [metrics_path / img / 'training_times.csv' for img in self.img_list]
+        times = pd.concat(pd.read_csv(file) for file in file_list)
+        times_sizes = np.column_stack([times_sizes, np.array(times.times)])
+        times_sizes = pd.DataFrame(times_sizes, columns=['cloud_cover', 'pixels', 'training_time'])
+
+        cover_times = times_sizes.plot.scatter(x='cloud_cover', y='training_time')
+        cover_times_fig = cover_times.get_figure()
+        cover_times_fig.savefig(plot_path / 'cloud_cover_times.png')
+
+        pixel_times = times_sizes.plot.scatter(x='pixels', y='training_time')
+        pixel_times_fig = pixel_times.get_figure()
+        pixel_times_fig.savefig(plot_path / 'size_times.png')
 
         plt.close('all')
 
