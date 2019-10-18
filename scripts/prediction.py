@@ -22,10 +22,9 @@ def prediction(img_list, pctls, feat_list_new, data_path):
         for i, pctl in enumerate(pctls):
 
             data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True)
-            data_shape = data_vector_test.shape
             perm_index = feat_list_new.index('GSW_perm')
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
-
+            data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
             INPUT_DIMS = X_test.shape[1]
 
@@ -56,8 +55,8 @@ def prediction(img_list, pctls, feat_list_new, data_path):
 
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
-                                columns=['cloud_cover', 'training_time'])
-        times_df.to_csv(metrics_path / 'training_times.csv', index=False)
+                                columns=['cloud_cover', 'testing_time'])
+        times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
 
 
 
