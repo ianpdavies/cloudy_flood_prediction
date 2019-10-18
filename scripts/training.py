@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import numpy as np
 from tensorflow.keras.callbacks import CSVLogger
+import time
 # Import custom functions
 import sys
 sys.path.append('../')
@@ -70,6 +71,7 @@ def training(img_list, pctls, model_func, feat_list_new, uncertainty, data_path,
 
             model.save(model_path)
 
+        metrics_path = metrics_path.parent
         times = [float(i) for i in times]
         times_df = pd.DataFrame(times, columns=['times'])
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
