@@ -7,12 +7,12 @@ from CPR.utils import preprocessing, timer
 
 # ==================================================================================
 
-def prediction(img_list, pctls, feat_list_new, data_path):
+def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
     for j, img in enumerate(img_list):
         times = []
-        preds_path = data_path / 'predictions' / 'nn' / img
+        preds_path = data_path / batch / 'predictions' / 'nn' / img
         bin_file = preds_path / 'predictions.h5'
-        metrics_path = data_path / 'metrics' / 'testing_nn' / img
+        metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
 
         try:
             metrics_path.mkdir(parents=True)
@@ -22,7 +22,10 @@ def prediction(img_list, pctls, feat_list_new, data_path):
         for i, pctl in enumerate(pctls):
 
             data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True)
-            perm_index = feat_list_new.index('GSW_perm')
+            if remove_perm:
+                perm_index = feat_list_new.index('GSW_perm')
+                flood_index = feat_list_new.index('flooded')
+                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
@@ -34,7 +37,7 @@ def prediction(img_list, pctls, feat_list_new, data_path):
             # But loading the trained weights into an identical compiled (but untrained) model works
             start_time = time.time()
             trained_model = get_model(INPUT_DIMS)  # Get untrained model to add trained weights into
-            model_path = data_path / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            model_path = data_path / batch / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model.load_weights(str(model_path))
             preds = trained_model.predict(X_test, batch_size=7000, use_multiprocessing=True)
             preds = np.argmax(preds, axis=1)  # Display most probable value

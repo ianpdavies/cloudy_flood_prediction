@@ -18,8 +18,9 @@ class VizFuncs:
         self.img_list = None
         self.pctls = None
         self.data_path = None
-        # self.feat_list_new = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7']
         self.uncertainty = False
+        self.batch = None
+        self.feat_list_new = None
         for k, v in atts.items():
             setattr(self, k, v)
 
@@ -28,15 +29,11 @@ class VizFuncs:
         for i, img in enumerate(self.img_list):
             print('Making metric plots for {}'.format(img))
             if self.uncertainty:
-                metrics_path = data_path / 'metrics' / 'testing_nn_mcd' / img
-                plot_path = data_path / 'plots' / 'nn_mcd' / img
-                bin_file = data_path / 'predictions' / 'nn_mcd' / img / 'predictions.h5'
+                metrics_path = data_path / self.batch / 'metrics' / 'testing_nn_mcd' / img
+                plot_path = data_path / self.batch / 'plots' / 'nn_mcd' / img
             else:
-                metrics_path = data_path / 'metrics' / 'testing_nn' / img
-                plot_path = data_path / 'plots' / 'nn' / img
-                bin_file = data_path / 'predictions' / 'nn' / img / 'predictions.h5'
-
-            stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+                metrics_path = data_path / self.batch / 'metrics' / 'testing_nn' / img
+                plot_path = data_path / self.batch / 'plots' / 'nn' / img
 
             try:
                 plot_path.mkdir(parents=True)
@@ -55,10 +52,28 @@ class VizFuncs:
             metrics_fig = metrics_plot.get_figure()
             metrics_fig.savefig(plot_path / 'metrics_np_plot.png')
 
+            plt.close('all')
+
+    def time_plot(self):
+        plt.ioff()
+        for i, img in enumerate(self.img_list):
+            print('Making time plots for {}'.format(img))
+            if self.uncertainty:
+                metrics_path = data_path / self.batch / 'metrics' / 'training_nn_mcd' / img
+                plot_path = data_path / self.batch / 'plots' / 'nn_mcd' / img
+            else:
+                metrics_path = data_path / self.batch / 'metrics' / 'training_nn' / img
+                plot_path = data_path / self.batch / 'plots' / 'nn' / img
+
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
             times = pd.read_csv(metrics_path / 'training_times.csv')
             time_plot = times.plot(x='cloud_cover', y=['training_time'])
             time_plot = time_plot.get_figure()
-            time_plot.savefig(plot_path / 'time_plot.png')
+            time_plot.savefig(plot_path / 'training_times.png')
 
             plt.close('all')
 
@@ -68,11 +83,11 @@ class VizFuncs:
         for i, img in enumerate(self.img_list):
             print('Creating FN/FP map for {}'.format(img))
             if self.uncertainty:
-                plot_path = data_path / 'plots' / 'nn_mcd' / img
-                bin_file = data_path / 'predictions' / 'nn_mcd' / img / 'predictions.h5'
+                plot_path = data_path / self.batch / 'plots' / 'nn_mcd' / img
+                bin_file = data_path / self.batch / 'predictions' / 'nn_mcd' / img / 'predictions.h5'
             else:
-                plot_path = data_path / 'plots' / 'nn' / img
-                bin_file = data_path / 'predictions' / 'nn' / img / 'predictions.h5'
+                plot_path = data_path / self.batch / 'plots' / 'nn' / img
+                bin_file = data_path / self.batch / 'predictions' / 'nn' / img / 'predictions.h5'
 
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
@@ -122,12 +137,21 @@ class VizFuncs:
 
                 data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True,
                                                                            normalize=False)
-                data_shape = data_vector_test.shape
+
                 # Add predicted values to cloud-covered pixel positions
                 prediction_img = np.zeros(shape)
                 prediction_img[:] = np.nan
                 rows, cols = zip(data_ind_test)
                 prediction_img[rows, cols] = predictions
+
+                # Remove perm water from predictions and actual
+                perm_index = self.feat_list_new.index('GSW_perm')
+                flood_index = self.feat_list_new.index('flooded')
+                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+                data_shape = data_vector_test.shape
+                with rasterio.open(stack_path, 'r') as ds:
+                    perm_feat = ds.read(perm_index+1)
+                    prediction_img[perm_feat == 1] = 0
 
                 # Add actual flood values to cloud-covered pixel positions
                 flooded_img = np.zeros(shape)
@@ -170,11 +194,11 @@ class VizFuncs:
         plt.ioff()
         data_path = self.data_path
         if self.uncertainty:
-            metrics_path = data_path / 'metrics' / 'testing_nn_mcd'
-            plot_path = data_path / 'plots' / 'nn_mcd'
+            metrics_path = data_path / self.batch / 'metrics' / 'testing_nn_mcd'
+            plot_path = data_path / self.batch / 'plots' / 'nn_mcd'
         else:
-            metrics_path = data_path / 'metrics' / 'testing_nn'
-            plot_path = data_path / 'plots' / 'nn'
+            metrics_path = data_path / self.batch / 'metrics' / 'testing_nn'
+            plot_path = data_path / self.batch / 'plots' / 'nn'
 
         try:
             plot_path.mkdir(parents=True)
@@ -214,31 +238,42 @@ class VizFuncs:
         plt.ioff()
         data_path = self.data_path
         if self.uncertainty:
-            metrics_path = data_path / 'metrics' / 'training_nn_mcd'
-            plot_path = data_path / 'plots' / 'nn_mcd'
+            metrics_path = data_path / self.batch / 'metrics' / 'training_nn_mcd'
+            plot_path = data_path / self.batch / 'plots' / 'nn_mcd'
         else:
-            metrics_path = data_path / 'metrics' / 'training_nn'
-            plot_path = data_path / 'plots' / 'nn'
+            metrics_path = data_path / self.batch / 'metrics' / 'training_nn'
+            plot_path = data_path / self.batch / 'plots' / 'nn'
 
         stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in self.img_list]
         pixel_counts = []
         for j, stack in enumerate(stack_list):
+            print('Getting pixel count of', self.img_list[j])
             with rasterio.open(stack, 'r') as ds:
-                shape = ds.read().shape
-                pixel_count = shape[0] * shape[1] * shape[2]
-                pixel_counts.append(pixel_count)
+                img = ds.read(1)
+                img[img == -999999] = np.nan
+                img[np.isneginf(img)] = np.nan
+                cloud_mask_dir = data_path / 'clouds'
+                cloud_mask = np.load(cloud_mask_dir / '{0}'.format(self.img_list[j] + '_clouds.npy'))
+                for k, pctl in enumerate(self.pctls):
+                    cloud_mask = cloud_mask < np.percentile(cloud_mask, pctl)
+                    img_pixels = np.count_nonzero(~np.isnan(img))
+                    cloud_pixels = np.nansum(cloud_mask)
+                    pixel_count = (img_pixels - cloud_pixels) * ds.count
+                    pixel_counts.append(pixel_count)
 
-        pixel_counts = np.tile(pixel_counts, len(self.pctls))
+        # pixel_counts = np.tile(pixel_counts, len(self.pctls))
         times_sizes = np.column_stack([np.tile(self.pctls, len(self.img_list)),
                                        # np.repeat(img_list, len(pctls)),
                                        pixel_counts])
-        times_sizes[:, 1] = times_sizes[:, 1].astype(np.int) / times_sizes[:, 0].astype(np.int)
+        # times_sizes[:, 1] = times_sizes[:, 1].astype(np.int) / times_sizes[:, 0].astype(np.int)
 
+        print('Fetching training times')
         file_list = [metrics_path / img / 'training_times.csv' for img in self.img_list]
         times = pd.concat(pd.read_csv(file) for file in file_list)
-        times_sizes = np.column_stack([times_sizes, np.array(times.times)])
+        times_sizes = np.column_stack([times_sizes, np.array(times['training_time'])])
         times_sizes = pd.DataFrame(times_sizes, columns=['cloud_cover', 'pixels', 'training_time'])
 
+        print('Creating and saving plots')
         cover_times = times_sizes.plot.scatter(x='cloud_cover', y='training_time')
         cover_times_fig = cover_times.get_figure()
         cover_times_fig.savefig(plot_path / 'cloud_cover_times.png')

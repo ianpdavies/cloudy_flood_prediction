@@ -7,15 +7,15 @@ import h5py
 # ==================================================================================
 
 
-def evaluation(img_list, pctls, feat_list_new, data_path):
+def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm = False):
 
     for j, img in enumerate(img_list):
         accuracy, precision, recall, f1 = [], [], [], []
         accuracy_np, precision_np, recall_np, f1_np = [], [], [], []
 
-        preds_path = data_path / 'predictions' / 'nn' / img
+        preds_path = data_path / batch / 'predictions' / 'nn' / img
         bin_file = preds_path / 'predictions.h5'
-        metrics_path = data_path / 'metrics' / 'testing_nn' / img
+        metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
 
         try:
             metrics_path.mkdir(parents=True)
@@ -31,6 +31,10 @@ def evaluation(img_list, pctls, feat_list_new, data_path):
             print('Preprocessing')
             data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True, normalize=False)
             data_shape = data_vector_test.shape
+            if remove_perm:
+                perm_index = feat_list_new.index('GSW_perm')
+                flood_index = feat_list_new.index('flooded')
+                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
             # Metrics including perm water
