@@ -347,6 +347,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
 
     get_model = model_func
     for j, img in enumerate(img_list):
+        print(img + ': stacking tif, generating clouds')
         times = []
         lr_mins = []
         lr_maxes = []
@@ -354,6 +355,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         cloud_generator(img, data_path, overwrite=False)
 
         for i, pctl in enumerate(pctls):
+            print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             data_train, data_vector_train, data_ind_train = preprocessing(data_path, img, pctl, gaps=False)
             perm_index = feat_list_new.index('GSW_perm')
@@ -405,7 +407,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10),
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10),
                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='val_loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
@@ -416,7 +418,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             else:
                 model = get_model(INPUT_DIMS)  # Model without uncertainty
 
-            print('Training ~~~~~', img, pctl, '% CLOUD COVER')
+            print('Training')
             start_time = time.time()
             model.fit(X_train, y_train, **model_params, validation_data=(X_val, y_val), callbacks=callbacks)
             end_time = time.time()
