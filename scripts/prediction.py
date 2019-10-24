@@ -4,7 +4,9 @@ import time
 import h5py
 from models import get_nn1 as get_model
 from CPR.utils import preprocessing, timer
-
+import tensorflow as tf
+from tensorflow import keras
+import json
 # ==================================================================================
 
 def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
@@ -20,7 +22,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             print('Metrics directory already exists')
 
         for i, pctl in enumerate(pctls):
-
+            print('Preprocessing')
             data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True)
             if remove_perm:
                 perm_index = feat_list_new.index('GSW_perm')
@@ -34,11 +36,10 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
 
             # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
-            # But loading the trained weights into an identical compiled (but untrained) model works
+            # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
             start_time = time.time()
-            trained_model = get_model(INPUT_DIMS)  # Get untrained model to add trained weights into
             model_path = data_path / batch / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
-            trained_model.load_weights(str(model_path))
+            trained_model = tf.keras.models.load_model(model_path)
             preds = trained_model.predict(X_test, batch_size=7000, use_multiprocessing=True)
             preds = np.argmax(preds, axis=1)  # Display most probable value
 
