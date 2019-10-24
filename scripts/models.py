@@ -2,9 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 import tensorflow.keras.backend as K
 
-# ---------------------------------------------------------------
-
-
+# # ==================================================================================
 
 # Using Functional API
 # def get_NN_MCD():
@@ -27,13 +25,12 @@ import tensorflow.keras.backend as K
 
 # Custom metric functions
 
-# ---------------------------------------------------------------
-# NN with dropout before ReLU layers 
-
-
+# # ==================================================================================
+# NN with dropout before ReLU layers
 
 def get_nn_uncertainty1(INPUT_DIMS, DROPOUT_RATE):
     tf.keras.backend.clear_session()
+    tf.reset_default_graph()
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_DIMS)),
     model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=DROPOUT_RATE))),
@@ -47,13 +44,13 @@ def get_nn_uncertainty1(INPUT_DIMS, DROPOUT_RATE):
     model.add(tf.keras.layers.Dense(2,
                                     activation='softmax'))
     model.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',      
+                  loss='sparse_categorical_crossentropy',
 #                   metrics=[tf.keras.metrics.Recall()])
 #                   metrics=[tf.keras.metrics.F1()])
                   metrics=['sparse_categorical_accuracy'])
     return model
 
-# ---------------------------------------------------------------
+# # ==================================================================================
 
 def get_nn1(INPUT_DIMS):
     tf.keras.backend.clear_session()
@@ -73,3 +70,23 @@ def get_nn1(INPUT_DIMS):
 #                   metrics=[tf.keras.metrics.F1()])
                   metrics=['sparse_categorical_accuracy'])
     return model
+
+# ==================================================================================
+# NN with batch normalization
+def get_nn_bn(INPUT_DIMS):
+    tf.keras.backend.clear_session()
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
+    model.add(tf.keras.layers.Dense(units=24, name="Dense1")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="FirstBatchNorm")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="SecondBatchNorm")),
+    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                  # optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+    return model
+
