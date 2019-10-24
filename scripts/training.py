@@ -202,7 +202,6 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
     # References
         Original paper: http://arxiv.org/abs/1608.03983
     '''
-
     def __init__(self,
                  min_lr,
                  max_lr,
@@ -230,8 +229,7 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
 
     def on_train_begin(self, logs={}):
         '''Initialize the learning rate to the minimum value at the start of training.'''
-        self.steps_per_epoch = self.params['steps'] if self.params['steps'] is not None else round(
-            self.params['samples'] / self.params['batch_size'])
+        self.steps_per_epoch = self.params['steps'] if self.params['steps'] is not None else round(self.params['samples'] / self.params['batch_size'])
         logs = logs or {}
         tf.keras.backend.set_value(self.model.optimizer.lr, self.max_lr)
 
@@ -397,6 +395,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                                'use_multiprocessing': True}
 
             model = model_func(INPUT_DIMS)
+            print('Finding learning rate')
             model.fit(X_train, y_train, **lr_model_params, validation_data=(X_val, y_val))
             lr_min, lr_max = lr_plots(lrRangeFinder, lr_plots_path, lr_vals_path, img, pctl)
             lr_mins.append(lr_min)
@@ -407,7 +406,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
             callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10),
-                         tf.keras.callbacks.ModelCheckpoint(filepath=model_path, monitor='val_loss',
+                         tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='val_loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
                          scheduler]
@@ -417,7 +416,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             else:
                 model = get_model(INPUT_DIMS)  # Model without uncertainty
 
-            print('~~~~~', img, pctl, '% CLOUD COVER')
+            print('Training ~~~~~', img, pctl, '% CLOUD COVER')
             start_time = time.time()
             model.fit(X_train, y_train, **model_params, validation_data=(X_val, y_val), callbacks=callbacks)
             end_time = time.time()
@@ -434,4 +433,4 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_avg = np.mean(lr_range, axis=1)
         lr_range = np.column_stack([lr_range, lr_avg])
         lr_range_df = pd.DataFrame(lr_range, columns=['cloud_cover', 'lr_min', 'lr_max', 'lr_avg'])
-        lr_range_df.to_csv(lr_vals_path / img.with_suffix('.csv'), index=False)
+        lr_range_df.to_csv((lr_vals_path / img).with_suffix('.csv'), index=False)
