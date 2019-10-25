@@ -135,7 +135,7 @@ class VizFuncs:
                     predictions = f[str(pctl)]
                     predictions = np.array(predictions)  # Copy h5 dataset to array
 
-                data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True,
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True,
                                                                            normalize=False)
 
                 # Add predicted values to cloud-covered pixel positions
@@ -145,8 +145,9 @@ class VizFuncs:
                 prediction_img[rows, cols] = predictions
 
                 # Remove perm water from predictions and actual
-                perm_index = self.feat_list_new.index('GSW_perm')
-                flood_index = self.feat_list_new.index('flooded')
+                feat_list_keep = [self.feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
+                perm_index = feat_list_keep.index('GSW_perm')
+                flood_index = feat_list_keep.index('flooded')
                 data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
                 data_shape = data_vector_test.shape
                 with rasterio.open(stack_path, 'r') as ds:
@@ -257,8 +258,8 @@ class VizFuncs:
                 for k, pctl in enumerate(self.pctls):
                     cloud_mask = cloud_mask < np.percentile(cloud_mask, pctl)
                     img_pixels = np.count_nonzero(~np.isnan(img))
-                    cloud_pixels = np.nansum(cloud_mask)
-                    pixel_count = (img_pixels - cloud_pixels) * ds.count
+                    img[cloud_mask] = np.nan
+                    pixel_count = np.count_nonzero(~np.isnan(img))
                     pixel_counts.append(pixel_count)
 
         # pixel_counts = np.tile(pixel_counts, len(self.pctls))
