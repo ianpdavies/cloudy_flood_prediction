@@ -150,16 +150,31 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     
     cloudMask = np.load(cloudMaskDir / '{0}'.format(img+'_clouds.npy'))
 
-    if gaps==False:
+    # Check for any features that have all zeros/same value and remove. This only matters with the training data
+    cloudMask = cloudMask < np.percentile(cloudMask, pctl)
+    data_check = data.copy()
+    data_check[cloudMask] = -999999
+    data_check[data_check == -999999] = np.nan
+    data_check[np.isneginf(data_check)] = np.nan
+    data_check_vector = data_check.reshape([data_check.shape[0] * data_check.shape[1], data_check.shape[2]])
+    data_check_vector = data_check_vector[~np.isnan(data_check_vector).any(axis=1)]
+    data_std = data_check_vector[:, 0:data_check_vector.shape[1] - 1].std(0)
+
+    # Just adding this next line in to correctly remove the deleted feat from feat_list_new during training
+    # Should remove once I've decided whether to train with or without perm water
+    feat_keep = [a for a in range(data.shape[2])]
+    if 0 in data_std.tolist():
+        zero_feat = data_std.tolist().index(0)
+        data = np.delete(data, zero_feat, axis=2)
+        feat_keep.pop(zero_feat)
+
+    if gaps:
         cloudMask = cloudMask < np.percentile(cloudMask, pctl)
-    
-    if gaps==True:
+    if not gaps:
         cloudMask = cloudMask > np.percentile(cloudMask, pctl)
     
-    # Need to remove NaNs because any arithmetic operation involving an NaN will result in NaN
+    # Convert -999999 and -Inf to Nans
     data[cloudMask] = -999999
-
-    # Convert -999999 and -Inf to NaN
     data[data == -999999] = np.nan
     data[np.isneginf(data)] = np.nan
 
@@ -173,24 +188,14 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     # Remove NaNs
     data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
 
-    # Compute per-band means and standard deviations of the input bands.
-    data_mean = data_vector[:, 0:shape[1]-1].mean(0)
-    data_std = data_vector[:, 0:shape[1]-1].std(0)
+    data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
+    data_std = data_vector[:, 0:shape[1] - 1].std(0)
 
-    # Remove any feature with std = 0 (probably all zeroes)
-    if 0 in data_std.tolist():
-        zero_feat = data_std.tolist().index(0)
-        data_vector = np.delete(data_vector, zero_feat, axis=1)
-        data = np.delete(data, zero_feat, axis=2)
-        shape = data_vector.shape
-        data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
-        data_std = data_vector[:, 0:shape[1] - 1].std(0)
-    
     # Normalize data - only the non-binary variables
     if normalize:
         data_vector[:, 0:shape[1]-1] = (data_vector[:, 0:shape[1]-1] - data_mean) / data_std
 
-    return data, data_vector, data_ind, feat_list_keep
+    return data, data_vector, data_ind, feat_keep
 
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
