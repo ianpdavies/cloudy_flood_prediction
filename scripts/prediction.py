@@ -24,9 +24,8 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             print('Metrics directory already exists')
 
         for i, pctl in enumerate(pctls):
-            print('Preprocessing')
+            print('Preprocessing', img, pctl, '% cloud cover')
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True)
-            print('data vector test size:', data_vector_test.shape)
             feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
             if remove_perm:
                 perm_index = feat_list_keep.index('GSW_perm')
@@ -35,12 +34,10 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
-            print('X_test shape', X_test.shape)
             # Get batch size based on sample size
             batch_size = np.ceil(np.count_nonzero(~np.isnan(y_test)) * batch_fraction).astype('int')
             model_params['batch_size'] = batch_size
-            print('feat keep', feat_keep)
-            print('batch size', model_params['batch_size'])
+
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
 
             # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
