@@ -353,20 +353,26 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_maxes = []
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
         cloud_generator(img, data_path, overwrite=False)
+        batch_fraction = model_params["batch_size"]
 
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
-            data_train, data_vector_train, data_ind_train = preprocessing(data_path, img, pctl, gaps=False)
-            perm_index = feat_list_new.index('GSW_perm')
-            flood_index = feat_list_new.index('flooded')
-            data_vector_train[
-                data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
+            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
+            perm_index = feat_list_keep.index('GSW_perm')
+            flood_index = feat_list_keep.index('flooded')
+            data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
             training_data, validation_data = train_val(data_vector_train, holdout=HOLDOUT)
-            X_train, y_train = training_data[:, 0:14], training_data[:, 14]
-            X_val, y_val = validation_data[:, 0:14], validation_data[:, 14]
+            shape = data_vector_train.shape
+            X_train, y_train = training_data[:, 0:shape[1]-1], training_data[:, shape[1]-1]
+            X_val, y_val = validation_data[:, 0:shape[1]-1], validation_data[:, shape[1]-1]
             INPUT_DIMS = X_train.shape[1]
+            print('X_train shape', X_train.shape)
+            # Get batch size based on sample size
+            batch_size = np.ceil(np.count_nonzero(~np.isnan(y_train)) * batch_fraction).astype('int')
+            model_params['batch_size'] = batch_size
 
             if uncertainty:
                 model_path = data_path / batch / 'models' / 'nn_mcd' / img
@@ -390,7 +396,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             # Determine learning rate by finding max loss decrease during single epoch training
             lrRangeFinder = LrRangeFinder(start_lr=0.1, end_lr=2)
 
-            lr_model_params = {'batch_size': model_params["batch_size"],
+            lr_model_params = {'batch_size': model_params['batch_size'],
                                'epochs': 1,
                                'verbose': 1,
                                'callbacks': [lrRangeFinder],
@@ -418,7 +424,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             else:
                 model = get_model(INPUT_DIMS)  # Model without uncertainty
 
-            print('Training')
+            print('Training full model with best LR')
             start_time = time.time()
             model.fit(X_train, y_train, **model_params, validation_data=(X_val, y_val), callbacks=callbacks)
             end_time = time.time()
