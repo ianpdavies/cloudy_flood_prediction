@@ -7,7 +7,7 @@ import h5py
 # ==================================================================================
 
 
-def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm = False):
+def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=False):
 
     for j, img in enumerate(img_list):
         accuracy, precision, recall, f1 = [], [], [], []
@@ -29,11 +29,12 @@ def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm = F
                 preds = np.array(preds)  # Copy h5 dataset to array
 
             print('Preprocessing')
-            data_test, data_vector_test, data_ind_test = preprocessing(data_path, img, pctl, gaps=True, normalize=False)
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True, normalize=False)
             data_shape = data_vector_test.shape
+            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
             if remove_perm:
-                perm_index = feat_list_new.index('GSW_perm')
-                flood_index = feat_list_new.index('flooded')
+                perm_index = feat_list_keep.index('GSW_perm')
+                flood_index = feat_list_keep.index('flooded')
                 data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
