@@ -1,0 +1,3 @@
+v1 = First try - standard NN, flood target feature includes permanent water
+v2 = Removed permanent water from flood target feature in all steps
+v3 = Used batch normalization, higher batch size, and cyclic scheduled learning rate
