@@ -176,6 +176,15 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     # Compute per-band means and standard deviations of the input bands.
     data_mean = data_vector[:, 0:shape[1]-1].mean(0)
     data_std = data_vector[:, 0:shape[1]-1].std(0)
+
+    # Remove any feature with std = 0 (probably all zeroes)
+    if 0 in data_std.tolist():
+        zero_feat = data_std.tolist().index(0)
+        np.delete(data_vector[:, zero_feat])
+        np.delete(data[:, :, zero_feat])
+        data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
+        data_std = data_vector[:, 0:shape[1] - 1].std(0)
+        shape = data_vector.shape
     
     # Normalize data - only the non-binary variables
     if normalize:
