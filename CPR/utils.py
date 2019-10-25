@@ -180,17 +180,17 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     # Remove any feature with std = 0 (probably all zeroes)
     if 0 in data_std.tolist():
         zero_feat = data_std.tolist().index(0)
-        np.delete(data_vector[:, zero_feat])
-        np.delete(data[:, :, zero_feat])
+        data_vector = np.delete(data_vector, zero_feat, axis=1)
+        data = np.delete(data, zero_feat, axis=2)
+        shape = data_vector.shape
         data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
         data_std = data_vector[:, 0:shape[1] - 1].std(0)
-        shape = data_vector.shape
     
     # Normalize data - only the non-binary variables
     if normalize:
         data_vector[:, 0:shape[1]-1] = (data_vector[:, 0:shape[1]-1] - data_mean) / data_std
 
-    return data, data_vector, data_ind
+    return data, data_vector, data_ind, feat_list_keep
 
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
