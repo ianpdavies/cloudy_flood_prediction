@@ -353,7 +353,6 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_maxes = []
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
         cloud_generator(img, data_path, overwrite=False)
-        batch_fraction = model_params["batch_size"]
 
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
@@ -369,10 +368,6 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             X_train, y_train = training_data[:, 0:shape[1]-1], training_data[:, shape[1]-1]
             X_val, y_val = validation_data[:, 0:shape[1]-1], validation_data[:, shape[1]-1]
             INPUT_DIMS = X_train.shape[1]
-            print('X_train shape', X_train.shape)
-            # Get batch size based on sample size
-            batch_size = np.ceil(np.count_nonzero(~np.isnan(y_train)) * batch_fraction).astype('int')
-            model_params['batch_size'] = batch_size
 
             if uncertainty:
                 model_path = data_path / batch / 'models' / 'nn_mcd' / img

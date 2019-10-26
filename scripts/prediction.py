@@ -16,7 +16,6 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
         preds_path = data_path / batch / 'predictions' / 'nn' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
-        batch_fraction = model_params["batch_size"]
 
         try:
             metrics_path.mkdir(parents=True)
@@ -34,9 +33,6 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
-            # Get batch size based on sample size
-            batch_size = np.ceil(np.count_nonzero(~np.isnan(y_test)) * batch_fraction).astype('int')
-            model_params['batch_size'] = batch_size
 
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
 
