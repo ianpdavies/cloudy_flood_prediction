@@ -85,6 +85,10 @@ def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
 
 def training2(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
               DROPOUT_RATE=0, HOLDOUT=0.3, **model_params):
+    '''
+    Removes flood water that is permanent water
+    '''
+
     get_model = model_func
 
     for j, img in enumerate(img_list):
@@ -344,7 +348,10 @@ def lr_plots(lrRangeFinder, lr_plots_path, lr_vals_path, img, pctl):
 
 def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
               DROPOUT_RATE=0, HOLDOUT=0.2, **model_params):
-
+    '''
+    Removes flood water that is permanent water; also finds the optimum learning rate and uses cyclic LR scheduler
+    to train the model
+    '''
     get_model = model_func
     for j, img in enumerate(img_list):
         print(img + ': stacking tif, generating clouds')
@@ -433,7 +440,9 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
         lr_range = np.column_stack([pctls, lr_mins, lr_maxes])
-        lr_avg = np.mean(lr_range, axis=1)
+        lr_avg = np.mean(lr_range[:, 1:2], axis=1)
         lr_range = np.column_stack([lr_range, lr_avg])
         lr_range_df = pd.DataFrame(lr_range, columns=['cloud_cover', 'lr_min', 'lr_max', 'lr_avg'])
         lr_range_df.to_csv((lr_vals_path / img).with_suffix('.csv'), index=False)
+
+# ============================================================================================
