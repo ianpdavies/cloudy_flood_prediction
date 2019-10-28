@@ -143,7 +143,7 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     # Get local image
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
-        data = data.transpose((1, -1, 0)) # Not sure why the rasterio.read output is originally (D, W, H)
+        data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
     
     # load cloudmasks
     cloudMaskDir = data_path / 'clouds'
@@ -245,7 +245,8 @@ import numpy as np
 from math import sqrt
 from pathlib import Path
 
-def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
+
+def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False, alt=None):
     """
     Creates a random cloud image using Simplex noise, and saves that as a numpy binary file.
     The cloud image can then be thresholded by varying % cloud cover to create a binary cloud mask.
@@ -285,27 +286,28 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
     cloud_dir = data_path / 'clouds'
     cloud_file = cloud_dir / file_name
 
-    if overwrite==False:
-            if cloud_file.exists() == True:
-                print('Cloud image already exists for '+ img)
-                return
-            else:
-                print('No cloud image for '+img+', creating one')
-
-    if overwrite==True:
+    if overwrite:
         try:
-            cloud_file.remove()
-            print('Removing existing cloud image for '+img+' and creating new one')
+            cloud_file.unlink()
+            print('Removing existing cloud image for ' + img + ' and creating new one')
         except FileNotFoundError:
-            print('No existing cloud image for '+img+'. Creating new one')
+            print('No existing cloud image for ' + img + '. Creating new one')
+    if not overwrite:
+        if cloud_file.exists():
+            print('Cloud image already exists for ' + img)
+            return
+        else:
+            print('No cloud image for '+img+', creating one')
+
+
 
     # Make directory for clouds if none exists
     if cloud_dir.is_dir() == False:
         cloud_dir.mkdir()
         print('Creating cloud imagery directory')
 
-    if seed==None:
-        seed = (random.randint(1,10000))
+    if seed is None:
+        seed = (random.randint(1, 10000))
 
     # Get shape of input image to be masked
     with rasterio.open(stack_path) as ds:
@@ -313,7 +315,9 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
 
     # Create empty array of zeros to generate clouds on
     clouds = np.zeros(shape)
-    freq = np.ceil(sqrt(np.sum(shape)/2)) * octaves # Frequency calculated based on shape of image
+    freq = np.ceil(sqrt(np.sum(shape)/2)) * octaves  # Frequency calculated based on shape of image
+    if alt is 'small':
+        freq = np.ceil(sqrt(np.sum(shape))) * 2  # Frequency calculated based on shape of image
 
     # Generate 2D (technically 3D, but uses a scalar for z) simplex noise
     for y in range(shape[1]):
