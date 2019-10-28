@@ -268,7 +268,7 @@ def smooth(y, box_pts):
     return y_smooth
 
 
-def lr_plots(lrRangeFinder, lr_plots_path, lr_vals_path, img, pctl):
+def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     # Make plots of learning rate vs. loss
     plt.ioff()
 
@@ -407,7 +407,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             model = model_func(INPUT_DIMS)
             print('Finding learning rate')
             model.fit(X_train, y_train, **lr_model_params, validation_data=(X_val, y_val))
-            lr_min, lr_max = lr_plots(lrRangeFinder, lr_plots_path, lr_vals_path, img, pctl)
+            lr_min, lr_max, lr, losses = lr_plots(lrRangeFinder, lr_plots_path, img, pctl)
             lr_mins.append(lr_min)
             lr_maxes.append(lr_max)
             # ---------------------------------------------------------------------------------------------------
@@ -444,5 +444,14 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_range = np.column_stack([lr_range, lr_avg])
         lr_range_df = pd.DataFrame(lr_range, columns=['cloud_cover', 'lr_min', 'lr_max', 'lr_avg'])
         lr_range_df.to_csv((lr_vals_path / img).with_suffix('.csv'), index=False)
+
+        losses_path = lr_vals_path / img / '{}'.format('losses_'+pctl+'.csv')
+        try:
+            losses_path.mkdir(parents=True)
+        except FileExistsError:
+            pass
+        lr_losses = np.column_stack([lr, losses])
+        lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
+        lr_losses.to_csv(losses_path, index=False)
 
 # ============================================================================================
