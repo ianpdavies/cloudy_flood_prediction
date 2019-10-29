@@ -39,24 +39,24 @@ except FileExistsError:
 # img_list = ['4115_LC08_021033_20131227_test']
 img_list = ['4444_LC08_044033_20170222_2',
             '4101_LC08_027038_20131103_1',
-#             '4101_LC08_027038_20131103_2',
-#             '4101_LC08_027039_20131103_1',
+            #             '4101_LC08_027038_20131103_2',
+            #             '4101_LC08_027039_20131103_1',
             '4115_LC08_021033_20131227_1',
             '4115_LC08_021033_20131227_2',
-#             '4337_LC08_026038_20160325_1',
-#             '4444_LC08_043034_20170303_1',
+            #             '4337_LC08_026038_20160325_1',
+            #             '4444_LC08_043034_20170303_1',
             '4444_LC08_043035_20170303_1',
             '4444_LC08_044032_20170222_1',
             '4444_LC08_044033_20170222_1',
-#             '4444_LC08_044033_20170222_3',
-#             '4444_LC08_044033_20170222_4',
-#             '4444_LC08_044034_20170222_1',
+            #             '4444_LC08_044033_20170222_3',
+            #             '4444_LC08_044033_20170222_4',
+            #             '4444_LC08_044034_20170222_1',
             '4444_LC08_045032_20170301_1',
             '4468_LC08_022035_20170503_1',
             '4468_LC08_024036_20170501_1',
-#             '4468_LC08_024036_20170501_2',
-#             '4469_LC08_015035_20170502_1',
-#             '4469_LC08_015036_20170502_1',
+            #             '4468_LC08_024036_20170501_2',
+            #             '4469_LC08_015035_20170502_1',
+            #             '4469_LC08_015036_20170502_1',
             '4477_LC08_022033_20170519_1',
             '4514_LC08_027033_20170826_1']
 
@@ -97,8 +97,11 @@ viz_params = {'img_list': img_list,
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+
 batches = ['v4', 'v5', 'v6', 'v7', 'v8']
-batch_sizes = [262, 512, 1024, 4096, 8192]
+batch_sizes = [256, 512, 1024, 4096, 8192]
+
+
 #
 # metrics_all = pd.DataFrame(columns=['cloud_cover', 'precision', 'recall', 'f1', 'batch_size'])
 # for i, batch in enumerate(batches):
@@ -126,6 +129,7 @@ def smooth(y, box_pts):
     y_smooth = np.convolve(y, box, mode='same')
     return y_smooth
 
+
 lr_loss = pd.DataFrame(columns=['lr', 'losses', 'batch'])
 for i, batch in enumerate(batches):
     if uncertainty:
@@ -138,7 +142,7 @@ for i, batch in enumerate(batches):
     lr_vals_path = metrics_path / 'lr_vals'
     df_concat = pd.DataFrame(columns=['lr', 'losses', 'img'])
     for k, img in enumerate(img_list):
-        loss_csv_path = lr_vals_path / '{}'.format('losses_'+img+'.csv')
+        loss_csv_path = lr_vals_path / '{}'.format('losses_' + img + '.csv')
         loss_csv = pd.read_csv(loss_csv_path)
         loss_csv = pd.concat([loss_csv, pd.DataFrame(np.tile(img, loss_csv.shape[0]), columns=['img'])], axis=1)
         loss_csv['losses'] = smooth(loss_csv['losses'], 20)
@@ -149,15 +153,36 @@ for i, batch in enumerate(batches):
     df_concat = pd.concat([df_concat, batch_df], axis=1)
     lr_loss = lr_loss.append(df_concat)
 
-
-fig, ax = plt.subplots(figsize=(8,6))
-colors =['grey', 'red', 'blue', 'orange', 'green']
+fig, ax = plt.subplots(figsize=(8, 6))
+colors = ['grey', 'red', 'blue', 'orange', 'green']
 
 for i, batch in enumerate(batches):
     myGroup = lr_loss.groupby(['batch']).get_group(batch)
     for label, df in myGroup.groupby('img'):
-        df.plot(ax=ax, label=batch, x='lr', y='losses', color=colors[i], linewidth=2, alpha=0.4)
+        df.plot(ax=ax, label=batch, x='lr', y='losses', color=colors[i], linewidth=1, alpha=0.4)
 
 handles, labels = plt.gca().get_legend_handles_labels()
 by_label = OrderedDict(zip(labels, handles))
 plt.legend(by_label.values(), by_label.keys())
+
+# ------------------------------------------------------------
+# Each batch is a separate subplot
+columns = 5
+fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(6, 10))
+axes = [ax1, ax2, ax3, ax4, ax5]
+colors = ['grey', 'red', 'blue', 'orange', 'green']
+for i, batch in enumerate(batches):
+    myGroup = lr_loss.groupby(['batch']).get_group(batch)
+    for label, df in myGroup.groupby('img'):
+        ax = axes[i]
+        df.plot(ax=ax, label=batch, x='lr', y='losses', color=colors[i], linewidth=1, alpha=0.4)
+        ax.set_title('{}'.format('batch size:' + str(batch_sizes[i])), fontdict={'fontsize': 10})
+
+for i, ax in enumerate(axes):
+    handles, labels = ax.get_legend_handles_labels()
+    by_label = OrderedDict(zip(labels, handles))
+    print(by_label)
+    ax.legend(by_label.values(), by_label.keys())
+plt.tight_layout()
+
+
