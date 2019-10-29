@@ -183,8 +183,8 @@ class LrRangeFinder(tf.keras.callbacks.Callback):
 
 
 class SGDRScheduler(tf.keras.callbacks.Callback):
-    '''Cosine annealing learning rate scheduler with periodic restarts.
-
+    """
+    Cosine annealing learning rate scheduler with periodic restarts.
     # Usage
         ```python
             schedule = SGDRScheduler(min_lr=1e-5,
@@ -205,7 +205,7 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
 
     # References
         Original paper: http://arxiv.org/abs/1608.03983
-    '''
+    """
     def __init__(self,
                  min_lr,
                  max_lr,
@@ -343,7 +343,7 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
             horizontalalignment='center', verticalalignment='center', weight='bold')
     plt.savefig(lr_plots_path / '{}'.format(img + '_clouds_' + str(pctl) + '_lrRange.png'))
     plt.close('all')
-    return lr_min, lr_max
+    return lr_min, lr_max, lrRangeFinder.lrs, lrRangeFinder.losses
 
 
 def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
@@ -445,9 +445,9 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_range_df = pd.DataFrame(lr_range, columns=['cloud_cover', 'lr_min', 'lr_max', 'lr_avg'])
         lr_range_df.to_csv((lr_vals_path / img).with_suffix('.csv'), index=False)
 
-        losses_path = lr_vals_path / img / '{}'.format('losses_'+pctl+'.csv')
+        losses_path = lr_vals_path / img / '{}'.format('losses_'+str(pctl)+'.csv')
         try:
-            losses_path.mkdir(parents=True)
+            losses_path.parent.mkdir(parents=True)
         except FileExistsError:
             pass
         lr_losses = np.column_stack([lr, losses])
