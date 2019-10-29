@@ -6,6 +6,7 @@ from prediction import prediction
 from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
+from collections import OrderedDict
 
 sys.path.append('../../')
 from CPR.configs import data_path
@@ -15,8 +16,7 @@ print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Examining batch size effects on testing results. Keeping % cloud cover equal and testing on different images
-# Batch size = 8192
+# Examining how well the model works with small, sparse clouds
 # ==================================================================================
 # Parameters
 
@@ -78,17 +78,86 @@ viz_params = {'img_list': img_list,
 
 # ==================================================================================
 # Training and prediction
+#
+# training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+#
+# prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
+#
+# evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
+#
+# viz = VizFuncs(viz_params)
+# viz.metric_plots()
+# viz.time_plot()
+# viz.metric_plots_multi()
+# viz.false_map()
+# viz.time_size()
 
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+# Because all of the batch size tests were with the same cloud cover %, have to make a special average plot
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+batches = ['v4', 'v5', 'v6', 'v7', 'v8']
+batch_sizes = [262, 512, 1024, 4096, 8192]
+#
+# metrics_all = pd.DataFrame(columns=['cloud_cover', 'precision', 'recall', 'f1', 'batch_size'])
+# for i, batch in enumerate(batches):
+#     if uncertainty:
+#         metrics_path = data_path / batch / 'metrics' / 'testing_nn_mcd'
+#         plot_path = data_path / batch / 'plots' / 'nn_mcd'
+#     else:
+#         metrics_path = data_path / batch / 'metrics' / 'testing_nn'
+#         plot_path = data_path / batch / 'plots' / 'nn'
+#
+#     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
+#     df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+#     batch_df = pd.DataFrame(np.tile(batch_sizes[i], len(df_concat)), columns=['batch_size'])
+#     batch_df.index = list(range(len(batch_df)))
+#     df_concat.index = list(range(len(df_concat)))
+#     df_concat = pd.concat([df_concat, batch_df], axis=1)
+#     metrics_all = metrics_all.append(df_concat)
+# mean_plot = metrics_all.groupby('batch_size').mean().plot(y=['recall', 'precision', 'f1', 'accuracy'], ylim=(0, 1))
+# plt.show()
 
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
+# Display learning rates
+def smooth(y, box_pts):
+    """smoothes an array by taking the average of the `box_pts` point around each point"""
+    box = np.ones(box_pts) / box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
 
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
+lr_loss = pd.DataFrame(columns=['lr', 'losses', 'batch'])
+for i, batch in enumerate(batches):
+    if uncertainty:
+        metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd'
+        plot_path = data_path / batch / 'plots' / 'nn_mcd'
+    else:
+        metrics_path = data_path / batch / 'metrics' / 'training_nn'
+        plot_path = data_path / batch / 'plots' / 'nn'
 
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.time_plot()
-viz.metric_plots_multi()
-viz.false_map()
-viz.time_size()
+    lr_vals_path = metrics_path / 'lr_vals'
+    df_concat = pd.DataFrame(columns=['lr', 'losses', 'img'])
+    for k, img in enumerate(img_list):
+        loss_csv_path = lr_vals_path / '{}'.format('losses_'+img+'.csv')
+        loss_csv = pd.read_csv(loss_csv_path)
+        loss_csv = pd.concat([loss_csv, pd.DataFrame(np.tile(img, loss_csv.shape[0]), columns=['img'])], axis=1)
+        loss_csv['losses'] = smooth(loss_csv['losses'], 20)
+        df_concat = df_concat.append(loss_csv)
+    batch_df = pd.DataFrame(np.tile(batch, len(df_concat)), columns=['batch'])
+    batch_df.index = list(range(len(batch_df)))
+    df_concat.index = list(range(len(df_concat)))
+    df_concat = pd.concat([df_concat, batch_df], axis=1)
+    lr_loss = lr_loss.append(df_concat)
+
+
+fig, ax = plt.subplots(figsize=(8,6))
+colors =['grey', 'red', 'blue', 'orange', 'green']
+
+for i, batch in enumerate(batches):
+    myGroup = lr_loss.groupby(['batch']).get_group(batch)
+    for label, df in myGroup.groupby('img'):
+        df.plot(ax=ax, label=batch, x='lr', y='losses', color=colors[i], linewidth=2, alpha=0.4)
+
+handles, labels = plt.gca().get_legend_handles_labels()
+by_label = OrderedDict(zip(labels, handles))
+plt.legend(by_label.values(), by_label.keys())
