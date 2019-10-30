@@ -23,7 +23,7 @@ print('Python Version:', sys.version)
 uncertainty = False
 batch = 'v12'
 pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
-BATCH_SIZE = 4096
+BATCH_SIZE = 16385
 EPOCHS = 100
 DROPOUT_RATE = 0.3  # Dropout rate for MCD
 HOLDOUT = 0.3  # Validation data size
