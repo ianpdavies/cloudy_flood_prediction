@@ -1,4 +1,4 @@
-from models import get_nn_bn2 as model_func
+from models import get_nn_bn3 as model_func
 import tensorflow as tf
 import os
 from training import training3, SGDRScheduler, LrRangeFinder
@@ -22,7 +22,7 @@ print('Python Version:', sys.version)
 # Parameters
 
 uncertainty = False
-batch = 'v9'
+batch = 'v10'
 pctls = [50]
 BATCH_SIZE = 2**14
 EPOCHS = 100
@@ -93,3 +93,47 @@ viz.time_plot()
 viz.metric_plots_multi()
 viz.false_map()
 viz.time_size()
+
+# Because all of the batch size tests were with the same cloud cover %, have to make a special average plot
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+
+batches = ['v4', 'v5', 'v6', 'v7', 'v8', 'v9', 'v10']
+batch_sizes = [256, 512, 1024, 4096, 8192, 16384, 16384]
+
+
+metrics_all = pd.DataFrame(columns=['cloud_cover', 'precision', 'recall', 'f1', 'batch_size'])
+for i, batch in enumerate(batches):
+    if uncertainty:
+        metrics_path = data_path / batch / 'metrics' / 'testing_nn_mcd'
+        plot_path = data_path / batch / 'plots' / 'nn_mcd'
+    else:
+        metrics_path = data_path / batch / 'metrics' / 'testing_nn'
+        plot_path = data_path / batch / 'plots' / 'nn'
+
+    file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
+    df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+    batch_df = pd.DataFrame(np.column_stack([np.tile(batch_sizes[i], len(df_concat)),
+                                             np.tile(batches[i], len(df_concat))]), columns=['batch_size', 'batches'])
+    batch_df.index = list(range(len(batch_df)))
+    df_concat.index = list(range(len(df_concat)))
+    df_concat = pd.concat([df_concat, batch_df], axis=1)
+    metrics_all = metrics_all.append(df_concat)
+mean_plot = metrics_all.groupby('batch_size').mean().plot(y=['recall', 'precision', 'f1', 'accuracy'], ylim=(0, 1))
+plt.show()
+
+# -------------------------------------
+# Boxplots
+fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(6, 10))
+ax1, ax2, ax3, ax4 = axes.flatten()
+accuracy_box = sns.boxplot(x='batches', y='accuracy', data=metrics_all, ax=ax1)
+recall_box = sns.boxplot(x='batches', y='recall', data=metrics_all, ax=ax2)
+precision_box = sns.boxplot(x='batches', y='precision', data=metrics_all, ax=ax3)
+f1_box = sns.boxplot(x='batches', y='f1', data=metrics_all, ax=ax4)
+ax1.set_ylim(0, 1)
+ax2.set_ylim(0, 1)
+ax3.set_ylim(0, 1)
+ax4.set_ylim(0, 1)
