@@ -72,17 +72,16 @@ def get_nn1(INPUT_DIMS):
     return model
 
 # ==================================================================================
-# NN with batch normalization
+# NN with batch normalization - OOPS this model has activation after input layer and only one dense layer!
 def get_nn_bn(INPUT_DIMS):
     tf.keras.backend.clear_session()
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
-    model.add(tf.keras.layers.Dense(units=24, name="Dense1")),
     model.add(tf.keras.layers.Activation("relu")),
-    model.add(tf.keras.layers.BatchNormalization(name="FirstBatchNorm")),
-    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
     model.add(tf.keras.layers.Activation("relu")),
-    model.add(tf.keras.layers.BatchNormalization(name="SecondBatchNorm")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
     model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
     model.compile(optimizer=tf.keras.optimizers.Adadelta(),
                   # optimizer='adam',
@@ -90,3 +89,43 @@ def get_nn_bn(INPUT_DIMS):
                   metrics=['sparse_categorical_accuracy'])
     return model
 
+# ==================================================================================
+# NN with batch normalization, now with two dense layers
+def get_nn_bn2(INPUT_DIMS):
+    tf.keras.backend.clear_session()
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
+    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                  # optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+    return model
+
+# ==================================================================================
+# NN with batch normalization, with 3 dense layers
+def get_nn_bn3(INPUT_DIMS):
+    tf.keras.backend.clear_session()
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense3")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm3")),
+    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                  # optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+    return model
