@@ -285,6 +285,57 @@ class VizFuncs:
 
         plt.close('all')
 
+    def time_size2(self):
+        # For models trained on small clouds
+        plt.ioff()
+        data_path = self.data_path
+        if self.uncertainty:
+            metrics_path = data_path / self.batch / 'metrics' / 'training_nn_mcd'
+            plot_path = data_path / self.batch / 'plots' / 'nn_mcd'
+        else:
+            metrics_path = data_path / self.batch / 'metrics' / 'training_nn'
+            plot_path = data_path / self.batch / 'plots' / 'nn'
+
+        stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in self.img_list]
+        pixel_counts = []
+        for j, stack in enumerate(stack_list):
+            print('Getting pixel count of', self.img_list[j])
+            with rasterio.open(stack, 'r') as ds:
+                img = ds.read(1)
+                img[img == -999999] = np.nan
+                img[np.isneginf(img)] = np.nan
+                cloud_mask_dir = data_path / 'clouds' / 'small'
+                cloud_mask = np.load(cloud_mask_dir / '{0}'.format(self.img_list[j] + '_clouds.npy'))
+                for k, pctl in enumerate(self.pctls):
+                    cloud_mask = cloud_mask < np.percentile(cloud_mask, pctl)
+                    img_pixels = np.count_nonzero(~np.isnan(img))
+                    img[cloud_mask] = np.nan
+                    pixel_count = np.count_nonzero(~np.isnan(img))
+                    pixel_counts.append(pixel_count)
+
+        # pixel_counts = np.tile(pixel_counts, len(self.pctls))
+        times_sizes = np.column_stack([np.tile(self.pctls, len(self.img_list)),
+                                       # np.repeat(img_list, len(pctls)),
+                                       pixel_counts])
+        # times_sizes[:, 1] = times_sizes[:, 1].astype(np.int) / times_sizes[:, 0].astype(np.int)
+
+        print('Fetching training times')
+        file_list = [metrics_path / img / 'training_times.csv' for img in self.img_list]
+        times = pd.concat(pd.read_csv(file) for file in file_list)
+        times_sizes = np.column_stack([times_sizes, np.array(times['training_time'])])
+        times_sizes = pd.DataFrame(times_sizes, columns=['cloud_cover', 'pixels', 'training_time'])
+
+        print('Creating and saving plots')
+        cover_times = times_sizes.plot.scatter(x='cloud_cover', y='training_time')
+        cover_times_fig = cover_times.get_figure()
+        cover_times_fig.savefig(plot_path / 'cloud_cover_times.png')
+
+        pixel_times = times_sizes.plot.scatter(x='pixels', y='training_time')
+        pixel_times_fig = pixel_times.get_figure()
+        pixel_times_fig.savefig(plot_path / 'size_times.png')
+
+        plt.close('all')
+
 
 
 # # # Create histogram of pixel values
