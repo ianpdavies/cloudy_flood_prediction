@@ -144,21 +144,20 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
-    
-    # load cloudmasks
-    cloudMaskDir = data_path / 'clouds'
-    
-    cloudMask = np.load(cloudMaskDir / '{0}'.format(img+'_clouds.npy'))
 
     # Check for any features that have all zeros/same value and remove. This only matters with the training data
-    cloudMask = cloudMask < np.percentile(cloudMask, pctl)
     data_check = data.copy()
-    data_check[cloudMask] = -999999
     data_check[data_check == -999999] = np.nan
     data_check[np.isneginf(data_check)] = np.nan
     data_check_vector = data_check.reshape([data_check.shape[0] * data_check.shape[1], data_check.shape[2]])
     data_check_vector = data_check_vector[~np.isnan(data_check_vector).any(axis=1)]
     data_std = data_check_vector[:, 0:data_check_vector.shape[1] - 1].std(0)
+
+    # Load clouds
+    cloud_dir = data_path / 'clouds'
+    clouds = np.load(cloud_dir / '{0}'.format(img + '_clouds.npy'))
+    # Mask clouds with the NaN values of image from real clouds, snow, etc.
+    clouds[np.isnan(data_check[:, :, 0])] = np.nan
 
     # Just adding this next line in to correctly remove the deleted feat from feat_list_new during training
     # Should remove once I've decided whether to train with or without perm water
@@ -169,12 +168,12 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
         feat_keep.pop(zero_feat)
 
     if gaps:
-        cloudMask = cloudMask < np.percentile(cloudMask, pctl)
+        cloudmask = clouds < np.percentile(clouds, pctl)
     if not gaps:
-        cloudMask = cloudMask > np.percentile(cloudMask, pctl)
+        cloudmask = clouds > np.percentile(clouds, pctl)
     
     # Convert -999999 and -Inf to Nans
-    data[cloudMask] = -999999
+    data[cloudmask] = -999999
     data[data == -999999] = np.nan
     data[np.isneginf(data)] = np.nan
 
@@ -246,7 +245,7 @@ from math import sqrt
 from pathlib import Path
 
 
-def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False, alt=None):
+def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
     """
     Creates a random cloud image using Simplex noise, and saves that as a numpy binary file.
     The cloud image can then be thresholded by varying % cloud cover to create a binary cloud mask.
@@ -278,7 +277,7 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False, alt=
     myClouds = cloudGenerator(img = img, path = path)
     
     # Create cloudmask with 90% cloud cover
-    cloudmask_20 = myClouds < np.percentile(clouds, 90) 
+    cloudmask_20 = myClouds < np.percentile(clouds, 90)
     """
     
     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
@@ -299,8 +298,6 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False, alt=
         else:
             print('No cloud image for '+img+', creating one')
 
-
-
     # Make directory for clouds if none exists
     if cloud_dir.is_dir() == False:
         cloud_dir.mkdir()
@@ -316,8 +313,6 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False, alt=
     # Create empty array of zeros to generate clouds on
     clouds = np.zeros(shape)
     freq = np.ceil(sqrt(np.sum(shape)/2)) * octaves  # Frequency calculated based on shape of image
-    if alt is 'small':
-        freq = np.ceil(sqrt(np.sum(shape))) * 2  # Frequency calculated based on shape of image
 
     # Generate 2D (technically 3D, but uses a scalar for z) simplex noise
     for y in range(shape[1]):
@@ -325,6 +320,88 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False, alt=
               clouds[x,y] = snoise3(x/freq, y/freq, seed, octaves)
 
     # Save cloud file as 
+    np.save(cloud_file, clouds)
+
+    # Return clouds
+    return clouds
+
+# -----------------------------------
+
+def cloud_generator_small(img, data_path, seed=None, octaves=10, overwrite=False, alt=None):
+    """
+    Creates a random cloud image using Simplex noise, and saves that as a numpy binary file.
+    The cloud image can then be thresholded by varying % cloud cover to create a binary cloud mask.
+    See example.
+
+    Reqs: random, rasterio, os, snoise3 from noise, numpy, sqrt from math
+
+    Parameters
+    ----------
+    seed : int
+        If no seed provided, a random integer between 1-10000 is used.
+    data_path :str
+        pathlib.Path pointing to data directory
+    img : str
+        Image name that will be used to name cloudmask
+    overwrite: true/false
+        Whether existing cloud image should be overwritten
+
+    Returns
+    ----------
+    clouds : array
+        Cloud image as a numpy array; also saved as a numpy binary file
+
+    Example
+    ----------
+    data_path = Path('C:/Users/ipdavies/CPR/data')
+    img = '4337_LC08_026038_20160325_1'
+
+    myClouds = cloudGenerator(img = img, path = path)
+
+    # Create cloudmask with 90% cloud cover
+    cloudmask_20 = myClouds < np.percentile(clouds, 90)
+    """
+
+    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+    file_name = img + '_clouds.npy'
+    cloud_dir = data_path / 'clouds' / 'small'
+    cloud_file = cloud_dir / file_name
+
+    if overwrite:
+        try:
+            cloud_file.unlink()
+            print('Removing existing cloud image for ' + img + ' and creating new one')
+        except FileNotFoundError:
+            print('No existing cloud image for ' + img + '. Creating new one')
+    if not overwrite:
+        if cloud_file.exists():
+            print('Cloud image already exists for ' + img)
+            return
+        else:
+            print('No cloud image for ' + img + ', creating one')
+
+    # Make directory for clouds if none exists
+    if cloud_dir.is_dir() == False:
+        cloud_dir.mkdir()
+        print('Creating cloud imagery directory')
+
+    if seed is None:
+        seed = (random.randint(1, 10000))
+
+    # Get shape of input image to be masked
+    with rasterio.open(stack_path) as ds:
+        shape = ds.shape
+
+    # Create empty array of zeros to generate clouds on
+    clouds = np.zeros(shape)
+    freq = np.ceil(sqrt(np.sum(shape))) * 2  # Frequency calculated based on shape of image
+
+    # Generate 2D (technically 3D, but uses a scalar for z) simplex noise
+    for y in range(shape[1]):
+        for x in range(shape[0]):
+            clouds[x, y] = snoise3(x / freq, y / freq, seed, octaves)
+
+    # Save cloud file as
     np.save(cloud_file, clouds)
 
     # Return clouds
