@@ -45,23 +45,23 @@ def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=Fal
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
 
-            # Metrics excluding perm water
-            print('Evaluating without perm water')
-            perm_index = feat_list_new.index('GSW_perm')
-            non_perm = data_vector_test[data_vector_test[:, perm_index]!=1, :]
-            non_perm_preds = preds[data_vector_test[:, perm_index]!=1]
-            X_test, y_test = non_perm[:, 0:data_shape[1]-1], non_perm[:, data_shape[1]-1]
-
-            accuracy_np.append(accuracy_score(y_test, non_perm_preds))
-            precision_np.append(precision_score(y_test, non_perm_preds))
-            recall_np.append(recall_score(y_test, non_perm_preds))
-            f1_np.append(f1_score(y_test, non_perm_preds))
+            # # Metrics excluding perm water
+            # print('Evaluating without perm water')
+            # perm_index = feat_list_new.index('GSW_perm')
+            # non_perm = data_vector_test[data_vector_test[:, perm_index]!=1, :]
+            # non_perm_preds = preds[data_vector_test[:, perm_index]!=1]
+            # X_test, y_test = non_perm[:, 0:data_shape[1]-1], non_perm[:, data_shape[1]-1]
+            #
+            # accuracy_np.append(accuracy_score(y_test, non_perm_preds))
+            # precision_np.append(precision_score(y_test, non_perm_preds))
+            # recall_np.append(recall_score(y_test, non_perm_preds))
+            # f1_np.append(f1_score(y_test, non_perm_preds))
 
         metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
                                   columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
 
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
-
-        metrics_np = pd.DataFrame(np.column_stack([pctls, accuracy_np, precision_np, recall_np, f1_np]),
-                                  columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
-        metrics_np.to_csv(metrics_path / 'metrics_np.csv', index=False)
+        #
+        # metrics_np = pd.DataFrame(np.column_stack([pctls, accuracy_np, precision_np, recall_np, f1_np]),
+        #                           columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        # metrics_np.to_csv(metrics_path / 'metrics_np.csv', index=False)
