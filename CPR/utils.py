@@ -110,15 +110,17 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
 from pathlib import Path
+
+
 def preprocessing(data_path, img, pctl, gaps, normalize=True):
     """
     Masks stacked image with cloudmask by converting cloudy values to NaN
-    
+
     Parameters
     ----------
-    data_path : str 
+    data_path : str
         Path to image folder
-    img : str 
+    img : str
         Name of image file (without file extension)
     pctl : list of int
         List of integers of cloud cover percentages to mask image with (10, 20, 30, etc.)
@@ -126,7 +128,7 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
         Preprocessing cloud gaps or clouds? Determines how to mask out image
     normalize : bool
         Whether to normalize data or not. Default is true.
-    
+
     Returns
     ----------
     data : array
@@ -136,7 +138,7 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     data_ind : tuple
         Tuple of row/col indices in 'data' where cloudy pixels/cloud gaps were masked. Used for reconstructing the image later.
     """
-    
+
     img_path = data_path / 'images' / img
     stack_path = img_path / 'stack' / 'stack.tif'
 
@@ -171,7 +173,7 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
         cloudmask = clouds < np.percentile(clouds, pctl)
     if not gaps:
         cloudmask = clouds > np.percentile(clouds, pctl)
-    
+
     # Convert -999999 and -Inf to Nans
     data[cloudmask] = -999999
     data[data == -999999] = np.nan
@@ -179,22 +181,13 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
 
     # Get indices of non-nan values. These are the indices of the original image array
     data_ind = np.where(~np.isnan(data[:, :, 1]))
-    
+
     # Reshape into a 2D array, where rows = pixels and cols = features
     data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
     shape = data_vector.shape
 
     # Remove NaNs
     data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-
-    data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
-    data_std = data_vector[:, 0:shape[1] - 1].std(0)
-
-    # Normalize data - only the non-binary variables
-    if normalize:
-        data_vector[:, 0:shape[1]-1] = (data_vector[:, 0:shape[1]-1] - data_mean) / data_std
-
-    return data, data_vector, data_ind, feat_keep
 
 # -------------------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------------------
