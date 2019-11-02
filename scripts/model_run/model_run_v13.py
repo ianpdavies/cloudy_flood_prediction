@@ -83,6 +83,7 @@ viz_params = {'img_list': img_list,
 # Training and prediction with random batches of clouds
 
 cloud_dir = data_path / 'clouds'
+trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5']
 
 # Move initial cloud files from previous tests
 for img in img_list:
@@ -97,162 +98,34 @@ for img in img_list:
     if not cloud_dest.exists():
         shutil.move(cloud_src, cloud_dest)
 
-# Trial 1
-print(' - - - - - - - - - - - - - - - STARTING TRIAL 1  - - - - - - - - - - - - - - - ')
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+for trial in trials:
+    print(' - - - - - - - - - - - - - - - STARTING', trial, '- - - - - - - - - - - - - - - ')
+    training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+              data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
+    prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
+    evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
 
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.time_plot()
-viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
+    viz = VizFuncs(viz_params)
+    viz.metric_plots()
+    viz.time_plot()
+    viz.false_map()
+    viz.metric_plots_multi()
+    viz.time_size()
 
-# Move cloud files to another folder so they're not overwritten
-for img in img_list:
-    file_name = img + '_clouds.npy'
-    cloud_src = cloud_dir / file_name
-    cloud_dest_dir = cloud_dir / 'random' / 'trial1'
-    cloud_dest = cloud_dest_dir / file_name
-    try:
-        cloud_dest_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
-    if not cloud_dest.exists():
-        shutil.move(cloud_src, cloud_dest)
-    else:
-        print('Overwriting previous random cloud trial!')
-        sys.exit()
-
-# Trial 2
-print(' - - - - - - - - - - - - - - - STARTING TRIAL 2  - - - - - - - - - - - - - - - ')
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
-
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.time_plot()
-viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
-
-# Move cloud files to another folder so they're not overwritten
-for img in img_list:
-    file_name = img + '_clouds.npy'
-    cloud_src = cloud_dir / file_name
-    cloud_dest_dir = cloud_dir / 'random' / 'trial2'
-    cloud_dest = cloud_dest_dir / file_name
-    try:
-        cloud_dest_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
-    if not cloud_dest.exists():
-        shutil.move(cloud_src, cloud_dest)
-    else:
-        print('Overwriting previous random cloud trial!')
-        sys.exit()
-
-# Trial 3
-print(' - - - - - - - - - - - - - - - STARTING TRIAL 3  - - - - - - - - - - - - - - - ')
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
-
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.time_plot()
-viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
-
-# Move cloud files to another folder so they're not overwritten
-for img in img_list:
-    file_name = img + '_clouds.npy'
-    cloud_src = cloud_dir / file_name
-    cloud_dest_dir = cloud_dir / 'random' / 'trial3'
-    cloud_dest = cloud_dest_dir / file_name
-    try:
-        cloud_dest_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
-    if not cloud_dest.exists():
-        shutil.move(cloud_src, cloud_dest)
-    else:
-        print('Overwriting previous random cloud trial!')
-        sys.exit()
-
-# Trial 4
-print(' - - - - - - - - - - - - - - - STARTING TRIAL 4  - - - - - - - - - - - - - - - ')
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
-
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.time_plot()
-viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
-
-# Move cloud files to another folder so they're not overwritten
-for img in img_list:
-    file_name = img + '_clouds.npy'
-    cloud_src = cloud_dir / file_name
-    cloud_dest_dir = cloud_dir / 'random' / 'trial4'
-    cloud_dest = cloud_dest_dir / file_name
-    try:
-        cloud_dest_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
-    if not cloud_dest.exists():
-        shutil.move(cloud_src, cloud_dest)
-    else:
-        print('Overwriting previous random cloud trial!')
-        sys.exit()
-
-# Trial 5
-print(' - - - - - - - - - - - - - - - STARTING TRIAL 5  - - - - - - - - - - - - - - - ')
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
-
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.time_plot()
-viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
-
-# Move cloud files to another folder so they're not overwritten
-for img in img_list:
-    file_name = img + '_clouds.npy'
-    cloud_src = cloud_dir / file_name
-    cloud_dest_dir = cloud_dir / 'random' / 'trial5'
-    cloud_dest = cloud_dest_dir / file_name
-    try:
-        cloud_dest_dir.mkdir(parents=True)
-    except FileExistsError:
-        pass
-    if not cloud_dest.exists():
-        shutil.move(cloud_src, cloud_dest)
-    else:
-        print('Overwriting previous random cloud trial!')
-        sys.exit()
+    # Move cloud files to another folder so they're not overwritten
+    for img in img_list:
+        file_name = img + '_clouds.npy'
+        cloud_src = cloud_dir / file_name
+        cloud_dest_dir = cloud_dir / 'random' / trial
+        cloud_dest = cloud_dest_dir / file_name
+        try:
+            cloud_dest_dir.mkdir(parents=True)
+        except FileExistsError:
+            pass
+        if not cloud_dest.exists():
+            shutil.move(cloud_src, cloud_dest)
+        else:
+            print('Overwriting previous random cloud trial!')
+            sys.exit()
