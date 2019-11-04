@@ -3,6 +3,7 @@ import numpy as np
 import time
 import h5py
 from models import get_nn1 as get_model
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from CPR.utils import preprocessing, timer
 import tensorflow as tf
 from tensorflow import keras
@@ -13,6 +14,7 @@ import json
 def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **model_params):
     for j, img in enumerate(img_list):
         times = []
+        accuracy, precision, recall, f1 = [], [], [], []
         preds_path = data_path / batch / 'predictions' / 'nn' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
@@ -41,7 +43,6 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             start_time = time.time()
             model_path = data_path / batch / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model = tf.keras.models.load_model(model_path)
-            print(model_params['batch_size'])
             preds = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
             preds = np.argmax(preds, axis=1)  # Display most probable value
 
@@ -58,11 +59,19 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
 
             times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
 
+            print('Evaluating predictions')
+            accuracy.append(accuracy_score(y_test, preds))
+            precision.append(precision_score(y_test, preds))
+            recall.append(recall_score(y_test, preds))
+            f1.append(f1_score(y_test, preds))
+
+            del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
+
+        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
+                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
                                 columns=['cloud_cover', 'testing_time'])
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
-
-
-
 
