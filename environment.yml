@@ -74,6 +74,7 @@ dependencies:
   - freetype=2.9.1=ha9979f8_1
   - freexl=1.0.5=hd288d7e_1002
   - future=0.17.1=py37_0
+  - gdal=2.3.3=py37hdf43c64_0
   - geos=3.7.1=h33f27b4_0
   - get_terminal_size=1.0.0=h38e98db_0
   - gevent=1.4.0=py37he774522_0
@@ -119,11 +120,13 @@ dependencies:
   - jupyter_console=6.0.0=py37_0
   - jupyter_core=4.5.0=py_0
   - jupyterlab_server=1.0.0=py_0
+  - jupyterthemes=0.20.0=py_0
   - kealib=1.4.10=heacb130_1003
   - keyring=18.0.0=py37_0
   - kiwisolver=1.1.0=py37ha925a31_0
   - krb5=1.16.1=hc04afaa_7
   - lazy-object-proxy=1.4.1=py37he774522_0
+  - lesscpy=0.13.0=py_1
   - libarchive=3.3.3=h0643e63_5
   - libcurl=7.65.2=h2a8f88b_0
   - libgdal=2.3.3=h10f50ba_0
