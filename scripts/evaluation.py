@@ -3,6 +3,9 @@ from CPR.utils import preprocessing
 import numpy as np
 import pandas as pd
 import h5py
+import tensorflow as tf
+import os
+
 
 # ==================================================================================
 
@@ -11,8 +14,8 @@ def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=Fal
 
     for j, img in enumerate(img_list):
         accuracy, precision, recall, f1 = [], [], [], []
-        accuracy_np, precision_np, recall_np, f1_np = [], [], [], []
-
+        # accuracy_np, precision_np, recall_np, f1_np = [], [], [], []
+        NUM_PARALLEL_EXEC_UNITS = 4
         preds_path = data_path / batch / 'predictions' / 'nn' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
@@ -38,6 +41,16 @@ def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=Fal
                 data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
+            # Set some optimized config parameters
+            tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
+            tf.config.threading.set_inter_op_parallelism_threads(2)
+            tf.config.set_soft_device_placement(True)
+            # tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
+            os.environ["OMP_NUM_THREADS"] = "NUM_PARALLEL_EXEC_UNITS"
+            os.environ["KMP_BLOCKTIME"] = "30"
+            os.environ["KMP_SETTINGS"] = "1"
+            os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
+
             # Metrics including perm water
             print('Evaluating with perm water')
             accuracy.append(accuracy_score(y_test, preds))
@@ -57,6 +70,8 @@ def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=Fal
             # recall_np.append(recall_score(y_test, non_perm_preds))
             # f1_np.append(f1_score(y_test, non_perm_preds))
 
+            del preds, X_test, y_test, data_test, data_vector_test, data_ind_test
+
         metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
                                   columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
 
@@ -65,3 +80,5 @@ def evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=Fal
         # metrics_np = pd.DataFrame(np.column_stack([pctls, accuracy_np, precision_np, recall_np, f1_np]),
         #                           columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
         # metrics_np.to_csv(metrics_path / 'metrics_np.csv', index=False)
+
+

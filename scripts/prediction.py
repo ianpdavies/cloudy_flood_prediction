@@ -2,14 +2,15 @@ import pandas as pd
 import numpy as np
 import time
 import h5py
+import os
 from models import get_nn1 as get_model
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from CPR.utils import preprocessing, timer
 import tensorflow as tf
 from tensorflow import keras
+import tensorflow.keras.backend as K
 import json
 # ==================================================================================
-
 
 def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **model_params):
     for j, img in enumerate(img_list):
@@ -18,6 +19,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
         preds_path = data_path / batch / 'predictions' / 'nn' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
+        NUM_PARALLEL_EXEC_UNITS=4
 
         try:
             metrics_path.mkdir(parents=True)
@@ -36,8 +38,17 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
-            print('Predicting for {} at {}% cloud cover'.format(img, pctl))
+            # Set some optimized config parameters
+            tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
+            tf.config.threading.set_inter_op_parallelism_threads(2)
+            tf.config.set_soft_device_placement(True)
+            # tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
+            os.environ["OMP_NUM_THREADS"] = "NUM_PARALLEL_EXEC_UNITS"
+            os.environ["KMP_BLOCKTIME"] = "30"
+            os.environ["KMP_SETTINGS"] = "1"
+            os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
+            print('Predicting for {} at {}% cloud cover'.format(img, pctl))
             # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
             # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
             start_time = time.time()
@@ -74,4 +85,3 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
                                 columns=['cloud_cover', 'testing_time'])
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
-
