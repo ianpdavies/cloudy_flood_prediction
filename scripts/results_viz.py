@@ -46,11 +46,11 @@ class VizFuncs:
             metrics_fig = metrics_plot.get_figure()
             metrics_fig.savefig(plot_path / 'metrics_plot.png')
 
-            metrics = pd.read_csv(metrics_path / 'metrics_np.csv')
-            metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
-                                               ylim=(0, 1))
-            metrics_fig = metrics_plot.get_figure()
-            metrics_fig.savefig(plot_path / 'metrics_np_plot.png')
+            # metrics = pd.read_csv(metrics_path / 'metrics_np.csv')
+            # metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
+            #                                    ylim=(0, 1))
+            # metrics_fig = metrics_plot.get_figure()
+            # metrics_fig.savefig(plot_path / 'metrics_np_plot.png')
 
             plt.close('all')
 
@@ -94,7 +94,7 @@ class VizFuncs:
             # Get RGB image
             print('Stacking RGB image')
             band_list = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7']
-            tif_stacker(data_path, img, band_list, features=False, overwrite=True)
+            tif_stacker(data_path, img, band_list, features=False, overwrite=False)
             spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
 
             # Function to normalize the grid values
@@ -220,18 +220,18 @@ class VizFuncs:
             all_metric_fig = all_metric.get_figure()
             all_metric_fig.savefig(plot_path / name)
 
-        file_list_np = [metrics_path / img / 'metrics_np.csv' for img in self.img_list]
-        df_concat_np = pd.concat(pd.read_csv(file) for file in file_list_np)
-        # Average of metric values together in one plot
-        mean_plot_np = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
-        mean_plot_np_fig = mean_plot_np.get_figure()
-        mean_plot_np_fig.savefig(plot_path / 'mean_metrics_np.png')
+        # file_list_np = [metrics_path / img / 'metrics_np.csv' for img in self.img_list]
+        # df_concat_np = pd.concat(pd.read_csv(file) for file in file_list_np)
+        # # Average of metric values together in one plot
+        # mean_plot_np = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
+        # mean_plot_np_fig = mean_plot_np.get_figure()
+        # mean_plot_np_fig.savefig(plot_path / 'mean_metrics_np.png')
 
-        for j, val in enumerate(df_concat_np.columns):
-            name = val + 's_np.png'
-            all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
-            all_metric_fig = all_metric.get_figure()
-            all_metric_fig.savefig(plot_path / name)
+        # for j, val in enumerate(df_concat_np.columns):
+        #     name = val + 's_np.png'
+        #     all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
+        #     all_metric_fig = all_metric.get_figure()
+        #     all_metric_fig.savefig(plot_path / name)
 
         plt.close('all')
 
@@ -335,8 +335,6 @@ class VizFuncs:
         pixel_times_fig.savefig(plot_path / 'size_times.png')
 
         plt.close('all')
-
-
 
 # # # Create histogram of pixel values
 # # from rasterio.plot import show_hist
