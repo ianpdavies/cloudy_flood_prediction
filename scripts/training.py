@@ -5,6 +5,7 @@ import numpy as np
 from tensorflow.keras.callbacks import CSVLogger
 import matplotlib.pyplot as plt
 import time
+import os
 # Import custom functions
 import sys
 
@@ -455,7 +456,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_losses.to_csv(losses_path, index=False)
 
 # ============================================================================================
-from CPR.utils import cloud_generator_small
+from test_functions import preprocessing_small_clouds
 
 def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
               DROPOUT_RATE=0, HOLDOUT=0.2, **model_params):
@@ -463,7 +464,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
     1. Removes flood water that is permanent water
     2. Finds the optimum learning rate and uses cyclic LR scheduler
     to train the model
-    3. Uses only small clouds
+    3. Overwrite is turned on for cloud generator to create random cloud sets
     '''
     get_model = model_func
     for j, img in enumerate(img_list):
@@ -471,13 +472,24 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         times = []
         lr_mins = []
         lr_maxes = []
+        NUM_PARALLEL_EXEC_UNITS = 4
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
-        cloud_generator_small(img, data_path, overwrite=False)
+        cloud_generator(img, data_path, overwrite=True)
+
+        # Set some optimized config parameters
+        tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
+        tf.config.threading.set_inter_op_parallelism_threads(2)
+        tf.config.set_soft_device_placement(True)
+        # tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
+        os.environ["OMP_NUM_THREADS"] = "4"
+        os.environ["KMP_BLOCKTIME"] = "30"
+        os.environ["KMP_SETTINGS"] = "1"
+        os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing_small_clouds(data_path, img, pctl, gaps=False)
             feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
             perm_index = feat_list_keep.index('GSW_perm')
             flood_index = feat_list_keep.index('flooded')
@@ -528,7 +540,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10),
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.005, patience=5),
                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='val_loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
@@ -566,3 +578,119 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_losses = np.column_stack([lr, losses])
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
+
+#
+# # ============================================================================================
+# from test_functions import preprocessing_rand_clouds
+#
+#
+# def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch, trial,
+#               DROPOUT_RATE=0, HOLDOUT=0.2, **model_params):
+#     '''
+#     1. Removes flood water that is permanent water
+#     2. Finds the optimum learning rate and uses cyclic LR scheduler
+#     to train the model
+#     3. Uses only small clouds
+#     '''
+#     get_model = model_func
+#     for j, img in enumerate(img_list):
+#         print(img + ': stacking tif, generating clouds')
+#         times = []
+#         lr_mins = []
+#         lr_maxes = []
+#         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
+#         cloud_generator_small(img, data_path, overwrite=False)
+#
+#         for i, pctl in enumerate(pctls):
+#             print(img, pctl, '% CLOUD COVER')
+#             print('Preprocessing')
+#             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing_rand_clouds(data_path, img, pctl,
+#                                                                                                  trial, gaps=False)
+#             feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
+#             perm_index = feat_list_keep.index('GSW_perm')
+#             flood_index = feat_list_keep.index('flooded')
+#             data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+#             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
+#             training_data, validation_data = train_val(data_vector_train, holdout=HOLDOUT)
+#             shape = data_vector_train.shape
+#             X_train, y_train = training_data[:, 0:shape[1]-1], training_data[:, shape[1]-1]
+#             X_val, y_val = validation_data[:, 0:shape[1]-1], validation_data[:, shape[1]-1]
+#             INPUT_DIMS = X_train.shape[1]
+#
+#             if uncertainty:
+#                 model_path = data_path / batch / 'models' / 'nn_mcd' / img
+#                 metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd' / img / '{}'.format(
+#                     img + '_clouds_' + str(pctl))
+#             else:
+#                 model_path = data_path / batch / 'models' / 'nn' / img
+#                 metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+#                     img + '_clouds_' + str(pctl))
+#             lr_plots_path = metrics_path.parents[1] / 'lr_plots'
+#             lr_vals_path = metrics_path.parents[1] / 'lr_vals'
+#             try:
+#                 metrics_path.mkdir(parents=True)
+#                 model_path.mkdir(parents=True)
+#                 lr_plots_path.mkdir(parents=True)
+#                 lr_vals_path.mkdir(parents=True)
+#             except FileExistsError:
+#                 pass
+#
+#             # ---------------------------------------------------------------------------------------------------
+#             # Determine learning rate by finding max loss decrease during single epoch training
+#             lrRangeFinder = LrRangeFinder(start_lr=0.1, end_lr=2)
+#
+#             lr_model_params = {'batch_size': model_params['batch_size'],
+#                                'epochs': 1,
+#                                'verbose': 2,
+#                                'callbacks': [lrRangeFinder],
+#                                'use_multiprocessing': True}
+#
+#             model = model_func(INPUT_DIMS)
+#             print('Finding learning rate')
+#             model.fit(X_train, y_train, **lr_model_params, validation_data=(X_val, y_val))
+#             lr_min, lr_max, lr, losses = lr_plots(lrRangeFinder, lr_plots_path, img, pctl)
+#             lr_mins.append(lr_min)
+#             lr_maxes.append(lr_max)
+#             # ---------------------------------------------------------------------------------------------------
+#             # Training the model with cyclical learning rate scheduler
+#             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+#             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
+#
+#             callbacks = [tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10),
+#                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='val_loss',
+#                                                             save_best_only=True),
+#                          CSVLogger(metrics_path / 'training_log.log'),
+#                          scheduler]
+#
+#             if uncertainty:
+#                 model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
+#             else:
+#                 model = get_model(INPUT_DIMS)  # Model without uncertainty
+#
+#             print('Training full model with best LR')
+#             start_time = time.time()
+#             model.fit(X_train, y_train, **model_params, validation_data=(X_val, y_val), callbacks=callbacks)
+#             end_time = time.time()
+#             times.append(timer(start_time, end_time, False))
+#             # model.save(model_path)
+#
+#         metrics_path = metrics_path.parent
+#         times = [float(i) for i in times]
+#         times = np.column_stack([pctls, times])
+#         times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
+#         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
+#
+#         lr_range = np.column_stack([pctls, lr_mins, lr_maxes])
+#         lr_avg = np.mean(lr_range[:, 1:2], axis=1)
+#         lr_range = np.column_stack([lr_range, lr_avg])
+#         lr_range_df = pd.DataFrame(lr_range, columns=['cloud_cover', 'lr_min', 'lr_max', 'lr_avg'])
+#         lr_range_df.to_csv((lr_vals_path / img).with_suffix('.csv'), index=False)
+#
+#         losses_path = lr_vals_path / img / '{}'.format('losses_'+str(pctl)+'.csv')
+#         try:
+#             losses_path.parent.mkdir(parents=True)
+#         except FileExistsError:
+#             pass
+#         lr_losses = np.column_stack([lr, losses])
+#         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
+#         lr_losses.to_csv(losses_path, index=False)

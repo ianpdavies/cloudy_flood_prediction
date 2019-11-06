@@ -38,16 +38,6 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
-            # Set some optimized config parameters
-            tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
-            tf.config.threading.set_inter_op_parallelism_threads(2)
-            tf.config.set_soft_device_placement(True)
-            # tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
-            os.environ["OMP_NUM_THREADS"] = "NUM_PARALLEL_EXEC_UNITS"
-            os.environ["KMP_BLOCKTIME"] = "30"
-            os.environ["KMP_SETTINGS"] = "1"
-            os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
-
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
             # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
             # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
