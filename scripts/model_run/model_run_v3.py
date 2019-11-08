@@ -3,7 +3,6 @@ import tensorflow as tf
 import os
 from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 
@@ -79,8 +78,6 @@ training3(img_list, pctls, model_func, feat_list_new, uncertainty,
           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 
 prediction(img_list, pctls, feat_list_new, data_path, batch)
-
-evaluation(img_list, pctls, feat_list_new, data_path, batch)
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,

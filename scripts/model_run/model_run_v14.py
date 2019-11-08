@@ -4,7 +4,6 @@ import os
 import pathlib
 from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 import shutil
@@ -125,7 +124,6 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4469_LC08_015036_20170502_1',
             '4477_LC08_022033_20170519_1',
             '4514_LC08_027033_20170826_1']
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()

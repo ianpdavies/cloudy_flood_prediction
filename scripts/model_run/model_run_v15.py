@@ -4,7 +4,6 @@ import os
 import pathlib
 from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 import shutil
@@ -89,7 +88,6 @@ cloud_dir = data_path / 'clouds'
 training3(img_list, pctls, model_func, feat_list_new, uncertainty,
           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()

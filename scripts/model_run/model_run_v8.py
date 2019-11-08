@@ -3,7 +3,6 @@ import tensorflow as tf
 import os
 from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 from collections import OrderedDict
@@ -83,8 +82,6 @@ viz_params = {'img_list': img_list,
 #           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 #
 # prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-#
-# evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
 #
 # viz = VizFuncs(viz_params)
 # viz.metric_plots()
