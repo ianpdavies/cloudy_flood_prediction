@@ -1,9 +1,11 @@
 # Ignore (folders) #
 learning/
 data/
+.idea/
 
 # Ignore (files)#
 *.txt
+CPR/configs.py
 
 to_learn.txt
 
