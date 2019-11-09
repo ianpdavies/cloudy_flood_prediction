@@ -1,3 +1,21 @@
-v1 = First try - standard NN, flood target feature includes permanent water
-v2 = Removed permanent water from flood target feature in all steps
-v3 = Used batch normalization, higher batch size, and cyclic scheduled learning rate
+v1 = First try - standard NN, flood target feature includes permanent water (clouds = original)
+v2 = Removed permanent water from flood target feature in all steps (clouds = original)
+v3 = Used batch normalization, higher batch size, and cyclic scheduled learning rate (clouds = original)
+v4 = Batch size testing - 256 (clouds = original)
+v5 = Batch size testing - 512 (clouds = original)
+v6 = Batch size testing - 1024 (clouds = original)
+v7 = Batch size testing - 4096 (clouds = original)
+v8 = Batch size testing - 8192 (clouds = original)
+v9 = Batch size testing - 16385, but also using two layers in NN (v1-v8 accidentally only had one) (clouds = original)
+v10 = Batch size testing - 16385, but with three layer NN (clouds = original)
+v11 = Testing on all images using 2 layer NN, batch size = 4096 (clouds = original)
+v12 = Testing on all images using 2 layer NN, batch size = 16385 (clouds = original)
+v13 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 1 (clouds = trial1)
+v14 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 2 (clouds = trial2)
+v15 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 3
+Changed ES patience=5, min_delta=0.005 on training to reduce training time after 4115_LC08_021033_20131227_2, 30%.
+v16 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 4
+v17 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 5
+v18 = Testing on all images using 2 layer NN with smaller, thinner clouds.
+c19 = Testing on all images using 2 layer NN with no validation data (clouds = original)
+v? = Testing on all images, 2 layer NN, with MCD uncertainty during prediction
