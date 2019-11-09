@@ -1,7 +1,13 @@
 # Ignore (folders) #
 learning/
-data/
 .idea/
+
+data/*
+!data/*/
+
+data/*/*
+!data/*/metrics
+
 
 # Ignore (files)#
 *.txt
