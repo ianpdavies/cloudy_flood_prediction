@@ -4,7 +4,6 @@ import os
 import pathlib
 from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 import shutil
@@ -25,7 +24,7 @@ print('Python Version:', sys.version)
 # Parameters
 
 uncertainty = False
-batch = 'v15'
+batch = 'v17'
 trial = 'trial5'
 pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 BATCH_SIZE = 8192
@@ -69,27 +68,36 @@ img_list = ['4444_LC08_044033_20170222_2',
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
 
-model_params = {'batch_size': BATCH_SIZE,
-                'epochs': EPOCHS,
-                'verbose': 2,
-                'use_multiprocessing': True}
-
-viz_params = {'img_list': img_list,
-              'pctls': pctls,
-              'data_path': data_path,
-              'uncertainty': uncertainty,
-              'batch': batch,
-              'feat_list_new': feat_list_new}
+# Set some optimized config parameters
+NUM_PARALLEL_EXEC_UNITS = 4
+tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
+tf.config.threading.set_inter_op_parallelism_threads(2)
+tf.config.set_soft_device_placement(True)
+# tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
+os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
+os.environ["KMP_BLOCKTIME"] = "30"
+os.environ["KMP_SETTINGS"] = "1"
+os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 # ==================================================================================
 # Training and prediction with random batches of clouds
 
 cloud_dir = data_path / 'clouds'
 
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+model_params = {'batch_size': BATCH_SIZE,
+                'epochs': EPOCHS,
+                'verbose': 2,
+                'use_multiprocessing': True}
+
+# training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
+viz_params = {'img_list': img_list,
+              'pctls': pctls,
+              'data_path': data_path,
+              'uncertainty': uncertainty,
+              'batch': batch,
+              'feat_list_new': feat_list_new}
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()
