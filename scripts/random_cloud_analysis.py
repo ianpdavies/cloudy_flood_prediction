@@ -145,7 +145,7 @@ plt.savefig(plot_path / 'recall.png', bbox_inches='tight')
 precisions = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['precision'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=precisions, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0.3)
+            hue='cloud_cover', linewidth=1, fliersize=0.3)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='Precision')
@@ -163,7 +163,7 @@ plt.savefig(plot_path / 'precision.png', bbox_inches='tight')
 accuracies = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['accuracy'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=accuracies, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0.3)
+            hue='cloud_cover', linewidth=1, fliersize=0.3)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='Accuracy')
@@ -181,7 +181,7 @@ plt.savefig(plot_path / 'accuracy.png', bbox_inches='tight')
 f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0.3)
+            hue='cloud_cover', linewidth=1, fliersize=0.3)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='F1 Score')
@@ -256,7 +256,6 @@ plt.savefig(plot_path / 'f1.png', bbox_inches='tight')
 
 plt.close('all')
 # ----------------------------------------------------------------------------------------------------------------------
-
 # Variance of performance metrics between trials
 df.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
 
