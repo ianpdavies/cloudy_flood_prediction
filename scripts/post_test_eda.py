@@ -11,7 +11,8 @@ from CPR.configs import data_path
 print('Python Version:', sys.version)
 
 # ======================================================================================================================
-# Performance metrics vs. image metadata
+# Performance metrics vs. image metadata (dry/flood pixels, image size)
+
 # pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 pctls = [50]
 img_list = ['4444_LC08_044033_20170222_2',
@@ -37,31 +38,7 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4477_LC08_022033_20170519_1',
             '4514_LC08_027033_20170826_1']
 
-# img_list = ['4444_LC08_044033_20170222_2',
-#             '4101_LC08_027038_20131103_1',
-# #             '4101_LC08_027038_20131103_2',
-# #             '4101_LC08_027039_20131103_1',
-#             '4115_LC08_021033_20131227_1',
-#             '4115_LC08_021033_20131227_2',
-# #             '4337_LC08_026038_20160325_1',
-# #             '4444_LC08_043034_20170303_1',
-#             '4444_LC08_043035_20170303_1',
-#             '4444_LC08_044032_20170222_1',
-#             '4444_LC08_044033_20170222_1',
-# #             '4444_LC08_044033_20170222_3',
-# #             '4444_LC08_044033_20170222_4',
-# #             '4444_LC08_044034_20170222_1',
-#             '4444_LC08_045032_20170301_1',
-#             '4468_LC08_022035_20170503_1',
-#             '4468_LC08_024036_20170501_1',
-# #             '4468_LC08_024036_20170501_2',
-# #             '4469_LC08_015035_20170502_1',
-# #             '4469_LC08_015036_20170502_1',
-#             '4477_LC08_022033_20170519_1',
-#             '4514_LC08_027033_20170826_1']
-
-# img_list = ['4444_LC08_044033_20170222_2']
-batch = 'v1'
+batch = 'v2'
 uncertainty = False
 
 if uncertainty:
@@ -101,14 +78,6 @@ metadata = np.column_stack([pixel_counts, flood_counts, dry_counts])
 metadata = pd.DataFrame(metadata, columns=['pixels', 'flood_pixels', 'dry_pixels'])
 imgs_df = pd.DataFrame(imgs, columns=['image'])
 metadata = pd.concat([metadata, imgs_df], axis=1)
-# times_sizes = np.column_stack([np.tile(pctls, len(img_list)),
-#                                pixel_counts])
-
-# print('Fetching training times')
-# file_list = [metrics_path / img / 'training_times.csv' for img in img_list]
-# times = pd.concat(pd.read_csv(file) for file in file_list)
-# times_sizes = np.column_stack([times_sizes, np.array(times['training_time'])])
-# times_sizes = pd.DataFrame(times_sizes, columns=['cloud_cover', 'pixels', 'training_time'])
 
 print('Fetching performance metrics')
 if uncertainty:
@@ -123,17 +92,17 @@ data = pd.concat([metrics.reset_index(), metadata.reset_index()], axis=1)
 data['flood_dry_ratio'] = data['flood_pixels'] / data['dry_pixels']
 
 # Performance metrics vs. flood pixel counts, colored by image
-data_long = pd.melt(data, id_vars=['image',  'pixels', 'flood_pixels', 'dry_pixels', 'flood_dry_ratio'], value_vars=['accuracy', 'precision', 'recall', 'f1'])
+data_long = pd.melt(data, id_vars=['image',  'pixels', 'flood_pixels', 'dry_pixels', 'flood_dry_ratio'],
+                    value_vars=['accuracy', 'precision', 'recall', 'f1'])
 sns.scatterplot(x='flood_pixels', y='value', hue='image', data=data_long)
 plt.figure()
 sns.scatterplot(x='flood_dry_ratio', y='value', hue='image', data=data_long)
 
 # Without accuracy
 plt.figure()
-data_long = pd.melt(data, id_vars=['image',  'pixels', 'flood_pixels', 'dry_pixels', 'flood_dry_ratio'], value_vars=['precision', 'recall', 'f1'])
+data_long = pd.melt(data, id_vars=['image',  'pixels', 'flood_pixels', 'dry_pixels', 'flood_dry_ratio'],
+                    value_vars=['precision', 'recall', 'f1'])
 sns.scatterplot(x='flood_pixels', y='value', hue='image', data=data_long)
-
-
 
 # print('Creating and saving plots')
 # cover_times = times_sizes.plot.scatter(x='cloud_cover', y='training_time')
@@ -146,4 +115,9 @@ sns.scatterplot(x='flood_pixels', y='value', hue='image', data=data_long)
 
 
 # ======================================================================================================================
+
+
+# ======================================================================================================================
+# Performance metrics vs. feature values
+
 

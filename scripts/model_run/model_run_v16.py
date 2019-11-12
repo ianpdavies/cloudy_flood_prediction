@@ -4,7 +4,6 @@ import os
 import pathlib
 from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 import shutil
@@ -69,10 +68,17 @@ img_list = ['4444_LC08_044033_20170222_2',
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
 
+# ==================================================================================
+# Training and prediction with random batches of clouds
+
+cloud_dir = data_path / 'clouds'
 model_params = {'batch_size': BATCH_SIZE,
                 'epochs': EPOCHS,
                 'verbose': 2,
                 'use_multiprocessing': True}
+# training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+# prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
@@ -80,22 +86,12 @@ viz_params = {'img_list': img_list,
               'uncertainty': uncertainty,
               'batch': batch,
               'feat_list_new': feat_list_new}
-
-# ==================================================================================
-# Training and prediction with random batches of clouds
-
-cloud_dir = data_path / 'clouds'
-
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-evaluation(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()
 viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
+# viz.metric_plots_multi()
+# viz.time_size()
 
 # Move cloud files to another folder so they're not overwritten
 for img in img_list:

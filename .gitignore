@@ -1,6 +1,6 @@
 # Ignore (folders) #
 learning/
-.idea/
+.idea/*
 
 data/*
 !data/*/
