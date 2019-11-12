@@ -152,7 +152,7 @@ ax.set(xlabel='Images', ylabel='Precision')
 for i, artist in enumerate(ax.artists):
     col = artist.get_facecolor()
     artist.set_edgecolor(col)
-    for j in range(i*6,i*6+6):
+    for j in range(i*6, i*6+6):
         line = ax.lines[j]
         line.set_color(col)
         line.set_mfc(col)
@@ -255,6 +255,14 @@ ax.set(xlabel='Images', ylabel='F1 Score')
 plt.savefig(plot_path / 'f1.png', bbox_inches='tight')
 
 plt.close('all')
+
+# ----------------------------------------------------------------------------------------------------------------------
+# Violin plots
+f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
+plt.figure(figsize=(13, 6))
+ax = sns.violinplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
+            hue='cloud_cover', linewidth=0, fliersize=0)
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Variance of performance metrics between trials
 df.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
