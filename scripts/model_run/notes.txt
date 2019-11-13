@@ -18,4 +18,4 @@ v16 = Test on lowest performing images with 5 random cloudmasks, to see if low p
 v17 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 5
 v18 = Testing on all images using 2 layer NN with smaller, thinner clouds.
 c19 = Testing on all images using 2 layer NN with no validation data (clouds = original)
-v? = Testing on all images, 2 layer NN, with MCD uncertainty during prediction
+v20 = Testing on all images, 2 layer NN, with MCD uncertainty during prediction
