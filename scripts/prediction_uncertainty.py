@@ -64,7 +64,7 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                 if k % 10 == 0 or k == MC_PASSES - 1:
                     print('Running MC {}/{} for {} at {}% cloud cover'.format(k, MC_PASSES, img, pctl))
                 flood_prob = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)  # Predict
-                flood_prob = flood_prob[:, 0]  # Drop probability of not flooded (0) to save space
+                flood_prob = flood_prob[:, 1]  # Drop probability of not flooded (0) to save space
                 with h5py.File(mc_bin_file, 'a') as f:
                     f['mc_preds'][:, -1] = flood_prob  # Append preds to h5 file
                     if k < MC_PASSES - 1:  # Resize to append next pass, if there is one
@@ -91,6 +91,7 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                     print('Deleting earlier mean predictions')
                     del f[str(pctl)]
                 f.create_dataset(str(pctl), data=preds)
+
             with h5py.File(vars_bin_file, 'a') as f:
                 if str(pctl) in f:
                     print('Deleting earlier variances')
