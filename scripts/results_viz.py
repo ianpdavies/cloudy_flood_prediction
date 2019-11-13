@@ -28,12 +28,8 @@ class VizFuncs:
         plt.ioff()
         for i, img in enumerate(self.img_list):
             print('Making metric plots for {}'.format(img))
-            if self.uncertainty:
-                metrics_path = data_path / self.batch / 'metrics' / 'testing_nn_mcd' / img
-                plot_path = data_path / self.batch / 'plots' / 'nn_mcd' / img
-            else:
-                metrics_path = data_path / self.batch / 'metrics' / 'testing_nn' / img
-                plot_path = data_path / self.batch / 'plots' / 'nn' / img
+            metrics_path = data_path / self.batch / 'metrics' / 'testing_nn' / img
+            plot_path = data_path / self.batch / 'plots' / 'nn' / img
 
             try:
                 plot_path.mkdir(parents=True)
@@ -58,12 +54,8 @@ class VizFuncs:
         plt.ioff()
         for i, img in enumerate(self.img_list):
             print('Making time plots for {}'.format(img))
-            if self.uncertainty:
-                metrics_path = data_path / self.batch / 'metrics' / 'training_nn_mcd' / img
-                plot_path = data_path / self.batch / 'plots' / 'nn_mcd' / img
-            else:
-                metrics_path = data_path / self.batch / 'metrics' / 'training_nn' / img
-                plot_path = data_path / self.batch / 'plots' / 'nn' / img
+            metrics_path = data_path / self.batch / 'metrics' / 'training_nn' / img
+            plot_path = data_path / self.batch / 'plots' / 'nn' / img
 
             try:
                 plot_path.mkdir(parents=True)
@@ -82,12 +74,8 @@ class VizFuncs:
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
             print('Creating FN/FP map for {}'.format(img))
-            if self.uncertainty:
-                plot_path = data_path / self.batch / 'plots' / 'nn_mcd' / img
-                bin_file = data_path / self.batch / 'predictions' / 'nn_mcd' / img / 'predictions.h5'
-            else:
-                plot_path = data_path / self.batch / 'plots' / 'nn' / img
-                bin_file = data_path / self.batch / 'predictions' / 'nn' / img / 'predictions.h5'
+            plot_path = data_path / self.batch / 'plots' / 'nn' / img
+            bin_file = data_path / self.batch / 'predictions' / 'nn' / img / 'predictions.h5'
 
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
@@ -194,12 +182,8 @@ class VizFuncs:
     def metric_plots_multi(self):
         plt.ioff()
         data_path = self.data_path
-        if self.uncertainty:
-            metrics_path = data_path / self.batch / 'metrics' / 'testing_nn_mcd'
-            plot_path = data_path / self.batch / 'plots' / 'nn_mcd'
-        else:
-            metrics_path = data_path / self.batch / 'metrics' / 'testing_nn'
-            plot_path = data_path / self.batch / 'plots' / 'nn'
+        metrics_path = data_path / self.batch / 'metrics' / 'testing_nn'
+        plot_path = data_path / self.batch / 'plots' / 'nn'
 
         try:
             plot_path.mkdir(parents=True)
@@ -238,12 +222,8 @@ class VizFuncs:
     def time_size(self):
         plt.ioff()
         data_path = self.data_path
-        if self.uncertainty:
-            metrics_path = data_path / self.batch / 'metrics' / 'training_nn_mcd'
-            plot_path = data_path / self.batch / 'plots' / 'nn_mcd'
-        else:
-            metrics_path = data_path / self.batch / 'metrics' / 'training_nn'
-            plot_path = data_path / self.batch / 'plots' / 'nn'
+        metrics_path = data_path / self.batch / 'metrics' / 'training_nn'
+        plot_path = data_path / self.batch / 'plots' / 'nn'
 
         stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in self.img_list]
         pixel_counts = []

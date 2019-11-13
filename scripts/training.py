@@ -348,7 +348,7 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
 
 
 def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
-              DROPOUT_RATE=0, HOLDOUT=0.2, **model_params):
+              DROPOUT_RATE=None, HOLDOUT=0.2, **model_params):
     '''
     Removes flood water that is permanent water; also finds the optimum learning rate and uses cyclic LR scheduler
     to train the model
@@ -377,14 +377,10 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             X_val, y_val = validation_data[:, 0:shape[1]-1], validation_data[:, shape[1]-1]
             INPUT_DIMS = X_train.shape[1]
 
-            if uncertainty:
-                model_path = data_path / batch / 'models' / 'nn_mcd' / img
-                metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd' / img / '{}'.format(
-                    img + '_clouds_' + str(pctl))
-            else:
-                model_path = data_path / batch / 'models' / 'nn' / img
-                metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
-                    img + '_clouds_' + str(pctl))
+            model_path = data_path / batch / 'models' / 'nn' / img
+            metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+                img + '_clouds_' + str(pctl))
+
             lr_plots_path = metrics_path.parents[1] / 'lr_plots'
             lr_vals_path = metrics_path.parents[1] / 'lr_vals'
             try:
@@ -405,7 +401,11 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                                'callbacks': [lrRangeFinder],
                                'use_multiprocessing': True}
 
-            model = model_func(INPUT_DIMS)
+            if uncertainty:
+                model = model_func(INPUT_DIMS, DROPOUT_RATE)
+            else:
+                model = model_func(INPUT_DIMS)
+
             print('Finding learning rate')
             model.fit(X_train, y_train, **lr_model_params, validation_data=(X_val, y_val))
             lr_min, lr_max, lr, losses = lr_plots(lrRangeFinder, lr_plots_path, img, pctl)
