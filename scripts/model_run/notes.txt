@@ -10,12 +10,12 @@ v9 = Batch size testing - 16385, but also using two layers in NN (v1-v8 accident
 v10 = Batch size testing - 16385, but with three layer NN (clouds = original)
 v11 = Testing on all images using 2 layer NN, batch size = 4096 (clouds = original)
 v12 = Testing on all images using 2 layer NN, batch size = 16385 (clouds = original)
-v13 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 1 (clouds = trial1)
-v14 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 2 (clouds = trial2)
-v15 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 3
+v13 = Test on all images 5 random cloudmasks, to see if low performance is just randomness. Trial 1 (clouds = trial1)
+v14 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 2 (clouds = trial2)
+v15 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 3
 Changed ES patience=5, min_delta=0.005 on training to reduce training time after 4115_LC08_021033_20131227_2, 30%.
-v16 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 4
-v17 = Test on lowest performing images with 5 random cloudmasks, to see if low performance is just randomness. Trial 5
+v16 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 4
+v17 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 5
 v18 = Testing on all images using 2 layer NN with smaller, thinner clouds.
 c19 = Testing on all images using 2 layer NN with no validation data (clouds = original)
 v20 = Testing on all images, 2 layer NN, with MCD uncertainty during prediction
