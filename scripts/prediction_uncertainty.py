@@ -14,7 +14,7 @@ from CPR.utils import preprocessing, timer
 # ==================================================================================
 
 
-def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, MC_PASSES,  remove_perm,
+def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, DROPOUT_RATE, MC_PASSES, remove_perm,
                                 weight_decay=0.005, length_scale=0.00001, **model_params):
     for j, img in enumerate(img_list):
         times = []
@@ -81,7 +81,8 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                 means = means.compute()
                 variance = preds_da.var(axis=1)
                 variance = variance.compute()
-                tau = (length_scale**2 * (1 - model_params['DROPOUT_RATE'])) / (2 * data_shape[0] * weight_decay)
+                tau = (length_scale**2 * (1 - DROPOUT_RATE)) / (2 * data_shape[0] * weight_decay)
+                variance = variance + tau
                 preds = means.round()
                 del f, means, preds_da, dset
 
