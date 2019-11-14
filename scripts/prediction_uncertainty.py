@@ -14,7 +14,8 @@ from CPR.utils import preprocessing, timer
 # ==================================================================================
 
 
-def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, MC_PASSES, remove_perm, **model_params):
+def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, MC_PASSES,  remove_perm,
+                                weight_decay=0.005, length_scale=0.00001, **model_params):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -80,6 +81,7 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                 means = means.compute()
                 variance = preds_da.var(axis=1)
                 variance = variance.compute()
+                tau = (length_scale**2 * (1 - model_params['DROPOUT_RATE'])) / (2 * data_shape[0] * weight_decay)
                 preds = means.round()
                 del f, means, preds_da, dset
 
@@ -91,7 +93,6 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                     print('Deleting earlier mean predictions')
                     del f[str(pctl)]
                 f.create_dataset(str(pctl), data=preds)
-
             with h5py.File(vars_bin_file, 'a') as f:
                 if str(pctl) in f:
                     print('Deleting earlier variances')
