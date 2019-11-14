@@ -17,5 +17,6 @@ Changed ES patience=5, min_delta=0.005 on training to reduce training time after
 v16 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 4
 v17 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 5
 v18 = Testing on all images using 2 layer NN with smaller, thinner clouds.
-c19 = Testing on all images using 2 layer NN with no validation data (clouds = original)
+v19 = Testing on all images using 2 layer NN with no validation data. Batch = 8192 (clouds = original?)
+I actually think v19 may have been trained using small clouds ... not sure though because the metrics are very similar to v20 tested on original clouds
 v20 = Testing on all images, 2 layer NN, with MCD uncertainty during prediction
