@@ -25,8 +25,8 @@ import tensorflow.keras.backend as K
 
 # Custom metric functions
 
-# # ==================================================================================
-# NN with dropout before ReLU layers
+# ==================================================================================
+# 2 dense layer NN with dropout before ReLU layers
 
 def get_nn_mcd1(INPUT_DIMS, DROPOUT_RATE):
     tf.keras.backend.clear_session()
@@ -40,10 +40,31 @@ def get_nn_mcd1(INPUT_DIMS, DROPOUT_RATE):
     model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
     model.add(tf.keras.layers.Activation("relu")),
     model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
+    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+    return model
+
+# ==================================================================================
+# 2 dense layer NN with dropout before ReLU layers, and L2 regularization before batch normalization.
+# L2 is used because it is a coefficient in Gal's inverse precision (tau) during MCD variance estimation
+
+
+def get_nn_mcd2(INPUT_DIMS, DROPOUT_RATE, weight_decay=0.005):
+    tf.keras.backend.clear_session()
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
     model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=DROPOUT_RATE))),
-    model.add(tf.keras.layers.Dense(units=12, name="Dense3")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense1",
+                                    activity_regularizer=tf.keras.regularizers.l2(weight_decay))),
     model.add(tf.keras.layers.Activation("relu")),
-    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm3")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
+    model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=DROPOUT_RATE))),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense2",
+                                    activity_regularizer=tf.keras.regularizers.l2(weight_decay))),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
     model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
     model.compile(optimizer=tf.keras.optimizers.Adadelta(),
                   loss='sparse_categorical_crossentropy',
