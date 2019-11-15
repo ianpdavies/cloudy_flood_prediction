@@ -2,7 +2,7 @@ from models import get_nn_bn2 as model_func
 import tensorflow as tf
 import os
 import pathlib
-from training import training4, SGDRScheduler, LrRangeFinder
+from training import training3, SGDRScheduler, LrRangeFinder
 from prediction import prediction
 from results_viz import VizFuncs
 import sys
@@ -16,17 +16,18 @@ print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Training on half of images without validation data
+# Training on half of images WITH validation data. To be compared with v19 (without val data)
 # Batch size = 8192
 # ==================================================================================
 # Parameters
 
 uncertainty = False
-batch = 'v19'
+batch = 'v21'
 pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 BATCH_SIZE = 8192
 EPOCHS = 100
 DROPOUT_RATE = 0.3  # Dropout rate for MCD
+HOLDOUT = 0.3  # Validation data size
 NUM_PARALLEL_EXEC_UNITS = 4
 
 try:
@@ -91,11 +92,9 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 cloud_dir = data_path / 'clouds'
 
-training4(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, **model_params)
-
+training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
-
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()
