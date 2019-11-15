@@ -477,6 +477,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
+            tf.keras.backend.clear_session()
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
             feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
             perm_index = feat_list_keep.index('GSW_perm')
@@ -527,7 +528,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.0001, patience=10),
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.005, patience=10),
                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
