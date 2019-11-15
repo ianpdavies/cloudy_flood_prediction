@@ -70,13 +70,14 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                     f['mc_preds'][:, -1] = flood_prob  # Append preds to h5 file
                     if k < MC_PASSES - 1:  # Resize to append next pass, if there is one
                         f['mc_preds'].resize((f['mc_preds'].shape[1] + 1), axis=1)
+                tf.keras.backend.clear_session()
                 del flood_prob
 
             # Calculate MC statistics
             print('Calculating MC statistics for {} at {}% cloud cover'.format(img, pctl))
             with h5py.File(mc_bin_file, 'r') as f:
                 dset = f['mc_preds']
-                preds_da = da.from_array(dset, chunks="400 MiB")  # Open h5 file as dask array
+                preds_da = da.from_array(dset, chunks="250 MiB")  # Open h5 file as dask array
                 means = preds_da.mean(axis=1)
                 means = means.compute()
                 variance = preds_da.var(axis=1)
