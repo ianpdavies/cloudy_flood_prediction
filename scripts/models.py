@@ -33,7 +33,7 @@ def get_nn_mcd1(INPUT_DIMS, DROPOUT_RATE):
     tf.keras.backend.clear_session()
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
-    model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=DROPOUT_RATE))),0
+    model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=DROPOUT_RATE))),
     model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
     model.add(tf.keras.layers.Activation("relu")),
     model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
