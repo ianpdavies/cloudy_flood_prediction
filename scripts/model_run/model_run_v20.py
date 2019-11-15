@@ -17,14 +17,13 @@ print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Training on an image using MCD uncertainty estimation
+# Training on all images at 40% WITHOUT validation data using MCD uncertainty estimation
 # Batch size = 8192
 # ==================================================================================
 # Parameters
 
 uncertainty = True
 batch = 'v20'
-# pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 pctls = [40]
 BATCH_SIZE = 8192
 EPOCHS = 100
@@ -41,7 +40,6 @@ except FileExistsError:
 # To get list of all folders (images) in directory
 # img_list = os.listdir(data_path / 'images')
 
-# img_list = ['4337_LC08_026038_20160325_1']
 img_list = ['4444_LC08_044033_20170222_2',
             '4101_LC08_027038_20131103_1',
             '4101_LC08_027038_20131103_2',
@@ -97,6 +95,7 @@ cloud_dir = data_path / 'clouds'
 
 training4(img_list, pctls, model_func, feat_list_new, uncertainty,
           data_path, batch, DROPOUT_RATE, **model_params)
+
 prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, DROPOUT_RATE, MC_PASSES=100,
                             weight_decay=0.005, length_scale=0.00001, remove_perm=True, **model_params)
 
@@ -104,5 +103,5 @@ viz = VizFuncs(viz_params)
 viz.metric_plots()
 # viz.time_plot()
 viz.false_map()
-# viz.metric_plots_multi()
-# viz.time_size()
+viz.metric_plots_multi()
+viz.time_size()
