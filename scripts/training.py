@@ -281,7 +281,7 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     plt.savefig(lr_plots_path / '{}'.format(img + '_clouds_' + str(pctl) + '_smooth.png'))
 
     # LR vs. loss (smooth)
-    smoothed_losses = smooth(lrRangeFinder.losses, 20)
+    smoothed_losses = smooth(lrRangeFinder.losses, len(lrRangeFinder.lrs))
     plt.figure()
     plt.plot(lrRangeFinder.lrs, smoothed_losses)
     plt.title('Smoothed Model Losses Batch after Batch')
@@ -294,7 +294,7 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     max_ = np.argmax(smoothed_losses)
 
     smoothed_losses_ = smoothed_losses[min_: max_]
-    smoothed_diffs = smooth(np.diff(smoothed_losses), 20)
+    smoothed_diffs = smooth(np.diff(smoothed_losses), len(np.diff(smoothed_losses)))
     plt.figure()
     plt.plot(lrRangeFinder.lrs[:-1], smoothed_diffs)
     plt.title('Differences')
