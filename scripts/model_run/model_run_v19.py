@@ -4,7 +4,6 @@ import os
 import pathlib
 from training import training4, SGDRScheduler, LrRangeFinder
 from prediction import prediction
-from evaluation import evaluation
 from results_viz import VizFuncs
 import sys
 import shutil
@@ -28,7 +27,6 @@ pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 BATCH_SIZE = 8192
 EPOCHS = 100
 DROPOUT_RATE = 0.3  # Dropout rate for MCD
-HOLDOUT = 0.3  # Validation data size
 NUM_PARALLEL_EXEC_UNITS = 4
 
 try:
@@ -93,10 +91,9 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 cloud_dir = data_path / 'clouds'
 
-# training4(img_list, pctls, model_func, feat_list_new, uncertainty,
-#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-img_list = ['4444_LC08_043035_20170303_1']
-pctls = [90]
+training4(img_list, pctls, model_func, feat_list_new, uncertainty,
+          data_path, batch, DROPOUT_RATE, **model_params)
+
 prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 
 viz = VizFuncs(viz_params)
