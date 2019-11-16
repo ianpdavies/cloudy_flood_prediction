@@ -11,14 +11,15 @@ import shutil
 sys.path.append('../../')
 from CPR.configs import data_path
 
+
 # Version numbers
 print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Test on all images (interested in lowest performing images on earlier batches) with 5 random cloudmasks,
-# to see if low performance is just randomness
-# Trial 5
+# Testing on all images (at 10, 30, 50, 70, 90%) with random cloud masks to see if poor performance is due to randomness
+# 2 layer nn with batch norm
+# TRIAL 5/5
 # Batch size = 8192
 # ==================================================================================
 # Parameters
@@ -26,7 +27,7 @@ print('Python Version:', sys.version)
 uncertainty = False
 batch = 'v17'
 trial = 'trial5'
-pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+pctls = [10, 30, 50, 70, 90]
 BATCH_SIZE = 8192
 EPOCHS = 100
 DROPOUT_RATE = 0.3  # Dropout rate for MCD
@@ -89,8 +90,8 @@ model_params = {'batch_size': BATCH_SIZE,
                 'verbose': 2,
                 'use_multiprocessing': True}
 
-# training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
 prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 viz_params = {'img_list': img_list,
               'pctls': pctls,
