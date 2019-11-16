@@ -148,7 +148,7 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     cloudmask = np.load(cloudmask_dir / '{0}'.format(img+'_clouds.npy'))
 
     # Check for any features that have all zeros/same value and remove. This only matters with the training data
-    cloudmask = cloudmask < np.percentile(cloudmask, pctl)
+    cloudmask = cloudmask > np.percentile(cloudmask, pctl)
     # Get local image
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
@@ -172,10 +172,11 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
         data = np.delete(data, zero_feat, axis=2)
         feat_keep.pop(zero_feat)
 
+    cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
     if gaps:
-        cloudmask = cloudmask < np.percentile(cloudmask, pctl)
+        cloudmask = cloudmask < np.percentile(cloudmask, pctl)  # Data, data_vector, etc = pctl
     if not gaps:
-        cloudmask = cloudmask > np.percentile(cloudmask, pctl)
+        cloudmask = cloudmask > np.percentile(cloudmask, pctl)  # Data, data_vector, etc = 1 - pctl
 
     # Convert -999999 and -Inf to Nans
     data[cloudmask] = -999999
