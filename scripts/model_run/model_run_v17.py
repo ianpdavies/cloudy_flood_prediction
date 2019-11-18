@@ -82,7 +82,7 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 # ==================================================================================
 # Training and prediction with random batches of clouds
-
+print('RUNNING', trial, '################################################################')
 cloud_dir = data_path / 'clouds'
 
 model_params = {'batch_size': BATCH_SIZE,

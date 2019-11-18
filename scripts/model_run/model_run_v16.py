@@ -19,7 +19,7 @@ print('Python Version:', sys.version)
 # ==================================================================================
 # Testing on all images (at 10, 30, 50, 70, 90%) with random cloud masks to see if poor performance is due to randomness
 # 2 layer nn with batch norm
-# TRIAL 4/5
+# TRIAL 5/5
 # Batch size = 8192
 # ==================================================================================
 # Parameters
@@ -82,7 +82,7 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 # ==================================================================================
 # Training and prediction with random batches of clouds
-
+print('RUNNING', trial, '################################################################')
 cloud_dir = data_path / 'clouds'
 
 model_params = {'batch_size': BATCH_SIZE,
