@@ -12,11 +12,23 @@ v11 = Testing on all images using 2 layer NN, batch size = 4096 (clouds = origin
 v12 = Testing on all images using 2 layer NN, batch size = 16385 (clouds = original)
 v13 = Test on all images 5 random cloudmasks, to see if low performance is just randomness. Trial 1 (clouds = trial1)
 v14 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 2 (clouds = trial2)
+
+V15 AND ONWARDS: Bug where training data wasn't masked by clouds
+THESE ARE ALL INVALID
 v15 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 3
-Changed ES patience=5, min_delta=0.005 on training to reduce training time after 4115_LC08_021033_20131227_2, 30%.
 v16 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 4
 v17 = Test on all images with 5 random cloudmasks, to see if low performance is just randomness. Trial 5
 v18 = Testing on all images using 2 layer NN with smaller, thinner clouds.
 v19 = Testing on all images using 2 layer NN with no validation data. Batch = 8192 (clouds = original?)
 I actually think v19 may have been trained using small clouds ... not sure though because the metrics are very similar to v20 tested on original clouds
 v20 = Testing on all images, 2 layer NN, with MCD uncertainty during prediction
+
+REDONE
+v21 = Testing on half of images at 40% cover WITH validation data + MCD dropout
+v22 = Testing on half of images at 40% cover WITHOUT validation data + MCD dropout
+v13-17 = random cloud trials at 10, 30, 50, 70, 90% cloud cover.
+
+Then need a full run without MCD. Maybe just at odd% cloud covers to save time/space.
+
+v23 = Testing on all images at 40% cover WITH validation data. No MCD.
+v24 = Testing on all images at 40% cover WITHOUT validation data. No MCD.
