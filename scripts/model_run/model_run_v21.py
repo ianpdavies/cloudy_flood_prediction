@@ -66,7 +66,6 @@ img_list = ['4444_LC08_044033_20170222_2',
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
 
-img_list = ['4514_LC08_027033_20170826_1']
 model_params = {'batch_size': BATCH_SIZE,
                 'epochs': EPOCHS,
                 'verbose': 2,
