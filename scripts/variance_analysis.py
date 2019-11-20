@@ -27,7 +27,7 @@ print('Python Version:', sys.version)
 # Parameters
 
 uncertainty = True
-batch = 'v22'
+batch = 'v21'
 # pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 pctls = [40]
 BATCH_SIZE = 8192
@@ -36,7 +36,7 @@ DROPOUT_RATE = 0.3  # Dropout rate for MCD
 HOLDOUT = 0.3  # Validation data size
 NUM_PARALLEL_EXEC_UNITS = 4
 remove_perm = True
-MC_PASSES = 100
+MC_PASSES = 20
 
 try:
     (data_path / batch).mkdir()
@@ -69,7 +69,7 @@ except FileExistsError:
 #             '4477_LC08_022033_20170519_1',
 #             '4514_LC08_027033_20170826_1']
 
-img_list = ['4514_LC08_027033_20170826_1']
+img_list = ['4101_LC08_027038_20131103_2']
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
@@ -170,7 +170,6 @@ plt.close('all')
 # Strong assumptions about normality and homoscedasticity
 # Also logistic regression?
 # What about a plot?
-
 
 
 # Reshape into 1D arrays
