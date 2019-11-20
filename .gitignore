@@ -2,11 +2,11 @@
 learning/
 .idea/*
 
-data/*
-!data/*/
+# data/*
+# !data/*/
 
-data/*/*
-!data/*/metrics
+# data/*/*
+# !data/*/metrics
 
 
 # Ignore (files)#
