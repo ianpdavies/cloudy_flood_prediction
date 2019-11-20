@@ -13,7 +13,7 @@ print('Python Version:', sys.version)
 
 # ======================================================================================================================
 # Performance metrics vs. image metadata (dry/flood pixels, image size)
-pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
+pctls = [10, 20, 50, 70, 90]
 img_list = ['4444_LC08_044033_20170222_2',
             '4101_LC08_027038_20131103_1',
             '4101_LC08_027038_20131103_2',
@@ -37,16 +37,14 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4477_LC08_022033_20170519_1',
             '4514_LC08_027033_20170826_1']
 
-# batches = ['v13', 'v14', 'v15', 'v16', 'v17']
-batches = ['v13', 'v14', 'v15']
-# trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5']
-trials = ['trial1', 'trial2', 'trial3']
+batches = ['v13', 'v14', 'v15', 'v16', 'v17']
+trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5']
 uncertainty = False
 exp_path = data_path / 'experiments' / 'random'
 
 # ======================================================================================================================
-# # Create dataframe of all trial metrics
-#
+# Create dataframe of all trial metrics
+
 # df = pd.DataFrame(columns=['index', 'cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'index',
 #                            'pixels', 'flood_pixels', 'dry_pixels', 'trial', 'image', 'flood_dry_ratio'])
 # for m, trial in enumerate(trials):
@@ -88,12 +86,8 @@ exp_path = data_path / 'experiments' / 'random'
 #     metadata = pd.concat([metadata, imgs_df], axis=1)
 #
 #     print('Fetching performance metrics')
-#     if uncertainty:
-#         metrics_path = data_path / batches[m] / 'metrics' / 'testing_nn_mcd'
-#         plot_path = data_path / batches[m] / 'plots' / 'nn_mcd'
-#     else:
-#         metrics_path = data_path / batches[m] / 'metrics' / 'testing_nn'
-#         plot_path = data_path / batches[m] / 'plots' / 'nn'
+#     metrics_path = data_path / batches[m] / 'metrics' / 'testing_nn'
+#     plot_path = data_path / batches[m] / 'plots' / 'nn'
 #
 #     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
 #     metrics = pd.concat(pd.read_csv(file) for file in file_list)
@@ -106,7 +100,7 @@ exp_path = data_path / 'experiments' / 'random'
 #     exp_path.mkdir(parents=True)
 # except FileExistsError:
 #     pass
-# df = df.drop('index')
+# df = df.drop('index', axis=1)
 # df.to_csv(exp_path / 'trials_metrics.csv', index=False)
 
 # ======================================================================================================================
@@ -116,7 +110,7 @@ df = pd.read_csv(exp_path / 'trials_metrics.csv')
 # ----------------------------------------------------------------------------------------------------------------------
 # Boxplot of metrics with whiskers
 
-image_numbers = np.tile(np.repeat(range(22), 9)+1, 5)
+image_numbers = np.tile(np.repeat(range(22), len(pctls))+1, 5)
 plot_path = exp_path / 'boxplot_whiskers'
 try:
     plot_path.mkdir(parents=True)
@@ -199,7 +193,7 @@ plt.close('all')
 # ----------------------------------------------------------------------------------------------------------------------
 # Boxplot of metrics with strip plot instead of whiskers
 
-image_numbers = np.tile(np.repeat(range(22), 9)+1, 5)
+image_numbers = np.tile(np.repeat(range(22), len(pctls))+1, 5)
 plot_path = exp_path / 'boxplot_stripplot'
 try:
     plot_path.mkdir(parents=True)
@@ -256,25 +250,122 @@ plt.savefig(plot_path / 'f1.png', bbox_inches='tight')
 
 plt.close('all')
 
+
 # ----------------------------------------------------------------------------------------------------------------------
 # Violin plots
+image_numbers = np.tile(np.repeat(range(22), len(pctls))+1, 5)
+plot_path = exp_path / 'violinplot'
+try:
+    plot_path.mkdir(parents=True)
+except FileExistsError:
+    pass
+
+# Recall
+recalls = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['recall'])
+plt.figure(figsize=(13, 6))
+ax = sns.violinplot(x=image_numbers, y='value', data=recalls, palette='colorblind',
+            hue='cloud_cover', linewidth=0, fliersize=0)
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax.set(xlabel='Images', ylabel='Recall')
+plt.savefig(plot_path / 'recall.png', bbox_inches='tight')
+
+# Precision
+precisions = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['precision'])
+plt.figure(figsize=(13, 6))
+ax = sns.violinplot(x=image_numbers, y='value', data=precisions, palette='colorblind',
+            hue='cloud_cover', linewidth=0, fliersize=0)
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax.set(xlabel='Images', ylabel='Precision')
+plt.savefig(plot_path / 'precision.png', bbox_inches='tight')
+
+# Accuracy
+accuracies = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['accuracy'])
+plt.figure(figsize=(13, 6))
+ax = sns.violinplot(x=image_numbers, y='value', data=accuracies, palette='colorblind',
+            hue='cloud_cover', linewidth=0, fliersize=0)
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax.set(xlabel='Images', ylabel='Accuracy')
+plt.savefig(plot_path / 'accuracy.png', bbox_inches='tight')
+
+# F1
 f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
 plt.figure(figsize=(13, 6))
 ax = sns.violinplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
+            hue='cloud_cover', linewidth=0, fliersize=0, cut=0)
+handles, labels = ax.get_legend_handles_labels()
+plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax.set(xlabel='Images', ylabel='F1 Score')
+plt.savefig(plot_path / 'f1.png', bbox_inches='tight')
+
+plt.close('all')
 
 # ----------------------------------------------------------------------------------------------------------------------
-# Variance of performance metrics between trials
+# Mean of metric variances between trials
+plot_path = exp_path / 'variances'
+try:
+    plot_path.mkdir(parents=True)
+except FileExistsError:
+    pass
+df = pd.read_csv(exp_path / 'trials_metrics.csv')
 df.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
 
-myGroup = df.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
-myGroup[['recall', 'precision', 'accuracy', 'f1']].plot(marker='o', linestyle='')
+# Group and reshape
+var_group = df.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
+var_group.reset_index(level=0, inplace=True)
+image_numbers = np.repeat(range(22), 1) + 1
+var_group = pd.concat([var_group, pd.DataFrame(image_numbers, columns=['image_numbers'])], axis=1)
+var_long = pd.melt(var_group, id_vars=['image', 'image_numbers'], value_vars=['accuracy', 'recall', 'precision', 'f1'])
 
-# print('Creating and saving plots')
-# cover_times = times_sizes.plot.scatter(x='cloud_cover', y='training_time')
-# cover_times_fig = cover_times.get_figure()
-# cover_times_fig.savefig(plot_path / 'cloud_cover_times.png')
-#
-# pixel_times = times_sizes.plot.scatter(x='pixels', y='training_time')
-# pixel_times_fig = pixel_times.get_figure()
-# pixel_times_fig.savefig(plot_path / 'size_times.png')
+# Calculate mean values for each metric (i.e. mean mean variance)
+acc_mean = var_group['accuracy'].mean()
+recall_mean = var_group['recall'].mean()
+precision_mean = var_group['precision'].mean()
+f1_mean = var_group['f1'].mean()
+
+# Add scatterplot
+plt.figure(figsize=(10, 8))
+ax = sns.scatterplot(x='image_numbers', y='value', hue='variable', data=var_long,
+                     palette='colorblind', zorder=2, style='variable', s=50)
+
+# Add mean lines to plot
+palette = sns.color_palette('colorblind').as_hex()
+ax.axhline(acc_mean, ls='--', zorder=1, color=palette[0])
+ax.axhline(recall_mean, ls='--', zorder=1, color=palette[1])
+ax.axhline(precision_mean, ls='--', zorder=1, color=palette[2])
+ax.axhline(f1_mean, ls='--', zorder=1, color=palette[3])
+
+plt.savefig(plot_path / 'mean_variance.png', bbox_inches='tight')
+
+# Separate mean variances
+plt.figure(figsize=(10, 8))
+g = sns.FacetGrid(var_long, col='variable', hue='variable')
+g.map(plt.scatter, "image_numbers", "value", alpha=.7, zorder=2)
+
+def plot_mean(data,**kwargs):
+    m = data.mean()
+    plt.axhline(m, **kwargs)
+
+g.map(plot_mean, 'value', ls=":", c=".5", zorder=0)
+
+g.fig.tight_layout(w_pad=1)
+g.add_legend()
+
+plt.savefig(plot_path / 'mean_variance_separate.png', bbox_inches='tight')
+# ----------------------------------------------------------------------------------------------------------------------
+# Variances between cloud covers by individual metrics
+df = pd.read_csv(exp_path / 'trials_metrics.csv')
+image_numbers = np.tile(np.repeat(range(22), len(pctls))+1, 5)
+df = pd.concat([df, pd.DataFrame(image_numbers, columns=['image_numbers'])], axis=1)
+var_group = df.groupby(['image', 'image_numbers', 'cloud_cover']).var()
+var_group.reset_index(inplace=True)
+var_long = pd.melt(var_group, id_vars=['image_numbers', 'cloud_cover'],
+                   value_vars=['accuracy', 'recall', 'precision', 'f1'])
+plt.figure(figsize=(10, 8))
+g = sns.FacetGrid(var_long, col='variable', hue='variable')
+g.map(plt.scatter, "image_numbers", "value", alpha=.7)
+g.add_legend()
+
+plt.savefig(plot_path / 'variance_separate.png', bbox_inches='tight')
