@@ -6,12 +6,16 @@ import rasterio
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+from matplotlib.colors import ListedColormap, BoundaryNorm
 from CPR.utils import preprocessing, tif_stacker, timer
 from PIL import Image, ImageEnhance
 import h5py
 sys.path.append('../')
+import numpy.ma as ma
 import time
 import dask.array as da
+
 
 sys.path.append('../../')
 from CPR.configs import data_path
@@ -117,50 +121,115 @@ for j, pctl in enumerate(pctls):
     rows, cols = zip(data_ind_test)
     prediction_img[rows, cols] = predictions
 
-# Get falses and positives
+# # Create cloud cover
+# cloudmask_dir = data_path / 'clouds'
+# cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
+# clouds = cloudmask < np.percentile(cloudmask, pctl)
+# clouds_mask = clouds.astype('int').astype('float64')
+# clouds_mask[clouds_mask == 0] = np.nan
+
+# ----------------------------------------------------------------
+# Plot predicted floods
+colors = ['saddlebrown', 'blue']
+class_labels = ['Predicted No Flood', 'Predicted Flood']
+legend_patches = [Patch(color=icolor, label=label)
+                  for icolor, label in zip(colors, class_labels)]
+cmap = ListedColormap(colors)
+
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(prediction_img, cmap=cmap)
+ax.legend(handles=legend_patches,
+          facecolor='white',
+          edgecolor='white')
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
+
+# ----------------------------------------------------------------
+# Plot variance
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(var_img, cmap='hot')
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
+
+# ----------------------------------------------------------------
+# Plot trues and falses
 floods = data_test[:, :, 15]
-
-# Create cloud cover
-cloudmask_dir = data_path / 'clouds'
-cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
-clouds = cloudmask < np.percentile(cloudmask, pctl)
-clouds_mask = clouds.astype('int').astype('float64')
-clouds_mask[clouds_mask == 0] = np.nan
-
-
-# Falses and positives
 tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
 tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
 fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
 fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
 falses = fp+fn
 trues = tp+tn
+# Mask out clouds, etc.
+tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
+tn = ma.masked_array(tn, mask=np.isnan(prediction_img))
+fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
+fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
+falses = ma.masked_array(falses, mask=np.isnan(prediction_img))
+trues = ma.masked_array(trues, mask=np.isnan(prediction_img))
 
-# Plot
-plt.figure()
-plt.imshow(prediction_img)
-plt.figure()
-plt.imshow(var_img)
-plt.figure()
-plt.imshow(falses)
+true_false = fp + (fn*2) + (tp*3)
+colors = ['saddlebrown',
+          'red',
+          'limegreen',
+          'blue']
+class_labels = ['True Negatives',
+                'False Floods',
+                'Missed Floods',
+                'True Floods']
+legend_patches = [Patch(color=icolor, label=label)
+                  for icolor, label in zip(colors, class_labels)]
+cmap = ListedColormap(colors)
+
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(true_false, cmap=cmap)
+ax.legend(handles=legend_patches,
+          facecolor='white',
+          edgecolor='white')
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
 
 plt.close('all')
 
-# Plot but with perm water removed from variances
+# ======================================================================================================================
+# Plot variance and predictions but with perm water noted
 feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
 perm_index = feat_list_keep.index('GSW_perm')
 perm_water = (data_test[:, :, perm_index] == 1)
-nans = np.isnan(data_test[:, :, perm_index])
-var_img_noperm = var_img.copy()
-var_img_noperm[perm_water] = 0
-var_img_noperm[nans] = np.nan
+perm_water_mask = np.ones(shape)
+perm_water_mask = ma.masked_array(perm_water_mask, mask=~perm_water)
 
-plt.figure()
-plt.imshow(prediction_img)
-plt.figure()
-plt.imshow(var_img_noperm)
-plt.figure()
-plt.imshow(falses)
+# ----------------------------------------------------------------
+# Plot predicted floods with perm water noted
+colors = ['gray', 'saddlebrown', 'blue']
+class_labels = ['Permanent Water', 'Predicted No Flood', 'Predicted Flood']
+# Would be nice to add hatches over permanent water
+legend_patches = [Patch(color=icolor, label=label)
+                  for icolor, label, in zip(colors, class_labels)]
+cmap = ListedColormap(colors)
+prediction_img_mask = prediction_img.copy()
+prediction_img_mask[perm_water] = -1
+
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(prediction_img_mask, cmap=cmap)
+ax.legend(handles=legend_patches,
+          facecolor='white',
+          edgecolor='white')
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
+
+# ----------------------------------------------------------------
+# Plot variance with perm water noted
+colors = ['gray']
+legend_patches = [Patch(color=colors[0], hatch='/', alpha=0.6, label='Permanent Water')]
+cmap = ListedColormap(colors)
+
+fig, ax = plt.subplots(figsize=(10, 10))
+ax.imshow(var_img, cmap='hot')
+ax.imshow(perm_water_mask, cmap=cmap)
+ax.legend(handles=legend_patches, facecolor='white', edgecolor='white')
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
 
 plt.close('all')
 # ======================================================================================================================
@@ -199,3 +268,7 @@ pointbiserialr(var_img_1d, false_1d)
 # df = pd.DataFrame()
 # import seaborn as sns
 # sns.pointplot(x=false_cat, y=var_img_1d)
+
+# ======================================================================================================================
+# Correlation of variance with features
+
