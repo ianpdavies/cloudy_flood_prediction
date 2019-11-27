@@ -1,4 +1,4 @@
-from models import get_nn_mcd1 as model_func
+from models import get_nn_bn2 as model_func
 import tensorflow as tf
 import os
 from training import training3
