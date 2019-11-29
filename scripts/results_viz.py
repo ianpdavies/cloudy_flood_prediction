@@ -9,6 +9,7 @@ from PIL import Image, ImageEnhance
 import h5py
 sys.path.append('../')
 from CPR.configs import data_path
+import seaborn as sns
 # ==================================================================================
 
 
@@ -37,8 +38,14 @@ class VizFuncs:
                 pass
 
             metrics = pd.read_csv(metrics_path / 'metrics.csv')
-            metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
-                                               ylim=(0, 1))
+            if len(self.pctls) > 1:
+                metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
+                                                   ylim=(0, 1))
+            else:
+                metrics_plot = sns.scatterplot(data=pd.melt(metrics, id_vars='cloud_cover'), x='cloud_cover', y='value',
+                                     hue='variable')
+                metrics_plot.set(ylim=(0, 1))
+
             metrics_fig = metrics_plot.get_figure()
             metrics_fig.savefig(plot_path / 'metrics_plot.png')
 
