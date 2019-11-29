@@ -30,7 +30,7 @@ class VizFuncs:
         for i, img in enumerate(self.img_list):
             print('Making metric plots for {}'.format(img))
             metrics_path = data_path / self.batch / 'metrics' / 'testing_nn' / img
-            plot_path = data_path / self.batch / 'plots' / 'nn' / img
+            plot_path = data_path / self.batch / 'plots' / img
 
             try:
                 plot_path.mkdir(parents=True)
@@ -62,7 +62,7 @@ class VizFuncs:
         for i, img in enumerate(self.img_list):
             print('Making time plots for {}'.format(img))
             metrics_path = data_path / self.batch / 'metrics' / 'training_nn' / img
-            plot_path = data_path / self.batch / 'plots' / 'nn' / img
+            plot_path = data_path / self.batch / 'plots' / img
 
             try:
                 plot_path.mkdir(parents=True)
@@ -70,7 +70,11 @@ class VizFuncs:
                 pass
 
             times = pd.read_csv(metrics_path / 'training_times.csv')
-            time_plot = times.plot(x='cloud_cover', y=['training_time'])
+            if len(self.pctls) > 1:
+                time_plot = times.plot(x='cloud_cover', y=['training_time'])
+            else:
+                time_plot = times.plot.scatter(x='cloud_cover', y=['training_time'])
+
             time_plot = time_plot.get_figure()
             time_plot.savefig(plot_path / 'training_times.png')
 
@@ -81,8 +85,8 @@ class VizFuncs:
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
             print('Creating FN/FP map for {}'.format(img))
-            plot_path = data_path / self.batch / 'plots' / 'nn' / img
-            bin_file = data_path / self.batch / 'predictions' / 'nn' / img / 'predictions.h5'
+            plot_path = data_path / self.batch / 'plots' / img
+            bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
 
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
@@ -190,7 +194,7 @@ class VizFuncs:
         plt.ioff()
         data_path = self.data_path
         metrics_path = data_path / self.batch / 'metrics' / 'testing_nn'
-        plot_path = data_path / self.batch / 'plots' / 'nn'
+        plot_path = data_path / self.batch / 'plots'
 
         try:
             plot_path.mkdir(parents=True)
@@ -230,7 +234,7 @@ class VizFuncs:
         plt.ioff()
         data_path = self.data_path
         metrics_path = data_path / self.batch / 'metrics' / 'training_nn'
-        plot_path = data_path / self.batch / 'plots' / 'nn'
+        plot_path = data_path / self.batch / 'plots'
 
         stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in self.img_list]
         pixel_counts = []
