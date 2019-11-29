@@ -46,7 +46,7 @@ if uncertainty:
     plot_path = data_path / batch / 'plots' / 'nn_mcd'
 else:
     metrics_path = data_path / batch / 'metrics' / 'training_nn'
-    plot_path = data_path / batch / 'plots' / 'nn'
+    plot_path = data_path / batch / 'plots'
 
 stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in img_list]
 pixel_counts = []
@@ -85,7 +85,7 @@ if uncertainty:
     plot_path = data_path / batch / 'plots' / 'nn_mcd'
 else:
     metrics_path = data_path / batch / 'metrics' / 'testing_nn'
-    plot_path = data_path / batch / 'plots' / 'nn'
+    plot_path = data_path / batch / 'plots'
 file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
 metrics = pd.concat(pd.read_csv(file) for file in file_list)
 data = pd.concat([metrics.reset_index(), metadata.reset_index()], axis=1)

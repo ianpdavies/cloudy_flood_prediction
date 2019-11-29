@@ -109,7 +109,7 @@ for i, batch in enumerate(batches):
         plot_path = data_path / batch / 'plots' / 'nn_mcd'
     else:
         metrics_path = data_path / batch / 'metrics' / 'testing_nn'
-        plot_path = data_path / batch / 'plots' / 'nn'
+        plot_path = data_path / batch / 'plots'
 
     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
     df_concat = pd.concat(pd.read_csv(file) for file in file_list)

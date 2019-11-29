@@ -1,21 +1,23 @@
 import sys
+
 sys.path.append('../')
 import tensorflow as tf
 import sys
 import rasterio
 import numpy as np
-import matplotlib
+import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap, BoundaryNorm
 from CPR.utils import preprocessing, tif_stacker, timer
 from PIL import Image, ImageEnhance
 import h5py
+
 sys.path.append('../')
 import numpy.ma as ma
 import time
 import dask.array as da
-
 
 sys.path.append('../../')
 from CPR.configs import data_path
@@ -24,9 +26,6 @@ from CPR.configs import data_path
 print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
-# ==================================================================================
-# Training on an image using MCD uncertainty estimation
-# Batch size = 8192
 # ==================================================================================
 # Parameters
 
@@ -50,225 +49,301 @@ except FileExistsError:
 # To get list of all folders (images) in directory
 # img_list = os.listdir(data_path / 'images')
 
-# img_list = ['4444_LC08_044033_20170222_2',
-#             '4101_LC08_027038_20131103_1',
-#             '4101_LC08_027038_20131103_2',
-#             '4101_LC08_027039_20131103_1',
-#             '4115_LC08_021033_20131227_1',
-#             '4115_LC08_021033_20131227_2',
-#             '4337_LC08_026038_20160325_1',
-#             '4444_LC08_043034_20170303_1',
-#             '4444_LC08_043035_20170303_1',
-#             '4444_LC08_044032_20170222_1',
-#             '4444_LC08_044033_20170222_1',
-#             '4444_LC08_044033_20170222_3',
-#             '4444_LC08_044033_20170222_4',
-#             '4444_LC08_044034_20170222_1',
-#             '4444_LC08_045032_20170301_1',
-#             '4468_LC08_022035_20170503_1',
-#             '4468_LC08_024036_20170501_1',
-#             '4468_LC08_024036_20170501_2',
-#             '4469_LC08_015035_20170502_1',
-#             '4469_LC08_015036_20170502_1',
-#             '4477_LC08_022033_20170519_1',
-#             '4514_LC08_027033_20170826_1']
+img_list = ['4444_LC08_044033_20170222_2',
+            '4101_LC08_027038_20131103_2',
+            '4115_LC08_021033_20131227_1',
+            '4337_LC08_026038_20160325_1',
+            '4444_LC08_043035_20170303_1',
+            '4444_LC08_044033_20170222_1',
+            '4444_LC08_044033_20170222_4',
+            '4444_LC08_045032_20170301_1',
+            '4468_LC08_024036_20170501_1',
+            '4469_LC08_015035_20170502_1',
+            '4514_LC08_027033_20170826_1']
 
-img_list = ['4101_LC08_027038_20131103_2']
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
 
 # ======================================================================================================================
-# Plot variance and predictions
+# Get predictions and variances
 for i, img in enumerate(img_list):
     print('Creating FN/FP map for {}'.format(img))
-    plot_path = data_path / batch / 'plots' / 'nn' / img
-    vars_bin_file = data_path / batch / 'variances' / 'nn' / img / 'variances.h5'
-    preds_bin_file = data_path / batch / 'predictions' / 'nn' / img / 'predictions.h5'
+    plot_path = data_path / batch / 'plots' / img
+    vars_bin_file = data_path / batch / 'variances' / img / 'variances.h5'
+    preds_bin_file = data_path / batch / 'predictions' / img / 'predictions.h5'
     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
-# Reshape variance values back into image band
+    # Reshape variance values back into image band
     with rasterio.open(stack_path, 'r') as ds:
         shape = ds.read(1).shape  # Shape of full original image
 
     for j, pctl in enumerate(pctls):
-        print('Fetching prediction variances for', str(pctl)+'{}'.format('%'))
+        print('Fetching prediction variances for', str(pctl) + '{}'.format('%'))
         # Read predictions
         with h5py.File(vars_bin_file, 'r') as f:
             variances = f[str(pctl)]
             variances = np.array(variances)  # Copy h5 dataset to array
 
         data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True,
-                                                                   normalize=False)
+                                                                              normalize=False)
         var_img = np.zeros(shape)
         var_img[:] = np.nan
         rows, cols = zip(data_ind_test)
         var_img[rows, cols] = variances
 
-# Reshape predicted values back into image band
-with rasterio.open(stack_path, 'r') as ds:
-    shape = ds.read(1).shape  # Shape of full original image
+        print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
+        # Read predictions
+        with h5py.File(preds_bin_file, 'r') as f:
+            predictions = f[str(pctl)]
+            predictions = np.array(predictions)  # Copy h5 dataset to array
 
-for j, pctl in enumerate(pctls):
-    print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
-    # Read predictions
-    with h5py.File(preds_bin_file, 'r') as f:
-        predictions = f[str(pctl)]
-        predictions = np.array(predictions)  # Copy h5 dataset to array
+        prediction_img = np.zeros(shape)
+        prediction_img[:] = np.nan
+        rows, cols = zip(data_ind_test)
+        prediction_img[rows, cols] = predictions
 
-    prediction_img = np.zeros(shape)
-    prediction_img[:] = np.nan
-    rows, cols = zip(data_ind_test)
-    prediction_img[rows, cols] = predictions
+        # ----------------------------------------------------------------
+        # Plotting
+        plt.ioff()
+        plot_path = data_path / batch / 'plots' / img
+        try:
+            plot_path.mkdir(parents=True)
+        except FileExistsError:
+            pass
+        # ----------------------------------------------------------------
+        # Plot predicted floods
+        colors = ['saddlebrown', 'blue']
+        class_labels = ['Predicted No Flood', 'Predicted Flood']
+        legend_patches = [Patch(color=icolor, label=label)
+                          for icolor, label in zip(colors, class_labels)]
+        cmap = ListedColormap(colors)
 
-# # Create cloud cover
-# cloudmask_dir = data_path / 'clouds'
-# cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
-# clouds = cloudmask < np.percentile(cloudmask, pctl)
-# clouds_mask = clouds.astype('int').astype('float64')
-# clouds_mask[clouds_mask == 0] = np.nan
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(prediction_img, cmap=cmap)
+        ax.legend(handles=legend_patches,
+                  facecolor='white',
+                  edgecolor='white')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-# ----------------------------------------------------------------
-# Plot predicted floods
-colors = ['saddlebrown', 'blue']
-class_labels = ['Predicted No Flood', 'Predicted Flood']
-legend_patches = [Patch(color=icolor, label=label)
-                  for icolor, label in zip(colors, class_labels)]
-cmap = ListedColormap(colors)
+        myFig = ax.get_figure()
+        myFig.savefig(plot_path / 'predictions.png')
 
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.imshow(prediction_img, cmap=cmap)
-ax.legend(handles=legend_patches,
-          facecolor='white',
-          edgecolor='white')
-ax.get_xaxis().set_visible(False)
-ax.get_yaxis().set_visible(False)
+        # ----------------------------------------------------------------
+        # Plot variance
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(var_img, cmap='plasma')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-# ----------------------------------------------------------------
-# Plot variance
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.imshow(var_img, cmap='hot')
-ax.get_xaxis().set_visible(False)
-ax.get_yaxis().set_visible(False)
+        myFig = ax.get_figure()
+        myFig.savefig(plot_path / 'variance.png')
 
-# ----------------------------------------------------------------
-# Plot trues and falses
-floods = data_test[:, :, 15]
-tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
-tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
-fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
-fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
-falses = fp+fn
-trues = tp+tn
-# Mask out clouds, etc.
-tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
-tn = ma.masked_array(tn, mask=np.isnan(prediction_img))
-fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
-fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
-falses = ma.masked_array(falses, mask=np.isnan(prediction_img))
-trues = ma.masked_array(trues, mask=np.isnan(prediction_img))
+        # ----------------------------------------------------------------
+        # Plot trues and falses
+        floods = data_test[:, :, 15]
+        tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
+        tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
+        fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
+        fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
+        falses = fp + fn
+        trues = tp + tn
+        # Mask out clouds, etc.
+        tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
+        tn = ma.masked_array(tn, mask=np.isnan(prediction_img))
+        fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
+        fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
+        falses = ma.masked_array(falses, mask=np.isnan(prediction_img))
+        trues = ma.masked_array(trues, mask=np.isnan(prediction_img))
 
-true_false = fp + (fn*2) + (tp*3)
-colors = ['saddlebrown',
-          'red',
-          'limegreen',
-          'blue']
-class_labels = ['True Negatives',
-                'False Floods',
-                'Missed Floods',
-                'True Floods']
-legend_patches = [Patch(color=icolor, label=label)
-                  for icolor, label in zip(colors, class_labels)]
-cmap = ListedColormap(colors)
+        true_false = fp + (fn * 2) + (tp * 3)
+        colors = ['saddlebrown',
+                  'red',
+                  'limegreen',
+                  'blue']
+        class_labels = ['True Negatives',
+                        'False Floods',
+                        'Missed Floods',
+                        'True Floods']
+        legend_patches = [Patch(color=icolor, label=label)
+                          for icolor, label in zip(colors, class_labels)]
+        cmap = ListedColormap(colors)
 
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.imshow(true_false, cmap=cmap)
-ax.legend(handles=legend_patches,
-          facecolor='white',
-          edgecolor='white')
-ax.get_xaxis().set_visible(False)
-ax.get_yaxis().set_visible(False)
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(true_false, cmap=cmap)
+        ax.legend(handles=legend_patches,
+                  facecolor='white',
+                  edgecolor='white')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-plt.close('all')
+        myFig = ax.get_figure()
+        myFig.savefig(plot_path / 'truefalse.png')
 
-# ======================================================================================================================
-# Plot variance and predictions but with perm water noted
-feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-perm_index = feat_list_keep.index('GSW_perm')
-perm_water = (data_test[:, :, perm_index] == 1)
-perm_water_mask = np.ones(shape)
-perm_water_mask = ma.masked_array(perm_water_mask, mask=~perm_water)
+        # ======================================================================================================================
+        # Plot variance and predictions but with perm water noted
+        feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
+        perm_index = feat_list_keep.index('GSW_perm')
+        perm_water = (data_test[:, :, perm_index] == 1)
+        perm_water_mask = np.ones(shape)
+        perm_water_mask = ma.masked_array(perm_water_mask, mask=~perm_water)
 
-# ----------------------------------------------------------------
-# Plot predicted floods with perm water noted
-colors = ['gray', 'saddlebrown', 'blue']
-class_labels = ['Permanent Water', 'Predicted No Flood', 'Predicted Flood']
-# Would be nice to add hatches over permanent water
-legend_patches = [Patch(color=icolor, label=label)
-                  for icolor, label, in zip(colors, class_labels)]
-cmap = ListedColormap(colors)
-prediction_img_mask = prediction_img.copy()
-prediction_img_mask[perm_water] = -1
+        # ----------------------------------------------------------------
+        # Plot predicted floods with perm water noted
+        colors = ['gray', 'saddlebrown', 'blue']
+        class_labels = ['Permanent Water', 'Predicted No Flood', 'Predicted Flood']
+        # Would be nice to add hatches over permanent water
+        legend_patches = [Patch(color=icolor, label=label)
+                          for icolor, label, in zip(colors, class_labels)]
+        cmap = ListedColormap(colors)
+        prediction_img_mask = prediction_img.copy()
+        prediction_img_mask[perm_water] = -1
 
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.imshow(prediction_img_mask, cmap=cmap)
-ax.legend(handles=legend_patches,
-          facecolor='white',
-          edgecolor='white')
-ax.get_xaxis().set_visible(False)
-ax.get_yaxis().set_visible(False)
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(prediction_img_mask, cmap=cmap)
+        ax.legend(handles=legend_patches,
+                  facecolor='white',
+                  edgecolor='white')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-# ----------------------------------------------------------------
-# Plot variance with perm water noted
-colors = ['gray']
-legend_patches = [Patch(color=colors[0], hatch='/', alpha=0.6, label='Permanent Water')]
-cmap = ListedColormap(colors)
+        myFig = ax.get_figure()
+        myFig.savefig(plot_path / 'predictions_perm.png')
 
-fig, ax = plt.subplots(figsize=(10, 10))
-ax.imshow(var_img, cmap='hot')
-ax.imshow(perm_water_mask, cmap=cmap)
-ax.legend(handles=legend_patches, facecolor='white', edgecolor='white')
-ax.get_xaxis().set_visible(False)
-ax.get_yaxis().set_visible(False)
+        # ----------------------------------------------------------------
+        # Plot variance with perm water noted
+        colors = ['darkgray']
+        legend_patches = [Patch(color=colors[0], label='Permanent Water')]
+        cmap = ListedColormap(colors)
 
-plt.close('all')
-# ======================================================================================================================
-# Plot variance and incorrect
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(var_img, cmap='plasma')
+        ax.imshow(perm_water_mask, cmap=cmap)
+        ax.legend(handles=legend_patches, facecolor='white', edgecolor='white')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-# Correlation of variance and FP/FN? Maybe using https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.stats.pointbiserialr.html
-# Strong assumptions about normality and homoscedasticity
-# Also logistic regression?
-# What about a plot?
+        myFig = ax.get_figure()
+        myFig.savefig(plot_path / 'variance_perm.png')
 
+        # ----------------------------------------------------------------
+        # Plot trues and falses with perm noted
+        floods = data_test[:, :, 15]
+        tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
+        tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
+        fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
+        fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
+        falses = fp + fn
+        trues = tp + tn
+        # Mask out clouds, etc.
+        tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
+        tn = ma.masked_array(tn, mask=np.isnan(prediction_img))
+        fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
+        fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
+        falses = ma.masked_array(falses, mask=np.isnan(prediction_img))
+        trues = ma.masked_array(trues, mask=np.isnan(prediction_img))
 
-# Reshape into 1D arrays
-var_img_1d = var_img.reshape([var_img.shape[0] * var_img.shape[1], ])
-false_1d = falses.reshape([falses.shape[0] * falses.shape[1], ])
+        true_false = fp + (fn * 2) + (tp * 3)
+        true_false[perm_water] = -1
+        colors = ['darkgray',
+                  'saddlebrown',
+                  'red',
+                  'limegreen',
+                  'blue']
+        class_labels = ['Permanent Water',
+                        'True Negatives',
+                        'False Floods',
+                        'Missed Floods',
+                        'True Floods']
+        legend_patches = [Patch(color=icolor, label=label)
+                          for icolor, label in zip(colors, class_labels)]
+        cmap = ListedColormap(colors)
 
-# Remove NaNs
-nan_ind = np.where(~np.isnan(var_img_1d))[0]
-false_1d = false_1d[~np.isnan(var_img_1d)]
-var_img_1d = var_img_1d[~np.isnan(var_img_1d)]
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.imshow(true_false, cmap=cmap)
+        ax.legend(handles=legend_patches,
+                  facecolor='white',
+                  edgecolor='white')
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
 
-# Convert perm water pixels in variance to NaN
-feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-perm_index = feat_list_keep.index('GSW_perm')
-not_perm = np.bitwise_not(data_vector_test[:, perm_index] == 1)
-var_img_1d[not_perm] = np.nan
+        myFig = ax.get_figure()
+        myFig.savefig(plot_path / 'truefalse_perm.png')
 
-# Remove NaNs due to perm water
-false_1d = false_1d[~np.isnan(var_img_1d)]
-var_img_1d = var_img_1d[~np.isnan(var_img_1d)]
+        plt.close('all')
+# # ======================================================================================================================
+# # Plot variance and incorrect
+#
+# # Correlation of variance and FP/FN? Maybe using https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.stats.pointbiserialr.html
+# # Strong assumptions about normality and homoscedasticity
+# # Also logistic regression?
+# # What about a plot?
+#
+#
+# # Reshape into 1D arrays
+# var_img_1d = var_img.reshape([var_img.shape[0] * var_img.shape[1], ])
+# false_1d = falses.reshape([falses.shape[0] * falses.shape[1], ])
+#
+# # Remove NaNs
+# nan_ind = np.where(~np.isnan(var_img_1d))[0]
+# false_1d = false_1d[~np.isnan(var_img_1d)]
+# var_img_1d = var_img_1d[~np.isnan(var_img_1d)]
+#
+# # Convert perm water pixels in variance to NaN
+# feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
+# perm_index = feat_list_keep.index('GSW_perm')
+# not_perm = np.bitwise_not(data_vector_test[:, perm_index] == 1)
+# var_img_1d[not_perm] = np.nan
+#
+# # Remove NaNs due to perm water
+# false_1d = false_1d[~np.isnan(var_img_1d)]
+# var_img_1d = var_img_1d[~np.isnan(var_img_1d)]
+#
+# from scipy.stats import pointbiserialr
+#
+# pointbiserialr(var_img_1d, false_1d)
+#
+# # Plotting variance vs. falses
+# # import pandas as pd
+# # df = pd.DataFrame()
+# # import seaborn as sns
+# # sns.pointplot(x=false_cat, y=var_img_1d)
 
-from scipy.stats import pointbiserialr
-pointbiserialr(var_img_1d, false_1d)
+# # ======================================================================================================================
+# # Correlation matrix of variance with features
+#
+feats_var = np.dstack([var_img, data_test])
+feats_var_vector = feats_var.reshape([feats_var.shape[0] * feats_var.shape[1], feats_var.shape[2]])
+feats_var_vector = feats_var_vector[~np.isnan(feats_var_vector).any(axis=1)]
 
-# Plotting variance vs. falses
-# import pandas as pd
-# df = pd.DataFrame()
-# import seaborn as sns
-# sns.pointplot(x=false_cat, y=var_img_1d)
+feat_list_var = feat_list_new
+feat_list_var.insert(0, 'variance')
+feats_var_df = pd.DataFrame(feats_var_vector, columns=feat_list_var)
 
-# ======================================================================================================================
-# Correlation of variance with features
-
+corr_matrix = feats_var_df.corr()
+# mask = np.zeros_like(corr_matrix, dtype=np.bool)
+# mask[np.triu_indices_from(mask)] = True
+#
+# f, ax = plt.subplots(figsize=(11, 15))
+# heatmap = sns.heatmap(corr_matrix,
+#                       mask=mask,
+#                       square=True,
+#                       linewidths=.5,
+#                       cmap='coolwarm',
+#                       cbar_kws={'shrink': .4,
+#                                 'ticks': [-1, -.5, 0, 0.5, 1]},
+#                       vmin=-1,
+#                       vmax=1,
+#                       annot=True,
+#                       annot_kws={'size': 12})
+# # add the column names as labels
+# ax.set_yticklabels(corr_matrix.columns, rotation=0)
+# ax.set_xticklabels(corr_matrix.columns)
+# sns.set_style({'xtick.bottom': True}, {'ytick.left': True})
+#
+# # ======================================================================================================================
+# # Performance metrics for binned variances
+#
+#
+# feats_var_df[feats_var_df['variance'] > .001].hist(column='variance')

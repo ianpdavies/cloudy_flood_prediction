@@ -16,7 +16,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
-        preds_path = data_path / batch / 'predictions' / 'nn' / img
+        preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
         NUM_PARALLEL_EXEC_UNITS=4
@@ -42,7 +42,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
             # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
             # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
             start_time = time.time()
-            model_path = data_path / batch / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model = tf.keras.models.load_model(model_path)
             preds = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
             preds = np.argmax(preds, axis=1)  # Display most probable value

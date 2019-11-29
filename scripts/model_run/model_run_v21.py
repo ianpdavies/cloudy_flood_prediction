@@ -93,15 +93,15 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 cloud_dir = data_path / 'clouds'
 
-training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
-
-prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, DROPOUT_RATE, MC_PASSES=MC_PASSES,
-                            weight_decay=0.005, length_scale=0.00001, remove_perm=True, **model_params)
+# training3(img_list, pctls, model_func, feat_list_new, uncertainty,
+#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+#
+# prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, DROPOUT_RATE, MC_PASSES=MC_PASSES,
+#                             weight_decay=0.005, length_scale=0.00001, remove_perm=True, **model_params)
 
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()
-viz.false_map()
-viz.metric_plots_multi()
-viz.time_size()
+# viz.false_map()
+# viz.metric_plots_multi()
+# viz.time_size()

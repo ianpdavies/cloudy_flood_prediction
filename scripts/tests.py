@@ -90,8 +90,8 @@ viz_params = {'img_list': img_list,
 for j, img in enumerate(img_list):
     times = []
     accuracy, precision, recall, f1 = [], [], [], []
-    preds_path = data_path / batch / 'predictions' / 'nn' / img
-    vars_path = data_path / batch / 'variances' / 'nn' / img
+    preds_path = data_path / batch / 'predictions' / img
+    vars_path = data_path / batch / 'variances' / img
     mc_bin_file = preds_path / 'mc_preds.h5'
     preds_bin_file = preds_path / 'predictions.h5'
     vars_bin_file = vars_path / 'variances.h5'
@@ -130,7 +130,7 @@ for j, img in enumerate(img_list):
                              chunks=True, compression='gzip')  # Create empty dataset with shape of data
 
         start_time = time.time()
-        model_path = data_path / batch / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+        model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
         trained_model = tf.keras.models.load_model(model_path)
 
         for k in range(MC_PASSES):
@@ -194,9 +194,9 @@ for j, img in enumerate(img_list):
 # # Plot variance and predictions
 # for i, img in enumerate(img_list):
 #     print('Creating FN/FP map for {}'.format(img))
-#     plot_path = data_path / batch / 'plots' / 'nn' / img
-#     vars_bin_file = data_path / batch / 'variances' / 'nn' / img / 'variances.h5'
-#     preds_bin_file = data_path / batch / 'predictions' / 'nn' / img / 'predictions.h5'
+#     plot_path = data_path / batch / 'plots' / img
+#     vars_bin_file = data_path / batch / 'variances' / img / 'variances.h5'
+#     preds_bin_file = data_path / batch / 'predictions' / img / 'predictions.h5'
 #     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 #
 # # Reshape variance values back into image band

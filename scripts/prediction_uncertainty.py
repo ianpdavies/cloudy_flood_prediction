@@ -19,8 +19,8 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
-        preds_path = data_path / batch / 'predictions' / 'nn' / img
-        vars_path = data_path / batch / 'variances' / 'nn' / img
+        preds_path = data_path / batch / 'predictions' / img
+        vars_path = data_path / batch / 'variances' / img
         mc_bin_file = preds_path / 'mc_preds.h5'
         preds_bin_file = preds_path / 'predictions.h5'
         vars_bin_file = vars_path / 'variances.h5'
@@ -58,7 +58,7 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
                                  chunks=True, compression='gzip')  # Create empty dataset with shape of data
 
             start_time = time.time()
-            model_path = data_path / batch / 'models' / 'nn' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model = tf.keras.models.load_model(model_path)
 
             for k in range(MC_PASSES):

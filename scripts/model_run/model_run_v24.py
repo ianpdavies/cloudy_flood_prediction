@@ -18,7 +18,7 @@ print('Python Version:', sys.version)
 # ==================================================================================
 # Parameters
 
-uncertainty = True
+uncertainty = False  # Should be True if running with MCD
 batch = 'v24'
 # pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 pctls = [40]

@@ -45,7 +45,7 @@ def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                 metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd' / img / '{}'.format(
                     img + '_clouds_' + str(pctl))
             else:
-                model_path = data_path / batch / 'models' / 'nn' / img
+                model_path = data_path / batch / 'models' / img
                 metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
                     img + '_clouds_' + str(pctl))
 
@@ -115,7 +115,7 @@ def training2(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                 metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd' / img / '{}'.format(
                     img + '_clouds_' + str(pctl))
             else:
-                model_path = data_path / batch / 'models' / 'nn' / img
+                model_path = data_path / batch / 'models' / img
                 metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
                     img + '_clouds_' + str(pctl))
 
@@ -378,7 +378,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             X_val, y_val = validation_data[:, 0:shape[1]-1], validation_data[:, shape[1]-1]
             INPUT_DIMS = X_train.shape[1]
 
-            model_path = data_path / batch / 'models' / 'nn' / img
+            model_path = data_path / batch / 'models' / img
             metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
@@ -489,7 +489,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
             INPUT_DIMS = X_train.shape[1]
 
-            model_path = data_path / batch / 'models' / 'nn' / img
+            model_path = data_path / batch / 'models' / img
             metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
