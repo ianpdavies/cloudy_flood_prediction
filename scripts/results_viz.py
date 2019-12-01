@@ -203,10 +203,19 @@ class VizFuncs:
 
         file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
         df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+
         # Average of metric values together in one plot
-        mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
-        mean_plot_fig = mean_plot.get_figure()
-        mean_plot_fig.savefig(plot_path / 'mean_metrics.png')
+        if len(self.pctls) > 1:
+            mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
+        else:
+            mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').mean().reset_index(),
+                                                        id_vars='cloud_cover'),
+                                           x='cloud_cover', y='value',
+                                           hue='variable')
+            mean_plot.set(ylim=(0, 1))
+
+        metrics_fig = mean_plot.get_figure()
+        metrics_fig.savefig(plot_path / 'mean_metrics.png')
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
         for j, val in enumerate(df_concat.columns):
