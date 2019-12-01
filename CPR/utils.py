@@ -202,6 +202,106 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
 
     return data, data_vector, data_ind, feat_keep
 
+
+# ======================================================================================================================
+
+
+def preprocessing2(data_path, img, pctl, feat_list_new, gaps, normalize=True):
+    """
+    Removes ALL pixels that are over permanent water
+
+    Masks stacked image with cloudmask by converting cloudy values to NaN
+
+    Parameters
+    ----------
+    data_path : str
+        Path to image folder
+    img : str
+        Name of image file (without file extension)
+    pctl : list of int
+        List of integers of cloud cover percentages to mask image with (10, 20, 30, etc.)
+    gaps : bool
+        Preprocessing cloud gaps or clouds? Determines how to mask out image
+    normalize : bool
+        Whether to normalize data or not. Default is true.
+
+    Returns
+    ----------
+    data : array
+        3D array identical to input stacked image but with cloudy pixels removed
+    data_vector : array
+        2D array of data, standardized, with NaNs removed
+    data_ind : tuple
+        Tuple of row/col indices in 'data' where cloudy pixels/cloud gaps were masked. Used for reconstructing the image later.
+    """
+
+    img_path = data_path / 'images' / img
+    stack_path = img_path / 'stack' / 'stack.tif'
+
+    # load cloudmasks
+    cloudmask_dir = data_path / 'clouds'
+
+    cloudmask = np.load(cloudmask_dir / '{0}'.format(img+'_clouds.npy'))
+
+    # Check for any features that have all zeros/same value and remove. This only matters with the training data
+    cloudmask = cloudmask > np.percentile(cloudmask, pctl)
+    # Get local image
+    with rasterio.open(str(stack_path), 'r') as ds:
+        data = ds.read()
+        data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+        data[cloudmask] = -999999
+        data[data == -999999] = np.nan
+        data[np.isneginf(data)] = np.nan
+        data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+        data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+        data_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
+
+    # Just adding this next line in to correctly remove the deleted feat from feat_list_new during training
+    # Should remove once I've decided whether to train with or without perm water
+    feat_keep = [a for a in range(data.shape[2])]
+    with rasterio.open(str(stack_path), 'r') as ds:
+        data = ds.read()
+        data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+
+    if 0 in data_std.tolist():
+        zero_feat = data_std.tolist().index(0)
+        data = np.delete(data, zero_feat, axis=2)
+        feat_keep.pop(zero_feat)
+
+    cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
+    if gaps:
+        cloudmask = cloudmask < np.percentile(cloudmask, pctl)  # Data, data_vector, etc = pctl
+    if not gaps:
+        cloudmask = cloudmask > np.percentile(cloudmask, pctl)  # Data, data_vector, etc = 1 - pctl
+
+    perm_index = feat_list_new.index('GSW_perm')
+
+    # Convert -999999 and -Inf to Nans
+    data[cloudmask] = -999999
+    data[data[:, :, perm_index] == 1] = -999999
+    data[data == -999999] = np.nan
+    data[np.isneginf(data)] = np.nan
+
+    # Get indices of non-nan values. These are the indices of the original image array
+    data_ind = np.where(~np.isnan(data[:, :, 1]))
+
+    # Reshape into a 2D array, where rows = pixels and cols = features
+    data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+    shape = data_vector.shape
+
+    # Remove NaNs
+    data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+
+    data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
+    data_std = data_vector[:, 0:shape[1] - 1].std(0)
+
+    # Normalize data - only the non-binary variables
+    if normalize:
+        data_vector[:, 0:shape[1]-1] = (data_vector[:, 0:shape[1]-1] - data_mean) / data_std
+
+    return data, data_vector, data_ind, feat_keep
+
+
 # ======================================================================================================================
 
 def train_val(data_vector, holdout):

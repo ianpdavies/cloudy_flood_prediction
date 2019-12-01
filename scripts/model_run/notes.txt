@@ -32,3 +32,6 @@ Then need a full run without MCD. Maybe just at odd% cloud covers to save time/s
 
 v23 = Testing on all images at 40% cover WITH validation data. No MCD.
 v24 = Testing on all images at 40% cover WITHOUT validation data. No MCD.
+
+v25 = Half of images at 40%, no MCD, no val data. Permanent water pixels are completely removed.
+v26 = Half of images at 40%, no MCD, no val data. Permanent water pixels kept in. To compare against v25.
