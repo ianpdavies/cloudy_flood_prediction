@@ -23,11 +23,14 @@ os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
 os.environ["KMP_BLOCKTIME"] = "30"
 os.environ["KMP_SETTINGS"] = "1"
 os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
+
+
 # ======================================================================================================================
 
 def logsumexp(a):
     a_max = a.max(axis=0)
     return np.log(np.sum(np.exp(a - a_max), axis=0)) + a_max
+
 
 def test(Y_true, MC_samples):
     """
@@ -45,19 +48,21 @@ def test(Y_true, MC_samples):
     N = Y_true.shape[0]
     mean = MC_samples[:, :, :D]  # K x N x D
     logvar = MC_samples[:, :, D:]
-    test_ll = -0.5 * np.exp(-logvar) * (mean - Y_true[None])**2. - 0.5 * logvar - 0.5 * np.log(2 * np.pi)
+    test_ll = -0.5 * np.exp(-logvar) * (mean - Y_true[None]) ** 2. - 0.5 * logvar - 0.5 * np.log(2 * np.pi)
     test_ll = np.sum(np.sum(test_ll, -1), -1)
     test_ll = logsumexp(test_ll) - np.log(k)
     pppp = test_ll / N  # per point predictive probability
-    rmse = np.mean((np.mean(mean, 0) - Y_true)**2.)**0.5
+    rmse = np.mean((np.mean(mean, 0) - Y_true) ** 2.) ** 0.5
     return pppp, rmse
+
 
 # Plot function to make sure stuff makes sense
 import pylab
 
+
 def plot(X_train, Y_train, X_val, Y_val, means):
     indx = np.argsort(X_val[:, 0])
-    _, (ax1, ax2, ax3, ax4) = pylab.subplots(1, 4,figsize=(12, 1.5), sharex=True, sharey=True)
+    _, (ax1, ax2, ax3, ax4) = pylab.subplots(1, 4, figsize=(12, 1.5), sharex=True, sharey=True)
     ax1.scatter(X_train[:, 0], Y_train[:, 0], c='y')
     ax1.set_title('Train set')
     ax2.plot(X_val[indx, 0], np.mean(means, 0)[indx, 0], color='skyblue', lw=3)
@@ -70,6 +75,7 @@ def plot(X_train, Y_train, X_val, Y_val, means):
     ax4.scatter(X_val[:, 0], Y_val[:, 0], c='r', alpha=0.2, lw=0)
     ax4.set_title('Validation set')
     pylab.show()
+
 
 # ======================================================================================================================
 
@@ -96,6 +102,7 @@ def fit_model(nb_epoch, X_train, Y_train, input_shape, T, D):
     # model = models.Model(inputs=inp, outputs=logits_variance)
 
     iterable = K.variable(np.ones(T))
+
     def heteroscedastic_categorical_crossentropy(true, pred):
         mean = pred[:, :D]
         log_var = pred[:, D:]
@@ -121,6 +128,7 @@ def fit_model(nb_epoch, X_train, Y_train, input_shape, T, D):
             distorted_loss = K.categorical_crossentropy(pred + std_samples, true, from_logits=True)
             diff = undistorted_loss - distorted_loss
             return -K.elu(diff)
+
         return map_fn
 
     model.compile(optimizer='Adam',
@@ -136,34 +144,88 @@ def fit_model(nb_epoch, X_train, Y_train, input_shape, T, D):
     loss = hist.history['loss'][-1]
     return model, -0.5 * loss  # return ELBO up to const.
 
-# ------------------------------------------------------------
+
+# ======================================================================================================================
+from tensorflow.keras.layers import RepeatVector, TimeDistributed, Layer
+from tensorflow.keras import Model
+
+# Take a mean of the results of a TimeDistributed layer.
+# Applying TimeDistributedMean()(TimeDistributed(T)(x)) to an
+# input of shape (None, ...) returns putpur of same size.
+class TimeDistributedMean(Layer):
+    def build(self, input_shape):
+        super(TimeDistributedMean, self).build(input_shape)
+
+    # input shape (None, T, ...)
+    # output shape (None, ...)
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0],) + input_shape[2:]
+
+    def call(self, x):
+        return K.mean(x, axis=1)
+
+# Apply the predictive entropy function for input with C classes.
+# Input of shape (None, C, ...) returns output with shape (None, ...)
+# Input should be predictive means for the C classes.
+# In the case of a single classification, output will be (None,).
+class PredictiveEntropy(Layer):
+    def build(self, input_shape):
+        super(PredictiveEntropy, self).build(input_shape)
+
+    # input shape (None, C, ...)
+    # output shape (None, ...)
+    def compute_output_shape(self, input_shape):
+        return (input_shape[0],)
+
+    # x - prediction probability for each class(C)
+    def call(self, x):
+        return -1 * K.sum(K.log(x) * x, axis=1)
+
+def load_epistemic_uncertainty_model(model, epistemic_monte_carlo_simulations):
+    # model = load_bayesian_model(checkpoint)
+    inpt = Input(shape=(model.input_shape[1:]))
+    x = RepeatVector(epistemic_monte_carlo_simulations)(inpt)
+    # Keras TimeDistributed can only handle a single output from a model :(
+    # and we technically only need the softmax outputs.
+    hacked_model = Model(inputs=model.inputs, outputs=model.outputs[1])
+    x = TimeDistributed(hacked_model, name='epistemic_monte_carlo')(x)
+    # predictive probabilties for each class
+    softmax_mean = TimeDistributedMean(name='epistemic_softmax_mean')(x)
+    variance = PredictiveEntropy(name='epistemic_variance')(softmax_mean)
+    epistemic_model = Model(inputs=inpt, outputs=[variance, softmax_mean])
+
+    return epistemic_model
+
+# ======================================================================================================================
 # Create fake data
 
 # Ns = [10, 25, 50, 100, 1000, 10000]
 # Ns = np.array(Ns)
 # nb_epochs = [2000, 1000, 500, 200, 20, 2]
 N = 10000
-nb_epoch = 10
+nb_epoch = 20
 val_size = np.ceil(N * 0.3).astype('int')
-nb_features = 1024
-Q = 3  # Q vs. D? Both seem to be number of features (maybe Q is input dim)
+nb_features = 512
+Q = 2  # Q vs. D? Both seem to be number of features (maybe Q is input dim)
 D = 2  # I think Q is num of features, D is num of target classes (output dim). Gonna try just one class
-K_test = 5  # Number of MC samples for aleatoric uncertainty
+# K_test = 50  # Number of MC samples for aleatoric uncertainty
 # nb_reps = 3  # Not sure if this is necessary
 batch_size = 1024
 l = 1e-4
-T = 5  # Number of MC passes
+T = 50  # Number of MC passes
 
-X, Y = make_classification(n_samples=N+val_size, n_features=Q, n_redundant=0, n_classes=D,
+X, Y = make_classification(n_samples=N + val_size, n_features=Q, n_redundant=0, n_classes=D,
                            n_informative=Q, n_clusters_per_class=1)
 
 from tensorflow.keras.utils import to_categorical
+
 Y = Y.astype('float64')
 Y = to_categorical(Y)
 
 # ======================================================================================================================
 from tensorflow.keras.utils import plot_model
-os.environ['PATH'] = os.environ['PATH']+';'+os.environ['CONDA_PREFIX']+r"\Library\bin\graphviz"
+
+os.environ['PATH'] = os.environ['PATH'] + ';' + os.environ['CONDA_PREFIX'] + r"\Library\bin\graphviz"
 
 results = []
 X_train, Y_train = X[:N], Y[:N]
@@ -177,6 +239,24 @@ aleatoric_uncertainties = np.reshape(results[0][:, D:], (-1))
 logits = results[0][:, 0:D]
 
 softmax = results[1]
+
+# Epistemic uncertainty
+epistemic_model = load_epistemic_uncertainty_model(model, 100)
+epistemic_uncertainties = epistemic_model.predict(X_val)
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+plt.imshow(np.reshape(epistemic_uncertainties[0], (50, 60)))
+# Test out uncertainties
+plt.figure()
+sns.scatterplot(x=X_val[:,0], y=X_val[:,1], hue=epistemic_uncertainties[0])
+plt.figure()
+sns.scatterplot(x=X_val[:,0], y=X_val[:,1], hue=aleatoric_uncertainties)
+total_uncertainty = epistemic_uncertainties[0] + aleatoric_uncertainties[0]
+
+from sklearn.metrics import accuracy_score
+accuracy_score(y_true=Y_val[:,1], y_pred=np.argmax(logits, axis=1))
+
 #
 # print('predicting')
 # MC_samples = []
@@ -219,4 +299,3 @@ softmax = results[1]
 #     print(N, nb_epoch, '-', test_mean, test_std_err, ps, ' - ', aleatoric_uncertainty**0.5, epistemic_uncertainty**0.5)
 #     sys.stdout.flush()
 #     results += [rep_results]
-
