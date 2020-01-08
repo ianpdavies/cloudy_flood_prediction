@@ -112,7 +112,7 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
 # ======================================================================================================================
 
 
-def preprocessing(data_path, img, pctl, gaps, normalize=True):
+def preprocessing(data_path, img, pctl, test, normalize=True):
     """
     Masks stacked image with cloudmask by converting cloudy values to NaN
 
@@ -124,8 +124,8 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
         Name of image file (without file extension)
     pctl : list of int
         List of integers of cloud cover percentages to mask image with (10, 20, 30, etc.)
-    gaps : bool
-        Preprocessing cloud gaps or clouds? Determines how to mask out image
+    test : bool
+        Preprocessing for training or testing data? Test=False means 100-pctl data is returned (i.e. clear pixels)
     normalize : bool
         Whether to normalize data or not. Default is true.
 
@@ -143,19 +143,22 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
     stack_path = img_path / 'stack' / 'stack.tif'
 
     # load cloudmasks
-    cloudmask_dir = data_path / 'clouds'
+    clouds_dir = data_path / 'clouds'
 
-    cloudmask = np.load(cloudmask_dir / '{0}'.format(img+'_clouds.npy'))
+    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
 
     # Check for any features that have all zeros/same value and remove. This only matters with the training data
-    cloudmask = cloudmask > np.percentile(cloudmask, pctl)
     # Get local image
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
-        data[cloudmask] = -999999
         data[data == -999999] = np.nan
         data[np.isneginf(data)] = np.nan
+        # Now remove NaNs (real clouds, ice, missing data, etc). from cloudmask
+        clouds[np.isnan(data[:, :, 0])] = np.nan
+        cloudmask = clouds > np.nanpercentile(clouds, pctl)
+        data[cloudmask] = -999999
+        data[data == -999999] = np.nan
         data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
         data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
         data_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
@@ -172,16 +175,20 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
         data = np.delete(data, zero_feat, axis=2)
         feat_keep.pop(zero_feat)
 
-    cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
-    if gaps:
-        cloudmask = cloudmask < np.percentile(cloudmask, pctl)  # Data, data_vector, etc = pctl
-    if not gaps:
-        cloudmask = cloudmask > np.percentile(cloudmask, pctl)  # Data, data_vector, etc = 1 - pctl
-
     # Convert -999999 and -Inf to Nans
-    data[cloudmask] = -999999
     data[data == -999999] = np.nan
     data[np.isneginf(data)] = np.nan
+    # Now remove NaNs (real clouds, ice, missing data, etc). from cloudmask
+    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+    clouds[np.isnan(data[:, :, 0])] = np.nan
+    if test:
+        cloudmask = clouds > np.nanpercentile(clouds, pctl)  # Data, data_vector, etc = pctl
+    if not test:
+        cloudmask = clouds < np.nanpercentile(clouds, pctl)  # Data, data_vector, etc = 1 - pctl
+
+    # And mask clouds
+    data[cloudmask] = -999999
+    data[data == -999999] = np.nan
 
     # Get indices of non-nan values. These are the indices of the original image array
     data_ind = np.where(~np.isnan(data[:, :, 1]))
@@ -206,7 +213,7 @@ def preprocessing(data_path, img, pctl, gaps, normalize=True):
 # ======================================================================================================================
 
 
-def preprocessing2(data_path, img, pctl, feat_list_new, gaps, normalize=True):
+def preprocessing2(data_path, img, pctl, feat_list_new, test, normalize=True):
     """
     Removes ALL pixels that are over permanent water
 
@@ -220,7 +227,7 @@ def preprocessing2(data_path, img, pctl, feat_list_new, gaps, normalize=True):
         Name of image file (without file extension)
     pctl : list of int
         List of integers of cloud cover percentages to mask image with (10, 20, 30, etc.)
-    gaps : bool
+    test : bool
         Preprocessing cloud gaps or clouds? Determines how to mask out image
     normalize : bool
         Whether to normalize data or not. Default is true.
@@ -269,9 +276,9 @@ def preprocessing2(data_path, img, pctl, feat_list_new, gaps, normalize=True):
         feat_keep.pop(zero_feat)
 
     cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
-    if gaps:
+    if test:
         cloudmask = cloudmask < np.percentile(cloudmask, pctl)  # Data, data_vector, etc = pctl
-    if not gaps:
+    if not test:
         cloudmask = cloudmask > np.percentile(cloudmask, pctl)  # Data, data_vector, etc = 1 - pctl
 
     perm_index = feat_list_new.index('GSW_perm')
