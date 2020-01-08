@@ -47,13 +47,9 @@ class VizFuncs:
                 metrics_plot.set(ylim=(0, 1))
 
             metrics_fig = metrics_plot.get_figure()
-            metrics_fig.savefig(plot_path / 'metrics_plot.png')
+            metrics_fig.savefig(plot_path / 'metrics_plot.png', dpi=300)
 
-            # metrics = pd.read_csv(metrics_path / 'metrics_np.csv')
-            # metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
-            #                                    ylim=(0, 1))
-            # metrics_fig = metrics_plot.get_figure()
-            # metrics_fig.savefig(plot_path / 'metrics_np_plot.png')
+
 
             plt.close('all')
 
@@ -76,9 +72,51 @@ class VizFuncs:
                 time_plot = times.plot.scatter(x='cloud_cover', y=['training_time'])
 
             time_plot = time_plot.get_figure()
-            time_plot.savefig(plot_path / 'training_times.png')
-
+            time_plot.savefig(plot_path / 'training_times.png', dpi=300)
             plt.close('all')
+
+    def color_images(self):
+        plt.ioff()
+        data_path = self.data_path
+        for i, img in enumerate(self.img_list):
+            print('Creating FN/FP map for {}'.format(img))
+            plot_path = data_path / self.batch / 'plots' / img
+            bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
+
+            stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+
+            # Get RGB image
+            print('Stacking image')
+            band_list = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7']
+            tif_stacker(data_path, img, band_list, features=False, overwrite=False)
+            spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
+
+            # Function to normalize the grid values
+            def normalize(array):
+                """Normalizes numpy arrays into scale 0.0 - 1.0"""
+                array_min, array_max = np.nanmin(array), np.nanmax(array)
+                return ((array - array_min) / (array_max - array_min))
+
+            print('Processing CIR image')
+            with rasterio.open(spectra_stack_path, 'r') as f:
+                nir, red, green = f.read(5), f.read(4), f.read(3)
+                nir[nir == -999999] = np.nan
+                red[red == -999999] = np.nan
+                green[green == -999999] = np.nan
+                nirn = normalize(nir)
+                redn = normalize(red)
+                greenn = normalize(green)
+                cir = np.dstack((nirn, redn, greenn))
+
+            # Convert to PIL image, enhance, and save
+            cir_img = Image.fromarray((cir * 255).astype(np.uint8()))
+            cir_img = ImageEnhance.Contrast(cir_img).enhance(1.5)
+            cir_img = ImageEnhance.Sharpness(cir_img).enhance(2)
+            cir_img = ImageEnhance.Brightness(cir_img).enhance(2)
+
+            print('Saving CIR image')
+            cir_file = plot_path / '{}'.format('cir_img' + '.png')
+            cir_img.save(cir_file, dpi=300)
 
     def false_map(self):
         plt.ioff()
@@ -121,7 +159,7 @@ class VizFuncs:
 
             print('Saving RGB image')
             rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
-            rgb_img.save(rgb_file)
+            rgb_img.save(rgb_file, dpi=300)
 
             # Reshape predicted values back into image band
             with rasterio.open(stack_path, 'r') as ds:
@@ -168,7 +206,7 @@ class VizFuncs:
                 comparison_img = np.dstack((red_actual, green_combo, blue_preds))
                 comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
                 print('Saving FN/FP image for', str(pctl) + '{}'.format('%'))
-                matplotlib.image.imsave(comparison_img_file, comparison_img)
+                matplotlib.image.imsave(comparison_img_file, comparison_img, dpi=300)
 
                 # Load comparison image
                 flood_overlay = Image.open(comparison_img_file)
@@ -187,7 +225,7 @@ class VizFuncs:
                 rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
                 plt.imshow(rgb_img)
                 print('Saving overlay image for', str(pctl) + '{}'.format('%'))
-                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'))
+                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=300)
                 plt.close('all')
 
     def metric_plots_multi(self):
@@ -215,14 +253,14 @@ class VizFuncs:
             mean_plot.set(ylim=(0, 1))
 
         metrics_fig = mean_plot.get_figure()
-        metrics_fig.savefig(plot_path / 'mean_metrics.png')
+        metrics_fig.savefig(plot_path / 'mean_metrics.png', dpi=300)
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
         for j, val in enumerate(df_concat.columns):
             name = val + 's.png'
             all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
             all_metric_fig = all_metric.get_figure()
-            all_metric_fig.savefig(plot_path / name)
+            all_metric_fig.savefig(plot_path / name, dpi=300)
 
         # file_list_np = [metrics_path / img / 'metrics_np.csv' for img in self.img_list]
         # df_concat_np = pd.concat(pd.read_csv(file) for file in file_list_np)
@@ -277,11 +315,11 @@ class VizFuncs:
         print('Creating and saving plots')
         cover_times = times_sizes.plot.scatter(x='cloud_cover', y='training_time')
         cover_times_fig = cover_times.get_figure()
-        cover_times_fig.savefig(plot_path / 'cloud_cover_times.png')
+        cover_times_fig.savefig(plot_path / 'cloud_cover_times.png', dpi=300)
 
         pixel_times = times_sizes.plot.scatter(x='pixels', y='training_time')
         pixel_times_fig = pixel_times.get_figure()
-        pixel_times_fig.savefig(plot_path / 'size_times.png')
+        pixel_times_fig.savefig(plot_path / 'size_times.png', dpi=300)
 
         plt.close('all')
 
