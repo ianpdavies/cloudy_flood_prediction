@@ -8,6 +8,7 @@ learning/
 # data/*/*
 # !data/*/metrics
 
+# scripts/tests.py
 
 # Ignore (files)#
 *.txt
