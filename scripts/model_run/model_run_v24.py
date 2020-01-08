@@ -78,7 +78,6 @@ viz_params = {'img_list': img_list,
 tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
 tf.config.threading.set_inter_op_parallelism_threads(2)
 tf.config.set_soft_device_placement(True)
-# tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
 os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
 os.environ["KMP_BLOCKTIME"] = "30"
 os.environ["KMP_SETTINGS"] = "1"
