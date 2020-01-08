@@ -29,7 +29,7 @@ class VizFuncs:
         plt.ioff()
         for i, img in enumerate(self.img_list):
             print('Making metric plots for {}'.format(img))
-            metrics_path = data_path / self.batch / 'metrics' / 'testing_nn' / img
+            metrics_path = data_path / self.batch / 'metrics' / 'testing' / img
             plot_path = data_path / self.batch / 'plots' / img
 
             try:
@@ -57,7 +57,7 @@ class VizFuncs:
         plt.ioff()
         for i, img in enumerate(self.img_list):
             print('Making time plots for {}'.format(img))
-            metrics_path = data_path / self.batch / 'metrics' / 'training_nn' / img
+            metrics_path = data_path / self.batch / 'metrics' / img
             plot_path = data_path / self.batch / 'plots' / img
 
             try:
@@ -231,7 +231,7 @@ class VizFuncs:
     def metric_plots_multi(self):
         plt.ioff()
         data_path = self.data_path
-        metrics_path = data_path / self.batch / 'metrics' / 'testing_nn'
+        metrics_path = data_path / self.batch / 'metrics' / 'testing'
         plot_path = data_path / self.batch / 'plots'
 
         try:

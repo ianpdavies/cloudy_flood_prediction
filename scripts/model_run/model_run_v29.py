@@ -84,12 +84,12 @@ cloud_dir = data_path / 'clouds'
 training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
               DROPOUT_RATE, **model_params)
 
-# prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
+prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 
-# viz = VizFuncs(viz_params)
-# viz.metric_plots()
-# viz.color_images()
-# viz.time_plot()
-# viz.false_map()
-# viz.metric_plots_multi()
-# viz.time_size()
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.color_images()
+viz.time_plot()
+viz.false_map()
+viz.metric_plots_multi()
+viz.time_size()

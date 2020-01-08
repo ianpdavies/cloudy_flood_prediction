@@ -46,7 +46,7 @@ def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                     img + '_clouds_' + str(pctl))
             else:
                 model_path = data_path / batch / 'models' / img
-                metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+                metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                     img + '_clouds_' + str(pctl))
 
             try:
@@ -116,7 +116,7 @@ def training2(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                     img + '_clouds_' + str(pctl))
             else:
                 model_path = data_path / batch / 'models' / img
-                metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+                metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                     img + '_clouds_' + str(pctl))
 
             try:
@@ -379,7 +379,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             INPUT_DIMS = X_train.shape[1]
 
             model_path = data_path / batch / 'models' / img
-            metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
             lr_plots_path = metrics_path.parents[1] / 'lr_plots'
@@ -490,7 +490,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             INPUT_DIMS = X_train.shape[1]
 
             model_path = data_path / batch / 'models' / img
-            metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
             lr_plots_path = metrics_path.parents[1] / 'lr_plots'
@@ -603,7 +603,7 @@ def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             INPUT_DIMS = X_train.shape[1]
 
             model_path = data_path / batch / 'models' / img
-            metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
             lr_plots_path = metrics_path.parents[1] / 'lr_plots'
@@ -717,7 +717,7 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
             INPUT_DIMS = X_train.shape[1]
 
             model_path = data_path / batch / 'models' / img
-            metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
             try:

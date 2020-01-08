@@ -87,7 +87,7 @@ exp_path = data_path / 'experiments' / 'random'
 #     metadata = pd.concat([metadata, imgs_df], axis=1)
 #
 #     print('Fetching performance metrics')
-#     metrics_path = data_path / batches[m] / 'metrics' / 'testing_nn'
+#     metrics_path = data_path / batches[m] / 'metrics' / 'testing'
 #     plot_path = data_path / batches[m] / 'plots'
 #
 #     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]

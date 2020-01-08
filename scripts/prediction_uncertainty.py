@@ -24,7 +24,7 @@ def prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch
         mc_bin_file = preds_path / 'mc_preds.h5'
         preds_bin_file = preds_path / 'predictions.h5'
         vars_bin_file = vars_path / 'variances.h5'
-        metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
+        metrics_path = data_path / batch / 'metrics' / 'testing' / img
 
         try:
             metrics_path.mkdir(parents=True)

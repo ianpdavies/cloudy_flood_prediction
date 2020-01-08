@@ -80,7 +80,7 @@ print('Python Version:', sys.version)
 # def highlight_plot():
 #     print('Making highlight plots')
 #     plt.ioff()
-#     metrics_path = data_path / batch / 'metrics' / 'testing_nn'
+#     metrics_path = data_path / batch / 'metrics' / 'testing'
 #     plot_path = data_path / batch / 'plots'
 #     try:
 #         plot_path.mkdir(parents=True)
@@ -217,7 +217,7 @@ for j, img in enumerate(img_list):
         INPUT_DIMS = X_train.shape[1]
 
         model_path = data_path / batch / 'models' / img
-        metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+        metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
             img + '_clouds_' + str(pctl))
 
         try:

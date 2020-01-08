@@ -108,7 +108,7 @@ for i, batch in enumerate(batches):
         metrics_path = data_path / batch / 'metrics' / 'testing_nn_mcd'
         plot_path = data_path / batch / 'plots' / 'nn_mcd'
     else:
-        metrics_path = data_path / batch / 'metrics' / 'testing_nn'
+        metrics_path = data_path / batch / 'metrics' / 'testing'
         plot_path = data_path / batch / 'plots'
 
     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]

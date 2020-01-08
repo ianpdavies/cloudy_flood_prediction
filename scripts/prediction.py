@@ -18,7 +18,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
         accuracy, precision, recall, f1 = [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
-        metrics_path = data_path / batch / 'metrics' / 'testing_nn' / img
+        metrics_path = data_path / batch / 'metrics' / 'testing' / img
         NUM_PARALLEL_EXEC_UNITS=4
 
         try:
