@@ -14,6 +14,7 @@ print('Python Version:', sys.version)
 # ======================================================================================================================
 # Performance metrics vs. image metadata (dry/flood pixels, image size)
 pctls = [10, 20, 50, 70, 90]
+
 img_list = ['4444_LC08_044033_20170222_2',
             '4101_LC08_027038_20131103_1',
             '4101_LC08_027038_20131103_2',
@@ -250,7 +251,6 @@ plt.savefig(plot_path / 'f1.png', bbox_inches='tight')
 
 plt.close('all')
 
-
 # ----------------------------------------------------------------------------------------------------------------------
 # Violin plots
 image_numbers = np.tile(np.repeat(range(22), len(pctls))+1, 5)
@@ -343,6 +343,7 @@ plt.savefig(plot_path / 'mean_variance.png', bbox_inches='tight')
 plt.figure(figsize=(10, 8))
 g = sns.FacetGrid(var_long, col='variable', hue='variable')
 g.map(plt.scatter, "image_numbers", "value", alpha=.7, zorder=2)
+g.axes.set_xlabel('Image')
 
 def plot_mean(data,**kwargs):
     m = data.mean()
@@ -369,3 +370,8 @@ g.map(plt.scatter, "image_numbers", "value", alpha=.7)
 g.add_legend()
 
 plt.savefig(plot_path / 'variance_separate.png', bbox_inches='tight')
+
+# ======================================================================================================================
+
+
+
