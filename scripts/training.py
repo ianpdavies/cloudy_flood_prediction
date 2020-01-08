@@ -680,3 +680,69 @@ def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
 
+# ============================================================================================
+from tensorflow.keras.utils import to_categorical
+
+
+def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
+              dropout_rate=0.2, **model_params):
+    '''
+    1. Removes ALL pixels that are over permanent water
+    2. Finds the optimum learning rate and uses cyclic LR scheduler
+    to train the model
+    3. No validation set for training
+    4.
+    '''
+    get_model = model_func
+    for j, img in enumerate(img_list):
+        print(img + ': stacking tif, generating clouds')
+        times = []
+        tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
+        cloud_generator(img, data_path, overwrite=False)
+
+        for i, pctl in enumerate(pctls):
+            print(img, pctl, '% CLOUD COVER')
+            print('Preprocessing')
+            tf.keras.backend.clear_session()
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False, normalize=True)
+            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
+            perm_index = feat_list_keep.index('GSW_perm')
+            flood_index = feat_list_keep.index('flooded')
+            data_vector_train[
+                data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
+            shape = data_vector_train.shape
+            X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
+            y_train = to_categorical(y_train)
+            INPUT_DIMS = X_train.shape[1]
+
+            model_path = data_path / batch / 'models' / img
+            metrics_path = data_path / batch / 'metrics' / 'training_nn' / img / '{}'.format(
+                img + '_clouds_' + str(pctl))
+
+            try:
+                metrics_path.mkdir(parents=True)
+                model_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
+            model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='softmax_output_categorical_accuracy', min_delta=0.005, patience=5),
+                         tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
+                                                            save_best_only=True),
+                         CSVLogger(metrics_path / 'training_log.log')]
+
+            start_time = time.time()
+            model = get_model(model_params['epochs'], X_train, y_train, X_train.shape, T, D=2,
+                              batch_size=model_params['batch_size'], dropout_rate=dropout_rate, callbacks=callbacks)
+            end_time = time.time()
+            times.append(timer(start_time, end_time, False))
+            # model.save(model_path)
+
+        metrics_path = metrics_path.parent
+        times = [float(i) for i in times]
+        times = np.column_stack([pctls, times])
+        times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
+        times_df.to_csv(metrics_path / 'training_times.csv', index=False)
+
