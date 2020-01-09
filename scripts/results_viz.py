@@ -26,6 +26,9 @@ class VizFuncs:
             setattr(self, k, v)
 
     def metric_plots(self):
+        """
+        Creates plot of performance metrics vs. cloud cover for a single image
+        """
         plt.ioff()
         for i, img in enumerate(self.img_list):
             print('Making metric plots for {}'.format(img))
@@ -54,10 +57,13 @@ class VizFuncs:
             plt.close('all')
 
     def time_plot(self):
+        """
+        Creates plot of training time vs. cloud cover
+        """
         plt.ioff()
         for i, img in enumerate(self.img_list):
             print('Making time plots for {}'.format(img))
-            metrics_path = data_path / self.batch / 'metrics' / img
+            metrics_path = data_path / self.batch / 'metrics' / 'training' / img
             plot_path = data_path / self.batch / 'plots' / img
 
             try:
@@ -75,7 +81,10 @@ class VizFuncs:
             time_plot.savefig(plot_path / 'training_times.png', dpi=300)
             plt.close('all')
 
-    def color_images(self):
+    def cir_image(self):
+        """
+        Creates CIR image
+        """
         plt.ioff()
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
@@ -116,9 +125,12 @@ class VizFuncs:
 
             print('Saving CIR image')
             cir_file = plot_path / '{}'.format('cir_img' + '.png')
-            cir_img.save(cir_file, dpi=300)
+            cir_img.save(cir_file, dpi=(300, 300))
 
     def false_map(self):
+        """
+        Creates map of FP/FNs overlaid on RGB image
+        """
         plt.ioff()
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
@@ -159,7 +171,7 @@ class VizFuncs:
 
             print('Saving RGB image')
             rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
-            rgb_img.save(rgb_file, dpi=300)
+            rgb_img.save(rgb_file, dpi=(300, 300))
 
             # Reshape predicted values back into image band
             with rasterio.open(stack_path, 'r') as ds:
@@ -172,7 +184,7 @@ class VizFuncs:
                     predictions = f[str(pctl)]
                     predictions = np.array(predictions)  # Copy h5 dataset to array
 
-                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True,
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, test=True,
                                                                            normalize=False)
 
                 # Add predicted values to cloud-covered pixel positions
@@ -225,10 +237,13 @@ class VizFuncs:
                 rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
                 plt.imshow(rgb_img)
                 print('Saving overlay image for', str(pctl) + '{}'.format('%'))
-                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=300)
+                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300,300))
                 plt.close('all')
 
     def metric_plots_multi(self):
+        """
+        Creates plot of average performance metrics of all images vs. cloud cover
+        """
         plt.ioff()
         data_path = self.data_path
         metrics_path = data_path / self.batch / 'metrics' / 'testing'
@@ -278,9 +293,12 @@ class VizFuncs:
         plt.close('all')
 
     def time_size(self):
+        """
+        Creates plot of training time vs. number of pixels for each image in a scatterplot
+        """
         plt.ioff()
         data_path = self.data_path
-        metrics_path = data_path / self.batch / 'metrics' / 'training_nn'
+        metrics_path = data_path / self.batch / 'metrics' / 'training'
         plot_path = data_path / self.batch / 'plots'
 
         stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in self.img_list]
