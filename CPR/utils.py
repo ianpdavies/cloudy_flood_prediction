@@ -112,7 +112,7 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
 # ======================================================================================================================
 
 
-def preprocessing(data_path, img, pctl, test, normalize=True):
+def preprocessing(data_path, img, pctl, feat_list_new, test):
     """
     Masks stacked image with cloudmask by converting cloudy values to NaN
 
@@ -145,35 +145,62 @@ def preprocessing(data_path, img, pctl, test, normalize=True):
     # load cloudmasks
     clouds_dir = data_path / 'clouds'
 
-    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
-
-    # Check for any features that have all zeros/same value and remove. This only matters with the training data
+    # Check for any features that have all zeros/same value and remove. For both train and test sets.
     # Get local image
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
         data[data == -999999] = np.nan
         data[np.isneginf(data)] = np.nan
-        # Now remove NaNs (real clouds, ice, missing data, etc). from cloudmask
+
+        # Getting std of train dataset
+        # Remove NaNs (real clouds, ice, missing data, etc). from cloudmask
+        clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
         clouds[np.isnan(data[:, :, 0])] = np.nan
-        cloudmask = clouds > np.nanpercentile(clouds, pctl)
+        cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
         data[cloudmask] = -999999
         data[data == -999999] = np.nan
         data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
         data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-        data_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
+        train_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
 
-    # Just adding this next line in to correctly remove the deleted feat from feat_list_new during training
-    # Should remove once I've decided whether to train with or without perm water
-    feat_keep = [a for a in range(data.shape[2])]
+        # Getting std of test dataset
+        # Remove NaNs (real clouds, ice, missing data, etc). from cloudmask
+        data = ds.read()
+        data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+        data[data == -999999] = np.nan
+        data[np.isneginf(data)] = np.nan
+        clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+        clouds[np.isnan(data[:, :, 0])] = np.nan
+        cloudmask = np.greater(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+        data[cloudmask] = -999999
+        data[data == -999999] = np.nan
+        data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+        data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+        test_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
+
+    # Now adjust feat_list_new to account for a possible removed feature because of std=0
+    feat_keep = feat_list_new.copy()
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
 
-    if 0 in data_std.tolist():
-        zero_feat = data_std.tolist().index(0)
+    if 0 in train_std.tolist():
+        print('Removing', feat_keep[train_std.tolist().index(0)], 'because std=0 in training data')
+        zero_feat = train_std.tolist().index(0)
         data = np.delete(data, zero_feat, axis=2)
         feat_keep.pop(zero_feat)
+
+    # Now checking stds of test data if not already removed because of train data
+    if 0 in test_std.tolist():
+        zero_feat_ind = test_std.tolist().index(0)
+        zero_feat = feat_list_new[zero_feat_ind]
+        try:
+            zero_feat_ind = feat_keep.index(zero_feat)
+            feat_keep.pop(feat_list_new.index(zero_feat))
+            data = np.delete(data, zero_feat_ind, axis=2)
+        except ValueError:
+            pass
 
     # Convert -999999 and -Inf to Nans
     data[data == -999999] = np.nan
@@ -182,9 +209,9 @@ def preprocessing(data_path, img, pctl, test, normalize=True):
     clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
     clouds[np.isnan(data[:, :, 0])] = np.nan
     if test:
-        cloudmask = clouds > np.nanpercentile(clouds, pctl)  # Data, data_vector, etc = pctl
+        cloudmask = np.greater(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
     if not test:
-        cloudmask = clouds < np.nanpercentile(clouds, pctl)  # Data, data_vector, etc = 1 - pctl
+        cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
 
     # And mask clouds
     data[cloudmask] = -999999
@@ -204,8 +231,7 @@ def preprocessing(data_path, img, pctl, test, normalize=True):
     data_std = data_vector[:, 0:shape[1] - 1].std(0)
 
     # Normalize data - only the non-binary variables
-    if normalize:
-        data_vector[:, 0:shape[1]-1] = (data_vector[:, 0:shape[1]-1] - data_mean) / data_std
+    data_vector[:, 0:shape[1] - 1] = (data_vector[:, 0:shape[1] - 1] - data_mean) / data_std
 
     return data, data_vector, data_ind, feat_keep
 

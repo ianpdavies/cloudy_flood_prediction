@@ -367,9 +367,8 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
-            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-            perm_index = feat_list_keep.index('GSW_perm')
-            flood_index = feat_list_keep.index('flooded')
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
             data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
             training_data, validation_data = train_val(data_vector_train, holdout=HOLDOUT)
@@ -479,9 +478,8 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             print('Preprocessing')
             tf.keras.backend.clear_session()
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
-            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-            perm_index = feat_list_keep.index('GSW_perm')
-            flood_index = feat_list_keep.index('flooded')
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
             data_vector_train[
                 data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
@@ -592,9 +590,8 @@ def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             print('Preprocessing')
             tf.keras.backend.clear_session()
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing2(data_path, img, pctl, feat_list_new, gaps=False)
-            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-            perm_index = feat_list_keep.index('GSW_perm')
-            flood_index = feat_list_keep.index('flooded')
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
             data_vector_train[
                 data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
@@ -704,10 +701,9 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False, normalize=True)
-            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-            perm_index = feat_list_keep.index('GSW_perm')
-            flood_index = feat_list_keep.index('flooded')
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, gaps=False)
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
             data_vector_train[
                 data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column

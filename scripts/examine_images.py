@@ -30,7 +30,7 @@ stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
 # ======================================================================================================================
 # Get data
-data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False, normalize=True)
+data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, gaps=False)
 feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
 perm_index = feat_list_keep.index('GSW_perm')
 flood_index = feat_list_keep.index('flooded')

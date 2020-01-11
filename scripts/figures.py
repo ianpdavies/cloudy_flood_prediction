@@ -83,8 +83,7 @@ for i, gs in enumerate(gs1):
 import seaborn as sns
 import pandas as pd
 
-data_test, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False,
-                                                                        normalize=False)
+data_test, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
 
 df = pd.DataFrame(data=data_vector_train, columns=feat_list_new)
 corr_matrix = df.corr()

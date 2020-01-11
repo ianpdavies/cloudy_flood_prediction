@@ -87,8 +87,8 @@ for i, img in enumerate(img_list):
             variances = f[str(pctl)]
             variances = np.array(variances)  # Copy h5 dataset to array
 
-        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True,
-                                                                              normalize=False)
+        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+                                                                              test=True)
         var_img = np.zeros(shape)
         var_img[:] = np.nan
         rows, cols = zip(data_ind_test)
@@ -376,8 +376,8 @@ for i, img in enumerate(img_list):
             variances = f[str(pctl)]
             variances = np.array(variances)  # Copy h5 dataset to array
 
-        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True,
-                                                                              normalize=False)
+        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+                                                                              test=True)
         var_img = np.zeros(shape)
         var_img[:] = np.nan
         rows, cols = zip(data_ind_test)
