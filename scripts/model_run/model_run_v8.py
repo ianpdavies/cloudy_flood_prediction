@@ -133,7 +133,7 @@ for i, batch in enumerate(batches):
         metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd'
         plot_path = data_path / batch / 'plots' / 'nn_mcd'
     else:
-        metrics_path = data_path / batch / 'metrics' / 'training_nn'
+        metrics_path = data_path / batch / 'metrics' / 'training'
         plot_path = data_path / batch / 'plots'
 
     lr_vals_path = metrics_path / 'lr_vals'

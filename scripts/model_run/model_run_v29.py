@@ -88,7 +88,7 @@ prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, *
 
 viz = VizFuncs(viz_params)
 viz.metric_plots()
-viz.color_images()
+viz.cir_image()
 viz.time_plot()
 viz.false_map()
 viz.metric_plots_multi()

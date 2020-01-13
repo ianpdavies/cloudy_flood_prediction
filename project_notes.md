@@ -39,3 +39,4 @@ Project Notes
 4. Thin clouds vs thick clouds? At same % cover.
 
 5. Logistic regression, SVM, RF results
+ - 

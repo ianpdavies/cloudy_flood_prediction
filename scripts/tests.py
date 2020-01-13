@@ -204,7 +204,7 @@ for j, img in enumerate(img_list):
         print(img, pctl, '% CLOUD COVER')
         print('Preprocessing')
         tf.keras.backend.clear_session()
-        data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False, normalize=True)
+        data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, gaps=False)
         feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
         perm_index = feat_list_keep.index('GSW_perm')
         flood_index = feat_list_keep.index('flooded')

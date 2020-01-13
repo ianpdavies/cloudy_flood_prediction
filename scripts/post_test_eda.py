@@ -45,7 +45,7 @@ if uncertainty:
     metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd'
     plot_path = data_path / batch / 'plots' / 'nn_mcd'
 else:
-    metrics_path = data_path / batch / 'metrics' / 'training_nn'
+    metrics_path = data_path / batch / 'metrics' / 'training'
     plot_path = data_path / batch / 'plots'
 
 stack_list = [data_path / 'images' / img / 'stack' / 'stack.tif' for img in img_list]

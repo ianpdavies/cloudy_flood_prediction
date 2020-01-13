@@ -94,7 +94,7 @@ cloud_dir = data_path / 'clouds'
 
 viz = VizFuncs(viz_params)
 # viz.metric_plots()
-viz.color_images()
+viz.cir_image()
 # viz.time_plot()
 # viz.false_map()
 # viz.metric_plots_multi()
