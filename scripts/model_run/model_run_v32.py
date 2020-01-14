@@ -542,7 +542,7 @@ class VizFuncs:
                     comparison_img = np.dstack((red_actual, green_combo, blue_preds))
                     comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '_buff_' +
                                                          buffer_iter + '.png')
-                    print('Saving FN/FP image for buffer', buffer_iter, 'at', str(pctl)+'{}'.format('%'))
+                    print('Saving FN/FP image for buffer', str(buffer_iter), 'at', str(pctl)+'{}'.format('%'))
                     matplotlib.image.imsave(comparison_img_file, comparison_img, dpi=300)
 
                     # Load comparison image
@@ -561,9 +561,9 @@ class VizFuncs:
                     # Superimpose comparison image and RGB image, then save and close
                     rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
                     plt.imshow(rgb_img)
-                    print('Saving overlay image for buffer', buffer_iter, 'at', str(pctl)+'{}'.format('%'))
+                    print('Saving overlay image for buffer', str(buffer_iter), 'at', str(pctl)+'{}'.format('%'))
                     rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '_buff_' +
-                                                         buffer_iter + '.png'), dpi=(300,300))
+                                                         str(buffer_iter) + '.png'), dpi=(300,300))
                     plt.close('all')
 
     def metric_plots_multi(self):
@@ -581,6 +581,8 @@ class VizFuncs:
             pass
 
         file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
+        for file in file_list:
+            file.drop(['cloud_cover'], inplace=True, axis=1)
         df_concat = pd.concat(pd.read_csv(file) for file in file_list)
 
         # Average of metric values together in one plot
@@ -673,9 +675,9 @@ class VizFuncs:
 prediction(img_list, pctls, feat_list_new, data_path, batch, True, buffer_iters)
 
 viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.cir_image()
-viz.time_plot()
+# viz.metric_plots()
+# viz.cir_image()
+# viz.time_plot()
 viz.false_map()
 viz.metric_plots_multi()
 # viz.time_size()
