@@ -541,7 +541,7 @@ class VizFuncs:
                     # Saving FN/FP comparison image
                     comparison_img = np.dstack((red_actual, green_combo, blue_preds))
                     comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '_buff_' +
-                                                         buffer_iter + '.png')
+                                                         str(buffer_iter) + '.png')
                     print('Saving FN/FP image for buffer', str(buffer_iter), 'at', str(pctl)+'{}'.format('%'))
                     matplotlib.image.imsave(comparison_img_file, comparison_img, dpi=300)
 
