@@ -219,8 +219,8 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
                 else:
                     buffer_mask = binary_dilation(data_train[:, :, flood_index], iterations=buffer_iter)
                     data_train[data_train[:, :, perm_index] == 1, flood_index] = 0
-
                 data_train[:, :, flood_index] = data_train[:, :, flood_index] * buffer_mask
+
                 data_vector_train = data_train.reshape([data_train.shape[0] * data_train.shape[1], data_train.shape[2]])
                 data_vector_train = data_vector_train[~np.isnan(data_vector_train).any(axis=1)]
                 data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
@@ -236,7 +236,7 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
                 if not metrics_path.exists():
                     metrics_path.mkdir(parents=True)
 
-                model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + 'buff' + str(buffer_iters) + '.sav')
+                model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + 'buff' + str(buffer_iter) + '.sav')
 
                 print('Training')
                 start_time = time.time()
@@ -285,7 +285,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, bu
                 # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
                 start_time = time.time()
                 model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) +
-                                                                              'buff' + str(buffer_iters) + '.sav')
+                                                                              'buff' + str(buffer_iter) + '.sav')
                 trained_model = joblib.load(model_path)
                 preds = trained_model.predict(X_test)
 

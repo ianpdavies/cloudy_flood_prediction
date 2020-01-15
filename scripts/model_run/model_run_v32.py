@@ -236,7 +236,7 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
                 if not metrics_path.exists():
                     metrics_path.mkdir(parents=True)
 
-                model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + 'buff' + str(buffer_iters) + '.sav')
+                model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + 'buff' + str(buffer_iter) + '.sav')
 
                 print('Training')
                 start_time = time.time()
@@ -285,7 +285,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, bu
                 # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
                 start_time = time.time()
                 model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) +
-                                                                              'buff' + str(buffer_iters) + '.sav')
+                                                                              'buff' + str(buffer_iter) + '.sav')
                 trained_model = joblib.load(model_path)
                 preds = trained_model.predict(X_test)
 
