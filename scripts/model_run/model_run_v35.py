@@ -31,7 +31,7 @@ print('Python Version:', sys.version)
 # Parameters
 
 uncertainty = False  # Should be True if running with MCD
-batch = 'v33'
+batch = 'v35'
 # pctls = [10, 30, 50, 70, 90]
 pctls = [30]
 buffer_iters = [5, 10, 20, 30, 40]
@@ -221,11 +221,9 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
                 if buffer_flood_only:
                     data_train[data_train[:, :, perm_index] == 1, flood_index] = 0
                     mask = data_train[:, :, flood_index]
-                    mask[np.isnan(mask)] = 0
                     buffer_mask = np.invert(binary_dilation(mask, iterations=buffer_iter))
                 else:
                     mask = data_train[:, :, flood_index]
-                    mask[np.isnan(mask)] = 0
                     buffer_mask = np.invert(binary_dilation(mask, iterations=buffer_iter))
                     data_train[data_train[:, :, perm_index] == 1, flood_index] = 0
                 data_train[buffer_mask] = np.nan

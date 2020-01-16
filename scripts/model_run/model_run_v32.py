@@ -1,10 +1,11 @@
 # Logistic Regression
-# Training only on pixels within buffer of floods
+# Training only on pixels within buffer of all detected water (not just floods)
 
 import __init__
 import tensorflow as tf
 import sys
 import os
+import multiprocessing
 from training import training3
 from prediction import prediction
 from results_viz import VizFuncs
@@ -32,9 +33,9 @@ print('Python Version:', sys.version)
 uncertainty = False  # Should be True if running with MCD
 batch = 'v32'
 # pctls = [10, 30, 50, 70, 90]
-pctls = [50]
+pctls = [30]
 buffer_iters = [5, 10, 20, 30, 40]
-NUM_PARALLEL_EXEC_UNITS = 4
+NUM_PARALLEL_EXEC_UNITS = multiprocessing.cpu_count()
 
 try:
     (data_path / batch).mkdir()
@@ -199,6 +200,8 @@ def preprocessing_buffer(data_path, img, pctl, feat_list_new, test):
 
 from scipy.ndimage import binary_dilation
 def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, buffer_iters, buffer_flood_only):
+    from imageio import imwrite
+
     for img in img_list:
         print(img + ': stacking tif, generating clouds')
         times = []
@@ -206,21 +209,27 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
         cloud_generator(img, data_path, overwrite=False)
 
         for pctl in pctls:
+            print(img, pctl, '% CLOUD COVER and', buffer_iter, 'buffer iters')
+            print('Preprocessing')
+            data_train_full, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new,
+                                                                                     test=False)
             for buffer_iter in buffer_iters:
-                print(img, pctl, '% CLOUD COVER and', buffer_iter, 'buffer iters')
-                print('Preprocessing')
-                data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
-                                                                                         test=False)
                 perm_index = feat_keep.index('GSW_perm')
                 flood_index = feat_keep.index('flooded')
+                data_train = data_train_full.copy()
                 if buffer_flood_only:
                     data_train[data_train[:, :, perm_index] == 1, flood_index] = 0
-                    buffer_mask = binary_dilation(data_train[:, :, flood_index], iterations=buffer_iter)
+                    mask = data_train[:, :, flood_index]
+                    mask[np.isnan(mask)] = 0
+                    buffer_mask = np.invert(binary_dilation(mask, iterations=buffer_iter))
                 else:
-                    buffer_mask = binary_dilation(data_train[:, :, flood_index], iterations=buffer_iter)
+                    mask = data_train[:, :, flood_index]
+                    mask[np.isnan(mask)] = 0
+                    buffer_mask = np.invert(binary_dilation(mask, iterations=buffer_iter))
                     data_train[data_train[:, :, perm_index] == 1, flood_index] = 0
+                data_train[buffer_mask] = np.nan
 
-                data_train[:, :, flood_index] = data_train[:, :, flood_index] * buffer_mask
                 data_vector_train = data_train.reshape([data_train.shape[0] * data_train.shape[1], data_train.shape[2]])
                 data_vector_train = data_vector_train[~np.isnan(data_vector_train).any(axis=1)]
                 data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
@@ -238,9 +247,12 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
 
                 model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + 'buff' + str(buffer_iter) + '.sav')
 
+                # Save data flooding image to check that buffering is working correctly
+                # imwrite(model_path.parents[0] / '{}'.format('buff' + str(buffer_iter) + '.jpg'), data_train[:, :, 6])
+
                 print('Training')
                 start_time = time.time()
-                logreg = LogisticRegression()
+                logreg = LogisticRegression(n_jobs=-1, solver='sag')
                 logreg.fit(X_train, y_train)
                 end_time = time.time()
                 times.append(timer(start_time, end_time, False))
@@ -581,9 +593,8 @@ class VizFuncs:
             pass
 
         file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
-        for file in file_list:
-            file.drop(['cloud_cover'], inplace=True, axis=1)
         df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+        df_concat.drop(['cloud_cover'], inplace=True, axis=1)
 
         # Average of metric values together in one plot
         if len(self.pctls) > 1:
@@ -671,13 +682,13 @@ class VizFuncs:
 
 # ======================================================================================================================
 
-# log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, buffer_iters, buffer_flood_only=True)
+log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, buffer_iters, buffer_flood_only=True)
 prediction(img_list, pctls, feat_list_new, data_path, batch, True, buffer_iters)
 
 viz = VizFuncs(viz_params)
-# viz.metric_plots()
-# viz.cir_image()
-# viz.time_plot()
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
 viz.false_map()
 viz.metric_plots_multi()
-# viz.time_size()
+viz.time_size()
