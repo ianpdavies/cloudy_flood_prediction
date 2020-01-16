@@ -282,11 +282,13 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, bu
             print('Preprocessing', img, pctl, '% cloud cover')
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
                                                                                   test=True)
+            if remove_perm:
+                perm_index = feat_keep.index('GSW_perm')
+                flood_index = feat_keep.index('flooded')
+                data_vector_test[
+                    data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+
             for buffer_iter in buffer_iters:
-                if remove_perm:
-                    perm_index = feat_keep.index('GSW_perm')
-                    flood_index = feat_keep.index('flooded')
-                    data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
                 data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
                 data_shape = data_vector_test.shape
                 X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
