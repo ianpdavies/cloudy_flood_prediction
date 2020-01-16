@@ -209,7 +209,6 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
         cloud_generator(img, data_path, overwrite=False)
 
         for pctl in pctls:
-            print(img, pctl, '% CLOUD COVER and', buffer_iter, 'buffer iters')
             print('Preprocessing')
             data_train_full, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
                                                                                      feat_list_new,
