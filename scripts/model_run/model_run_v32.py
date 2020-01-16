@@ -279,10 +279,10 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, bu
             print('Metrics directory already exists')
 
         for pctl in pctls:
+            print('Preprocessing', img, pctl, '% cloud cover')
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+                                                                                  test=True)
             for buffer_iter in buffer_iters:
-                print('Preprocessing', img, pctl, '% cloud cover')
-                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
-                                                                                      test=True)
                 if remove_perm:
                     perm_index = feat_keep.index('GSW_perm')
                     flood_index = feat_keep.index('flooded')
@@ -512,6 +512,8 @@ class VizFuncs:
                 shape = ds.read(1).shape  # Shape of full original image
 
             for pctl in self.pctls:
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                      self.feat_list_new, test=True)
                 for buffer_iter in self.buffer_iters:
                     print('Fetching flood predictions for buffer', buffer_iter, 'at', str(pctl)+'{}'.format('%'))
                     # Read predictions
@@ -519,9 +521,6 @@ class VizFuncs:
                         pred_name = str(pctl) + '_buff_' + str(buffer_iter)
                         predictions = f[pred_name]
                         predictions = np.array(predictions)  # Copy h5 dataset to array
-
-                    data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                          self.feat_list_new, test=True)
 
                     # Add predicted values to cloud-covered pixel positions
                     prediction_img = np.zeros(shape)
