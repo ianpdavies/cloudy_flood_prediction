@@ -286,14 +286,12 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, bu
                 data_vector_test[
                     data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
 
-            for buffer_iter in buffer_iters:
-                data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
-                data_shape = data_vector_test.shape
-                X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            data_shape = data_vector_test.shape
+            X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
+            for buffer_iter in buffer_iters:
                 print('Predicting for {} at {}% cloud cover'.format(img, pctl))
-                # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
-                # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
                 start_time = time.time()
                 model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) +
                                                                               'buff' + str(buffer_iter) + '.sav')
@@ -320,7 +318,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, bu
                 recall.append(recall_score(y_test, preds))
                 f1.append(f1_score(y_test, preds))
 
-                del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
+            del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
 
         metrics = pd.DataFrame(np.column_stack([np.repeat(pctls, len(buffer_iters)),
                                                 np.tile(buffer_iters, len(pctls)), accuracy, precision, recall, f1]),
@@ -689,4 +687,4 @@ viz.cir_image()
 viz.time_plot()
 viz.false_map()
 viz.metric_plots_multi()
-viz.time_size()
+# viz.time_size()

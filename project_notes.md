@@ -64,8 +64,12 @@ Project Notes
         - Run the above model permutations with half of images and compare to log reg with half of images   
 7. Random cloud trials
  - According to Max (CSSS consulting) I should run 30-100 trials. Time permitting, I can do this on the QERM servers.
- 
+
+8. Uncertainty
+ - Get uncertainty estimates from logistic regression
+ - Compare these uncertainty estimates to those from the NN. 
  MAKE SURE CLOUD THRESHOLDING IS WORKING CORRECTLY AND THAT ISN'T WHY LOG REG IS DOING SO WELL!!!
+ Test remove_perm=True/False again with log reg. The log reg buffer tests 
  ------
  
 ### How to set up QERM servers

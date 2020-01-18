@@ -1,5 +1,6 @@
 # Logistic Regression in sklearn vs statsmodel
 
+import __init__
 import tensorflow as tf
 import os
 import numpy as np
@@ -89,6 +90,7 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 img = img_list[0]
 pctl = 30
 batch = 'test'
+import statsmodels.api as sm
 
 print(img + ': stacking tif, generating clouds')
 times = []
@@ -108,40 +110,56 @@ data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove p
 shape = data_vector_train.shape
 X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
 
-# Logistic regression using sklearn
-model_path = data_path / batch / 'models' / img
-if not model_path.exists():
-    model_path.mkdir(parents=True)
-model_path = model_path / '{}'.format(img + '_sklearn.sav')
-print('Training sklearn')
-start_time = time.time()
-logreg_sk = LogisticRegression(n_jobs=-1, solver='sag')
-logreg_sk.fit(X_train, y_train)
-end_time = time.time()
-print('sklearn training time:', end_time)
-times.append(timer(start_time, end_time, False))
-joblib.dump(logreg_sk, model_path)
+# # Logistic regression using sklearn
+# model_path = data_path / batch / 'models' / img
+# if not model_path.exists():
+    # model_path.mkdir(parents=True)
+# model_path = model_path / '{}'.format(img + '_sklearn.sav')
+# print('Training sklearn')
+# start_time = time.time()
+# logreg_sk = LogisticRegression(n_jobs=-1, solver='sag')
+# logreg_sk.fit(X_train, y_train)
+# end_time = time.time()
+# print('sklearn training time:', end_time)
+# times.append(timer(start_time, end_time, False))
+# joblib.dump(logreg_sk, model_path)
+
+# # Logistic regression using statsmodel
+# from tensorflow.keras.utils import to_categorical
+# y_train_cat = 1 - to_categorical(y_train)
+# model_path = data_path / batch / 'models' / img
+# if not model_path.exists():
+    # model_path.mkdir(parents=True)
+# model_path = model_path / '{}'.format(img + '_statsmodel.pickle')
+# print('Training statsmodel')
+# start_time = time.time()
+# logreg_sm = sm.GLM(y_train_cat, X_train, family=sm.families.Binomial())
+# result = logreg_sm.fit()
+# print(result.summary())
+# end_time = time.time()
+# print('statsmodel training time:', timer(start_time, end_time, False))
+# result.save(str(model_path))
 
 # Logistic regression using statsmodel
-from tensorflow.keras.utils import to_categorical
-y_train_cat = 1 - to_categorical(y_train)
-import statsmodels.api as sm
 model_path = data_path / batch / 'models' / img
 if not model_path.exists():
     model_path.mkdir(parents=True)
-model_path = model_path / '{}'.format(img + '_statsmodel.pickle')
+model_path = model_path / '{}'.format(img + '_statsmodel2.pickle')
 print('Training statsmodel')
 start_time = time.time()
-logreg_sm = sm.GLM(y_train_cat, X_train, family=sm.families.Binomial())
-result = logreg_sm.fit()
+logreg_sm = sm.Logit(y_train, X_train)
+result = logreg_sm.fit_regularized()
 print(result.summary())
 end_time = time.time()
 print('statsmodel training time:', timer(start_time, end_time, False))
 result.save(str(model_path))
 
 
+
 # Prediction
 preds_path = data_path / batch / 'predictions' / img
+if not preds_path.exists():
+    preds_path.mkdir(parents=True)
 bin_file = preds_path / 'predictions.h5'
 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
 perm_index = feat_keep.index('GSW_perm')
@@ -173,12 +191,29 @@ accuracy, precision, recall, f1 = [], [], [], []
 model_path = data_path / batch / 'models' / img
 model_path = model_path / '{}'.format(img + '_statsmodel.pickle')
 trained_model = sm.load(str(model_path))
-preds = trained_model.predict(X_test)
+preds = np.round(trained_model.predict(X_test))
 with h5py.File(bin_file, 'a') as f:
     if 'statsmodel' in f:
         print('Deleting earlier statsmodel predictions')
         del f['statsmodel']
     f.create_dataset('statsmodel', data=preds)
+accuracy.append(accuracy_score(y_test, preds))
+precision.append(precision_score(y_test, preds))
+recall.append(recall_score(y_test, preds))
+f1.append(f1_score(y_test, preds))
+statsmodel_metrics = np.column_stack([accuracy, precision, recall, f1])
+
+# Prediction statsmodel
+accuracy, precision, recall, f1 = [], [], [], []
+model_path = data_path / batch / 'models' / img
+model_path = model_path / '{}'.format(img + '_statsmodel2.pickle')
+trained_model = sm.load(str(model_path))
+preds = np.round(trained_model.predict(X_test))
+with h5py.File(bin_file, 'a') as f:
+    if 'statsmodel2' in f:
+        print('Deleting earlier statsmodel predictions')
+        del f['statsmodel2']
+    f.create_dataset('statsmodel2', data=preds)
 accuracy.append(accuracy_score(y_test, preds))
 precision.append(precision_score(y_test, preds))
 recall.append(recall_score(y_test, preds))
