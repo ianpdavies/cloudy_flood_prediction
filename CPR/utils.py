@@ -162,7 +162,7 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
         data[data == -999999] = np.nan
         data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
         data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-        train_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
+        train_std = data_vector[:, 0:data_vector.shape[1] - 2].std(0)
 
         # Getting std of test dataset
         # Remove NaNs (real clouds, ice, missing data, etc). from cloudmask
@@ -177,7 +177,7 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
         data[data == -999999] = np.nan
         data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
         data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-        test_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
+        test_std = data_vector[:, 0:data_vector.shape[1] - 2].std(0)
 
     # Now adjust feat_list_new to account for a possible removed feature because of std=0
     feat_keep = feat_list_new.copy()
@@ -227,11 +227,11 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
     # Remove NaNs
     data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
 
-    data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
-    data_std = data_vector[:, 0:shape[1] - 1].std(0)
+    data_mean = data_vector[:, 0:shape[1] - 2].mean(0)
+    data_std = data_vector[:, 0:shape[1] - 2].std(0)
 
     # Normalize data - only the non-binary variables
-    data_vector[:, 0:shape[1] - 1] = (data_vector[:, 0:shape[1] - 1] - data_mean) / data_std
+    data_vector[:, 0:shape[1] - 2] = (data_vector[:, 0:shape[1] - 2] - data_mean) / data_std
 
     return data, data_vector, data_ind, feat_keep
 
