@@ -1,23 +1,27 @@
-# Logistic Regression with perm water kept in
+# Testing removing perm water
 
-from models import get_nn_bn2 as model_func
+import __init__
 import tensorflow as tf
 import os
-from training import training3
-from prediction import prediction
-from results_viz import VizFuncs
-import numpy as np
-import pandas as pd
 import time
-import pickle
 from sklearn.linear_model import LogisticRegression
 import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-import h5py
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 import sys
+import pandas as pd
+import sys
+import rasterio
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from CPR.utils import preprocessing, tif_stacker
+from PIL import Image, ImageEnhance
+import h5py
+
 sys.path.append('../')
 from CPR.configs import data_path
+import seaborn as sns
 
 # Version numbers
 print('Tensorflow version:', tf.__version__)
@@ -28,16 +32,7 @@ print('Python Version:', sys.version)
 # Batch size = 8192
 # ==================================================================================
 # Parameters
-
-uncertainty = False  # Should be True if running with MCD
-batch = 'v36'
 pctls = [10, 30, 50, 70, 90]
-NUM_PARALLEL_EXEC_UNITS = 4
-
-try:
-    (data_path / batch).mkdir()
-except FileExistsError:
-    pass
 
 # To get list of all folders (images) in directory
 # img_list = os.listdir(data_path / 'images')
@@ -66,17 +61,12 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4514_LC08_027033_20170826_1']
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
-
-viz_params = {'img_list': img_list,
-              'pctls': pctls,
-              'data_path': data_path,
-              'uncertainty': uncertainty,
-              'batch': batch,
-              'feat_list_new': feat_list_new}
+feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation',
+                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
+                 'flooded']
 
 # Set some optimized config parameters
+NUM_PARALLEL_EXEC_UNITS = 4
 tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
 tf.config.threading.set_inter_op_parallelism_threads(2)
 tf.config.set_soft_device_placement(True)
@@ -86,10 +76,11 @@ os.environ["KMP_BLOCKTIME"] = "30"
 os.environ["KMP_SETTINGS"] = "1"
 os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
+
 # ======================================================================================================================
 
 
-def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
+def log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=None):
     for j, img in enumerate(img_list):
         print(img + ': stacking tif, generating clouds')
         times = []
@@ -100,12 +91,18 @@ def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new,
                                                                                      test=False)
             perm_index = feat_keep.index('GSW_perm')
-            # flood_index = feat_keep.index('flooded')
-            # data_vector_train[
-            #     data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            if perm is 0:
+                flood_index = feat_keep.index('flooded')
+                data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
+            if perm is 'NaN':
+                flood_index = feat_keep.index('flooded')
+                data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = np.nan
+                data_vector_train = data_vector_train[~np.isnan(data_vector_train).any(axis=1)]
+
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
@@ -136,8 +133,7 @@ def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
 
-
-def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
+def prediction(img_list, pctls, feat_list_new, data_path, batch, perm=None, metric_perm=None):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -155,16 +151,19 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
                                                                                   test=True)
             perm_index = feat_keep.index('GSW_perm')
-            flood_index = feat_keep.index('flooded')
-            if remove_perm:
-                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            if perm is 0:
+                flood_index = feat_keep.index('flooded')
+                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
+            if perm is 'NaN':
+                flood_index = feat_keep.index('flooded')
+                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = np.nan
+                data_vector_test = data_vector_test[~np.isnan(data_vector_test).any(axis=1)]
+
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
             data_shape = data_vector_test.shape
-            X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
+            X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
-            # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
-            # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
             start_time = time.time()
             model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
             trained_model = joblib.load(model_path)
@@ -184,6 +183,21 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
 
             print('Evaluating predictions')
+            if metric_perm is 'remove':  # Removes perm water from predictions for eval
+                perm_mask = data_test[:, :, perm_index]
+                perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
+                perm_mask = perm_mask[~np.isnan(perm_mask)]
+                preds[perm_mask.astype('bool')] = np.nan
+                preds = preds[~np.isnan(preds).any(axis=1)]
+                y_test[perm_mask.astype('bool')] = np.nan
+                y_test = y_test[~np.isnan(y_test).any(axis=1)]
+            if metric_perm is 0:
+                perm_mask = data_test[:, :, perm_index]
+                perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
+                perm_mask = perm_mask[~np.isnan(perm_mask)]
+                preds[perm_mask.astype('bool')] = 0
+                y_test[perm_mask.astype('bool')] = 0
+
             accuracy.append(accuracy_score(y_test, preds))
             precision.append(precision_score(y_test, preds))
             recall.append(recall_score(y_test, preds))
@@ -200,28 +214,12 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
 
 
-import pandas as pd
-import sys
-import rasterio
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from CPR.utils import preprocessing, tif_stacker
-from PIL import Image, ImageEnhance
-import h5py
-sys.path.append('../')
-from CPR.configs import data_path
-import seaborn as sns
-# ==================================================================================
-
-
 class VizFuncs:
 
     def __init__(self, atts):
         self.img_list = None
         self.pctls = None
         self.data_path = None
-        self.uncertainty = False
         self.batch = None
         self.feat_list_new = None
         for k, v in atts.items():
@@ -245,16 +243,14 @@ class VizFuncs:
             metrics = pd.read_csv(metrics_path / 'metrics.csv')
             if len(self.pctls) > 1:
                 metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
-                                                   ylim=(0, 1))
+                                            ylim=(0, 1))
             else:
                 metrics_plot = sns.scatterplot(data=pd.melt(metrics, id_vars='cloud_cover'), x='cloud_cover', y='value',
-                                     hue='variable')
+                                               hue='variable')
                 metrics_plot.set(ylim=(0, 1))
 
             metrics_fig = metrics_plot.get_figure()
             metrics_fig.savefig(plot_path / 'metrics_plot.png', dpi=300)
-
-
 
             plt.close('all')
 
@@ -329,7 +325,7 @@ class VizFuncs:
             cir_file = plot_path / '{}'.format('cir_img' + '.png')
             cir_img.save(cir_file, dpi=(300, 300))
 
-    def false_map(self):
+    def false_map(self, perm=None):
         """
         Creates map of FP/FNs overlaid on RGB image
         """
@@ -380,7 +376,7 @@ class VizFuncs:
                 shape = ds.read(1).shape  # Shape of full original image
 
             for j, pctl in enumerate(self.pctls):
-                print('Fetching flood predictions for', str(pctl)+'{}'.format('%'))
+                print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
                 # Read predictions
                 with h5py.File(bin_file, 'r') as f:
                     predictions = f[str(pctl)]
@@ -395,19 +391,24 @@ class VizFuncs:
                 rows, cols = zip(data_ind_test)
                 prediction_img[rows, cols] = predictions
 
-                # Remove perm water from predictions and actual
-                perm_index = feat_keep.index('GSW_perm')
-                flood_index = feat_keep.index('flooded')
-                # data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
-                data_shape = data_vector_test.shape
-                with rasterio.open(stack_path, 'r') as ds:
-                    perm_feat = ds.read(perm_index+1)
-                    prediction_img[perm_feat == 1] = 0
-
                 # Add actual flood values to cloud-covered pixel positions
+                data_shape = data_vector_test.shape
                 flooded_img = np.zeros(shape)
                 flooded_img[:] = np.nan
                 flooded_img[rows, cols] = data_vector_test[:, data_shape[1] - 1]
+
+                perm_index = feat_keep.index('GSW_perm')
+                flood_index = feat_keep.index('flooded')
+                if perm is 'NaN':
+                    with rasterio.open(stack_path, 'r') as ds:
+                        perm_mask = ds.read(perm_index + 1)
+                        prediction_img[perm_mask == 1] = np.nan
+                        flooded_img[perm_mask == 1] = np.nan
+                if perm is 0:
+                    with rasterio.open(stack_path, 'r') as ds:
+                        perm_mask = ds.read(perm_index + 1)
+                        prediction_img[perm_mask == 1] = 0
+                        flooded_img[perm_mask == 1] = 0
 
                 # Visualizing FNs/FPs
                 ones = np.ones(shape=shape)
@@ -438,7 +439,7 @@ class VizFuncs:
                 rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
                 plt.imshow(rgb_img)
                 print('Saving overlay image for', str(pctl) + '{}'.format('%'))
-                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300,300))
+                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300, 300))
                 plt.close('all')
 
     def metric_plots_multi(self):
@@ -463,9 +464,9 @@ class VizFuncs:
             mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
         else:
             mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').mean().reset_index(),
-                                                        id_vars='cloud_cover'),
-                                           x='cloud_cover', y='value',
-                                           hue='variable')
+                                                     id_vars='cloud_cover'),
+                                        x='cloud_cover', y='value',
+                                        hue='variable')
             mean_plot.set(ylim=(0, 1))
 
         metrics_fig = mean_plot.get_figure()
@@ -532,16 +533,104 @@ class VizFuncs:
 
 # ======================================================================================================================
 
-log_reg_training(img_list, pctls, feat_list_new, data_path, batch)
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
-
+# Train: all water
+# Predict: all water
+# Metrics: all water
+batch = 'v37'
+print('NOW CREATING BATCH', batch)
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+viz_params = {'img_list': img_list,
+              'pctls': pctls,
+              'data_path': data_path,
+              'batch': batch,
+              'feat_list_new': feat_list_new}
+log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=None)
+prediction(img_list, pctls, feat_list_new, data_path, batch, perm=None, metric_perm=None)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.cir_image()
 viz.time_plot()
-viz.false_map()
+viz.false_map(perm=None)
 viz.metric_plots_multi()
-# viz.time_size()
 
+# Train: only flood
+# Predict: only flood
+# Metrics: only flood
+batch = 'v38'
+print('NOW CREATING BATCH', batch)
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+viz_params['batch'] = batch
+log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=0)
+prediction(img_list, pctls, feat_list_new, data_path, batch, perm=0, metric_perm=0)
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(perm=0)
+viz.metric_plots_multi()
+
+# Train: all water
+# Predict: perm = all water
+# Metrics: perm = NaN/remove
+batch = 'v39'
+print('NOW CREATING BATCH', batch)
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+viz_params['batch'] = batch
+log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=None)
+prediction(img_list, pctls, feat_list_new, data_path, batch, perm=None, metric_perm='NaN')
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(perm='NaN')
+viz.metric_plots_multi()
+
+
+# Train: only flood
+# Predict: perm = only flood
+# Metrics: perm = NaN/remove
+batch = 'v40'
+print('NOW CREATING BATCH', batch)
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+viz_params['batch'] = batch
+log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=0)
+prediction(img_list, pctls, feat_list_new, data_path, batch, perm=0, metric_perm='NaN')
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(perm='NaN')
+viz.metric_plots_multi()
+
+# Train: NaN/remove
+# Predict: perm = NaN/remove
+# Metrics: perm = NaN/remove
+batch = 'v41'
+print('NOW CREATING BATCH', batch)
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+viz_params['batch'] = batch
+log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm='NaN')
+prediction(img_list, pctls, feat_list_new, data_path, batch, perm='NaN', metric_perm='NaN')
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(perm='NaN')
+viz.metric_plots_multi()
 
 
