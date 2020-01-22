@@ -1,8 +1,10 @@
 # Random Forest
 
+import __init__
 from models import get_nn_bn2 as model_func
 import tensorflow as tf
 import os
+import sys
 from training import training3
 from prediction import prediction
 from results_viz import VizFuncs
@@ -15,8 +17,6 @@ import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import h5py
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
-import sys
-sys.path.append('../')
 from CPR.configs import data_path
 
 # Version numbers
@@ -66,8 +66,8 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4514_LC08_027033_20170826_1']
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
+feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
@@ -202,40 +202,8 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
 
 # ======================================================================================================================
 
-img_list = ['4444_LC08_044033_20170222_4',
-            '4444_LC08_044034_20170222_1',
-            '4444_LC08_045032_20170301_1',
-            '4468_LC08_022035_20170503_1',
-            '4468_LC08_024036_20170501_1',
-            '4468_LC08_024036_20170501_2',
-            '4469_LC08_015035_20170502_1',
-            '4469_LC08_015036_20170502_1',
-            '4477_LC08_022033_20170519_1',
-            '4514_LC08_027033_20170826_1']
-
 rf_training(img_list, pctls, feat_list_new, data_path, batch)
-img_list = ['4444_LC08_044033_20170222_2',
-            '4101_LC08_027038_20131103_1',
-            '4101_LC08_027038_20131103_2',
-            '4101_LC08_027039_20131103_1',
-            '4115_LC08_021033_20131227_1',
-            '4115_LC08_021033_20131227_2',
-            '4337_LC08_026038_20160325_1',
-            '4444_LC08_043034_20170303_1',
-            '4444_LC08_043035_20170303_1',
-            '4444_LC08_044032_20170222_1',
-            '4444_LC08_044033_20170222_1',
-            '4444_LC08_044033_20170222_3',
-            '4444_LC08_044033_20170222_4',
-            '4444_LC08_044034_20170222_1',
-            '4444_LC08_045032_20170301_1',
-            '4468_LC08_022035_20170503_1',
-            '4468_LC08_024036_20170501_1',
-            '4468_LC08_024036_20170501_2',
-            '4469_LC08_015035_20170502_1',
-            '4469_LC08_015036_20170502_1',
-            '4477_LC08_022033_20170519_1',
-            '4514_LC08_027033_20170826_1']
+
 prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
 
 viz_params = {'img_list': img_list,
@@ -252,4 +220,3 @@ viz.time_plot()
 viz.false_map()
 viz.metric_plots_multi()
 # viz.time_size()
-

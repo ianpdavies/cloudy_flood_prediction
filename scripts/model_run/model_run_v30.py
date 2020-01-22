@@ -65,11 +65,9 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4477_LC08_022033_20170519_1',
             '4514_LC08_027033_20170826_1']
 
-img_list = ['4514_LC08_027033_20170826_1']
-
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
+feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
@@ -167,7 +165,8 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             start_time = time.time()
             model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
             trained_model = joblib.load(model_path)
-            preds = trained_model.predict(X_test)
+            pred_probs = trained_model.predict_proba(X_test)
+            preds = np.argmax(pred_probs, axis=1)
 
             try:
                 preds_path.mkdir(parents=True)
@@ -178,7 +177,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
                 if str(pctl) in f:
                     print('Deleting earlier mean predictions')
                     del f[str(pctl)]
-                f.create_dataset(str(pctl), data=preds)
+                f.create_dataset(str(pctl), data=pred_probs)
 
             times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
 
@@ -188,7 +187,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
 
-            del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
+            del preds, pred_probs, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
 
         metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
                                columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
@@ -207,5 +206,5 @@ viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.cir_image()
 viz.time_plot()
-viz.false_map()
+viz.false_map(probs=True)
 viz.metric_plots_multi()
