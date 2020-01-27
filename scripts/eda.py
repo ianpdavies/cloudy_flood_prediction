@@ -144,3 +144,52 @@ for i in range(0, data_vectors.shape[1], 1):
 
 cor_arr = np.round(cor_arr, 3).reshape([data_vectors.shape[1], data_vectors.shape[1]])
 np.save(data_path / 'images' / 'corr_matrix_permremoved.npy', cor_arr)
+
+# Visualizing correlation matrices
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+
+col_names = ['Extnt', 'Dst', 'Asp', 'Crve', 'Dev', 'Elev', 'For', 'HAND', 'Othr', 'Crop', 'Slpe', 'SPI', 'TWI',
+             'Wtlnd', 'Perm', 'Flood']
+
+plt.figure()
+cor_arr = np.load(data_path / 'images' / 'corr_matrix.npy')
+cor_df = pd.DataFrame(data=cor_arr, columns=col_names)
+cmap = sns.diverging_palette(220, 10, as_cmap=True)
+mask = np.zeros_like(cor_arr, dtype=np.bool)
+mask[np.triu_indices_from(mask, k=1)] = True
+g = sns.heatmap(cor_df, mask=mask, cmap=cmap, vmax=1, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5},
+                xticklabels=col_names, yticklabels=col_names)
+g.set_yticklabels(g.get_yticklabels(), rotation=0, fontsize=8)
+bottom, top = g.get_ylim()
+g.set_ylim(bottom + 0.5, top - 0.5)
+
+plt.figure()
+cor_arr = np.load(data_path / 'images' / 'corr_matrix_permzero.npy')
+cor_df = pd.DataFrame(data=cor_arr, columns=col_names)
+cmap = sns.diverging_palette(220, 10, as_cmap=True)
+mask = np.zeros_like(cor_arr, dtype=np.bool)
+mask[np.triu_indices_from(mask, k=1)] = True
+g = sns.heatmap(cor_df, mask=mask, cmap=cmap, vmax=1, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5},
+                xticklabels=col_names, yticklabels=col_names)
+g.set_yticklabels(g.get_yticklabels(), rotation=0, fontsize=8)
+bottom, top = g.get_ylim()
+g.set_ylim(bottom + 0.5, top - 0.5)
+
+plt.figure()
+cor_arr = np.load(data_path / 'images' / 'corr_matrix_permremoved.npy')
+cor_df = pd.DataFrame(data=cor_arr, columns=col_names)
+cmap = sns.diverging_palette(220, 10, as_cmap=True)
+mask = np.zeros_like(cor_arr, dtype=np.bool)
+mask[np.triu_indices_from(mask, k=1)] = True
+g = sns.heatmap(cor_df, mask=mask, cmap=cmap, vmax=1, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5},
+                xticklabels=col_names, yticklabels=col_names)
+g.set_yticklabels(g.get_yticklabels(), rotation=0, fontsize=8)
+bottom, top = g.get_ylim()
+g.set_ylim(bottom + 0.5, top - 0.5)
