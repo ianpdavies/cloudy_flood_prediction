@@ -13,8 +13,8 @@ import numpy as np
 img = '4514_LC08_027033_20170826_1'
 batch = 'v2'
 pctl = 50
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'GSW_perm', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'flooded']
+feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
@@ -106,3 +106,36 @@ heatmap = sns.heatmap(corr_matrix,
 ax.set_yticklabels(corr_matrix.columns, rotation=0)
 ax.set_xticklabels(corr_matrix.columns)
 sns.set_style({'xtick.bottom': True}, {'ytick.left': True})
+
+# ======================================================================================================================
+def highlight_plot():
+    print('Making highlight plots')
+    plt.ioff()
+    metrics_path = data_path / batch / 'metrics' / 'testing'
+    plot_path = data_path / batch / 'plots'
+    try:
+        plot_path.mkdir(parents=True)
+    except FileExistsError:
+        pass
+
+    colors = sns.color_palette("colorblind", 4)
+
+    metrics = ['accuracy', 'recall', 'precision', 'f1']
+    file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
+    df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+    mean_metrics = df_concat.groupby('cloud_cover').mean().reset_index()
+
+    for i, metric in enumerate(metrics):
+        plt.figure(figsize=(7, 5), dpi=300)
+        for file in file_list:
+            metrics = pd.read_csv(file)
+            plt.plot(metrics['cloud_cover'], metrics[metric], color=colors[i], linewidth=1, alpha=0.3)
+        plt.plot(mean_metrics['cloud_cover'], mean_metrics[metric], color=colors[i], linewidth=3, alpha=0.9)
+        plt.ylim(0, 1)
+        plt.xlabel('Cloud Cover', fontsize=13)
+        plt.ylabel(metric.capitalize(), fontsize=13)
+        plt.savefig(plot_path / '{}'.format(metric + '_highlight.png'))
+
+highlight_plot()
+
+
