@@ -127,9 +127,11 @@ class VizFuncs:
             cir_file = plot_path / '{}'.format('cir_img' + '.png')
             cir_img.save(cir_file, dpi=(300, 300))
 
-    def false_map(self):
+    def false_map(self, probs, save=True):
         """
         Creates map of FP/FNs overlaid on RGB image
+        save : bool
+        If true, saves RGB FP/FN overlay image. If false, just saves FP/FN overlay
         """
         plt.ioff()
         data_path = self.data_path
@@ -181,8 +183,13 @@ class VizFuncs:
                 print('Fetching flood predictions for', str(pctl)+'{}'.format('%'))
                 # Read predictions
                 with h5py.File(bin_file, 'r') as f:
-                    predictions = f[str(pctl)]
-                    predictions = np.array(predictions)  # Copy h5 dataset to array
+                    if probs:
+                        prediction_probs = f[str(pctl)]
+                        prediction_probs = np.array(prediction_probs)  # Copy h5 dataset to array
+                        predictions = np.argmax(prediction_probs, axis=1)
+                    else:
+                        predictions = f[str(pctl)]
+                        predictions = np.array(predictions)  # Copy h5 dataset to array
 
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
                                                                                       self.feat_list_new, test=True)
@@ -212,32 +219,184 @@ class VizFuncs:
                 red_actual = np.where(ones, flooded_img, 0.5)  # Actual
                 blue_preds = np.where(ones, prediction_img, 0.5)  # Predictions
                 green_combo = np.minimum(red_actual, blue_preds)
+                alphas = np.ones(shape) * 255
 
-                # Saving FN/FP comparison image
-                comparison_img = np.dstack((red_actual, green_combo, blue_preds))
-                comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
-                print('Saving FN/FP image for', str(pctl) + '{}'.format('%'))
-                matplotlib.image.imsave(comparison_img_file, comparison_img, dpi=300)
-
-                # Load comparison image
-                flood_overlay = Image.open(comparison_img_file)
-
-                # Convert black pixels to transparent in comparison image so it can overlay RGB
-                datas = flood_overlay.getdata()
-                newData = []
-                for item in datas:
-                    if item[0] == 0 and item[1] == 0 and item[2] == 0:
-                        newData.append((255, 255, 255, 0))
-                    else:
-                        newData.append(item)
-                flood_overlay.putdata(newData)
+                # Convert black pixels to transparent in fpfn image so it can overlay RGB
+                fpfn_img = np.dstack((red_actual, green_combo, blue_preds, alphas))
+                fpfn_overlay_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
+                indices = np.where(
+                    (fpfn_img[:, :, 0] == 0) & (fpfn_img[:, :, 1] == 0) & (fpfn_img[:, :, 2] == 0) & (
+                                fpfn_img[:, :, 3] == 255))
+                fpfn_img[indices] = 0
+                fpfn_overlay = Image.fromarray(fpfn_img, mode='RGBA')
+                fpfn_overlay.save(fpfn_overlay_file, dpi=(300, 300))
 
                 # Superimpose comparison image and RGB image, then save and close
-                rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
-                plt.imshow(rgb_img)
-                print('Saving overlay image for', str(pctl) + '{}'.format('%'))
-                rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300,300))
+                if save:
+                    rgb_img.paste(fpfn_overlay, (0, 0), fpfn_overlay)
+                    print('Saving overlay image for', str(pctl) + '{}'.format('%'))
+                    rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300,300))
                 plt.close('all')
+
+    def false_map_borders(self, cir=False):
+        """
+        Creates map of FP/FNs overlaid on RGB image with cloud borders
+        cir : bool
+        If true, adds FP/FN overlay to CR
+        """
+        plt.ioff()
+        for img in self.img_list:
+            img_path = data_path / 'images' / img
+            stack_path = img_path / 'stack' / 'stack.tif'
+            plot_path = data_path / self.batch / 'plots' / img
+
+            with rasterio.open(str(stack_path), 'r') as ds:
+                data = ds.read()
+                data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+                data[data == -999999] = np.nan
+                data[np.isneginf(data)] = np.nan
+
+            # Get flooded image (remove perm water) --------------------------------------
+            flood_index = self.feat_list_new.index('flooded')
+            perm_index = self.feat_list_new.index('GSW_perm')
+            indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] == 1))
+            rows, cols = zip(indices)
+            true_flood = data[:, :, flood_index]
+            true_flood[rows, cols] = 0
+            # Now convert to a gray color image
+            true_flood_rgb = np.zeros((true_flood.shape[0], true_flood.shape[1], 4), 'uint8')
+            true_flood_rgb[:, :, 0] = true_flood * 174
+            true_flood_rgb[:, :, 1] = true_flood * 236
+            true_flood_rgb[:, :, 2] = true_flood * 238
+            true_flood_rgb[:, :, 3] = true_flood * 255
+            # Make non-flood pixels transparent
+            indices = np.where((true_flood_rgb[:, :, 0] == 0) & (true_flood_rgb[:, :, 1] == 0) &
+                               (true_flood_rgb[:, :, 2] == 0) & (true_flood_rgb[:, :, 3] == 0))
+            true_flood_rgb[indices] = 0
+            true_flood_rgb = Image.fromarray(true_flood_rgb, mode='RGBA')
+
+            for pctl in self.pctls:
+                # Get RGB image --------------------------------------
+                rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
+                rgb_img = Image.open(rgb_file)
+
+                # Get FP/FN image --------------------------------------
+                comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
+                flood_overlay = Image.open(comparison_img_file)
+                flood_overlay_arr = np.array(flood_overlay)
+                indices = np.where((flood_overlay_arr[:, :, 0] == 0) & (flood_overlay_arr[:, :, 1] == 0) &
+                                   (flood_overlay_arr[:, :, 2] == 0) & (flood_overlay_arr[:, :, 3] == 255))
+                flood_overlay_arr[indices] = 0
+                flood_overlay = Image.fromarray(flood_overlay_arr, mode='RGBA')
+
+                # Create cloud border image --------------------------------------
+                clouds_dir = data_path / 'clouds'
+                clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+                clouds[np.isnan(data[:, :, 0])] = np.nan
+                cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+
+                from scipy.ndimage import binary_dilation, binary_erosion
+                cloudmask_binary = cloudmask.astype('int')
+                cloudmask_border = binary_dilation(cloudmask_binary, iterations=3)
+                cloudmask_border = (cloudmask_border - cloudmask_binary)
+                # Convert border to yellow
+                border = np.zeros((cloudmask_border.shape[0], cloudmask_border.shape[1], 4), 'uint8')
+                border[:, :, 0] = cloudmask_border * 255
+                border[:, :, 1] = cloudmask_border * 255
+                border[:, :, 2] = cloudmask_border * 0
+                border[:, :, 3] = cloudmask_border * 255
+                # Make non-border pixels transparent
+                indices = np.where((border[:, :, 0] == 0) & (border[:, :, 1] == 0) &
+                                   (border[:, :, 2] == 0) & (border[:, :, 3] == 0))
+                border[indices] = 0
+                border_rgb = Image.fromarray(border, mode='RGBA')
+
+                # Plot all layers together --------------------------------------e
+                rgb_img.paste(true_flood_rgb, (0, 0), true_flood_rgb)
+                rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
+                rgb_img.paste(border_rgb, (0, 0), border_rgb)
+                rgb_img.save(plot_path / '{}'.format('false_map_border' + str(pctl) + '.png'), dpi=(300, 300))
+
+    def false_map_borders_cir(self):
+        """
+        Creates map of FP/FNs overlaid on CIR image with cloud borders
+        """
+        plt.ioff()
+        for img in self.img_list:
+            img_path = data_path / 'images' / img
+            stack_path = img_path / 'stack' / 'stack.tif'
+            plot_path = data_path / self.batch / 'plots' / img
+
+            with rasterio.open(str(stack_path), 'r') as ds:
+                data = ds.read()
+                data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+                data[data == -999999] = np.nan
+                data[np.isneginf(data)] = np.nan
+
+            # Get flooded image (remove perm water)
+            flood_index = self.feat_list_new.index('flooded')
+            perm_index = self.feat_list_new.index('GSW_perm')
+            indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] == 1))
+            rows, cols = zip(indices)
+            true_flood = data[:, :, flood_index]
+            true_flood[rows, cols] = 0
+            # Now convert to a gray color image
+            true_flood_rgb = np.zeros((true_flood.shape[0], true_flood.shape[1], 4), 'uint8')
+            true_flood_rgb[:, :, 0] = true_flood * 174
+            true_flood_rgb[:, :, 1] = true_flood * 236
+            true_flood_rgb[:, :, 2] = true_flood * 238
+            true_flood_rgb[:, :, 3] = true_flood * 255
+            # Make non-flood pixels transparent
+            indices = np.where((true_flood_rgb[:, :, 0] == 0) & (true_flood_rgb[:, :, 1] == 0) &
+                               (true_flood_rgb[:, :, 2] == 0) & (true_flood_rgb[:, :, 3] == 0))
+            true_flood_rgb[indices] = 0
+            true_flood_rgb = Image.fromarray(true_flood_rgb, mode='RGBA')
+
+            for pctl in self.pctls:
+                # Get CIR image
+                cir_file = plot_path / '{}'.format('cir_img' + '.png')
+                cir_img = Image.open(cir_file)
+
+                # Get FP/FN image
+                comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
+                flood_overlay = Image.open(comparison_img_file)
+                flood_overlay_arr = np.array(flood_overlay)
+                indices = np.where((flood_overlay_arr[:, :, 0] == 0) & (flood_overlay_arr[:, :, 1] == 0) &
+                                   (flood_overlay_arr[:, :, 2] == 0) & (flood_overlay_arr[:, :, 3] == 255))
+                flood_overlay_arr[indices] = 0
+                # Change red to lime green
+                red_indices = np.where((flood_overlay_arr[:, :, 0] == 255) & (flood_overlay_arr[:, :, 1] == 0) &
+                                       (flood_overlay_arr[:, :, 2] == 0) & (flood_overlay_arr[:, :, 3] == 255))
+                flood_overlay_arr[red_indices] = [0, 255, 64, 255]
+                flood_overlay = Image.fromarray(flood_overlay_arr, mode='RGBA')
+
+                # Create cloud border image
+                clouds_dir = data_path / 'clouds'
+                clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+                clouds[np.isnan(data[:, :, 0])] = np.nan
+                cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+
+                from scipy.ndimage import binary_dilation, binary_erosion
+                cloudmask_binary = cloudmask.astype('int')
+                cloudmask_border = binary_dilation(cloudmask_binary, iterations=3)
+                cloudmask_border = (cloudmask_border - cloudmask_binary)
+                # Convert border to yellow
+                border = np.zeros((cloudmask_border.shape[0], cloudmask_border.shape[1], 4), 'uint8')
+                border[:, :, 0] = cloudmask_border * 255
+                border[:, :, 1] = cloudmask_border * 255
+                border[:, :, 2] = cloudmask_border * 0
+                border[:, :, 3] = cloudmask_border * 255
+                # Make non-border pixels transparent
+                indices = np.where((border[:, :, 0] == 0) & (border[:, :, 1] == 0) &
+                                   (border[:, :, 2] == 0) & (border[:, :, 3] == 0))
+                border[indices] = 0
+                border_rgb = Image.fromarray(border, mode='RGBA')
+
+                # Plot all layers together
+                cir_img.paste(true_flood_rgb, (0, 0), true_flood_rgb)
+                cir_img.paste(flood_overlay, (0, 0), flood_overlay)
+                cir_img.paste(border_rgb, (0, 0), border_rgb)
+                cir_img.save(plot_path / '{}'.format('false_map_border_cir' + str(pctl) + '.png'), dpi=(300, 300))
 
     def metric_plots_multi(self):
         """
@@ -258,38 +417,53 @@ class VizFuncs:
 
         # Average of metric values together in one plot
         if len(self.pctls) > 1:
-            mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
+            mean_plot = df_concat.groupby('cloud_cover').median().plot(ylim=(0, 1))
         else:
-            mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').mean().reset_index(),
+            mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').median().reset_index(),
                                                         id_vars='cloud_cover'),
                                            x='cloud_cover', y='value',
                                            hue='variable')
             mean_plot.set(ylim=(0, 1))
 
         metrics_fig = mean_plot.get_figure()
-        metrics_fig.savefig(plot_path / 'mean_metrics.png', dpi=300)
+        metrics_fig.savefig(plot_path / 'median_metrics.png', dpi=300)
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
+        colors = sns.color_palette("colorblind", 4)
         for j, val in enumerate(df_concat.columns):
             name = val + 's.png'
-            all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
+            all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1), color=colors[j], alpha=0.3)
             all_metric_fig = all_metric.get_figure()
             all_metric_fig.savefig(plot_path / name, dpi=300)
 
-        # file_list_np = [metrics_path / img / 'metrics_np.csv' for img in self.img_list]
-        # df_concat_np = pd.concat(pd.read_csv(file) for file in file_list_np)
-        # # Average of metric values together in one plot
-        # mean_plot_np = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
-        # mean_plot_np_fig = mean_plot_np.get_figure()
-        # mean_plot_np_fig.savefig(plot_path / 'mean_metrics_np.png')
-
-        # for j, val in enumerate(df_concat_np.columns):
-        #     name = val + 's_np.png'
-        #     all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1))
-        #     all_metric_fig = all_metric.get_figure()
-        #     all_metric_fig.savefig(plot_path / name)
-
         plt.close('all')
+
+    def median_highlight(self):
+        plt.ioff()
+        metrics_path = data_path / self.batch / 'metrics' / 'testing'
+        plot_path = data_path / self.batch / 'plots'
+        try:
+            plot_path.mkdir(parents=True)
+        except FileExistsError:
+            pass
+
+        colors = sns.color_palette("colorblind", 4)
+
+        metrics = ['accuracy', 'recall', 'precision', 'f1']
+        file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
+        df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+        median_metrics = df_concat.groupby('cloud_cover').median().reset_index()
+
+        for i, metric in enumerate(metrics):
+            plt.figure(figsize=(7, 5), dpi=300)
+            for file in file_list:
+                metrics = pd.read_csv(file)
+                plt.plot(metrics['cloud_cover'], metrics[metric], color=colors[i], linewidth=1, alpha=0.3)
+            plt.plot(median_metrics['cloud_cover'], median_metrics[metric], color=colors[i], linewidth=3, alpha=0.9)
+            plt.ylim(0, 1)
+            plt.xlabel('Cloud Cover', fontsize=13)
+            plt.ylabel(metric.capitalize(), fontsize=13)
+            plt.savefig(plot_path / '{}'.format(metric + '_highlight.png'))
 
     def time_size(self):
         """
@@ -339,7 +513,6 @@ class VizFuncs:
         pixel_times_fig.savefig(plot_path / 'size_times.png', dpi=300)
 
         plt.close('all')
-
 
 # # # Create histogram of pixel values
 # # from rasterio.plot import show_hist
