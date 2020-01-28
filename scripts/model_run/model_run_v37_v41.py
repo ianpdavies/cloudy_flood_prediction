@@ -183,7 +183,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, perm=None, metr
             times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
 
             print('Evaluating predictions')
-            if metric_perm is 'remove':  # Removes perm water from predictions for eval
+            if metric_perm is 'NaN':  # Removes perm water from predictions for eval
                 perm_mask = data_test[:, :, perm_index]
                 perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
                 perm_mask = perm_mask[~np.isnan(perm_mask)]
@@ -329,6 +329,10 @@ class VizFuncs:
         """
         Creates map of FP/FNs overlaid on RGB image
         """
+        valid = {None, 0, 'NaN'}
+        if perm not in valid:
+            raise ValueError("Perm must be one of %r." % valid)
+
         plt.ioff()
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
@@ -397,8 +401,8 @@ class VizFuncs:
                 flooded_img[:] = np.nan
                 flooded_img[rows, cols] = data_vector_test[:, data_shape[1] - 1]
 
-                perm_index = feat_keep.index('GSW_perm')
-                flood_index = feat_keep.index('flooded')
+                perm_index = self.feat_list_new.index('GSW_perm')
+                flood_index = self.feat_list_new.index('flooded')
                 if perm is 'NaN':
                     with rasterio.open(stack_path, 'r') as ds:
                         perm_mask = ds.read(perm_index + 1)
@@ -543,10 +547,10 @@ try:
 except FileExistsError:
     pass
 viz_params = {'img_list': img_list,
-              'pctls': pctls,
-              'data_path': data_path,
-              'batch': batch,
-              'feat_list_new': feat_list_new}
+'pctls': pctls,
+'data_path': data_path,
+'batch': batch,
+'feat_list_new': feat_list_new}
 log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=None)
 prediction(img_list, pctls, feat_list_new, data_path, batch, perm=None, metric_perm=None)
 viz = VizFuncs(viz_params)
@@ -565,7 +569,11 @@ try:
     (data_path / batch).mkdir()
 except FileExistsError:
     pass
-viz_params['batch'] = batch
+viz_params = {'img_list': img_list,
+'pctls': pctls,
+'data_path': data_path,
+'batch': batch,
+'feat_list_new': feat_list_new}
 log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=0)
 prediction(img_list, pctls, feat_list_new, data_path, batch, perm=0, metric_perm=0)
 viz = VizFuncs(viz_params)
@@ -584,7 +592,11 @@ try:
     (data_path / batch).mkdir()
 except FileExistsError:
     pass
-viz_params['batch'] = batch
+viz_params = {'img_list': img_list,
+              'pctls': pctls,
+              'data_path': data_path,
+              'batch': batch,
+              'feat_list_new': feat_list_new}
 log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=None)
 prediction(img_list, pctls, feat_list_new, data_path, batch, perm=None, metric_perm='NaN')
 viz = VizFuncs(viz_params)
@@ -593,7 +605,6 @@ viz.cir_image()
 viz.time_plot()
 viz.false_map(perm='NaN')
 viz.metric_plots_multi()
-
 
 # Train: only flood
 # Predict: perm = only flood
@@ -604,7 +615,11 @@ try:
     (data_path / batch).mkdir()
 except FileExistsError:
     pass
-viz_params['batch'] = batch
+viz_params = {'img_list': img_list,
+'pctls': pctls,
+'data_path': data_path,
+'batch': batch,
+'feat_list_new': feat_list_new}
 log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm=0)
 prediction(img_list, pctls, feat_list_new, data_path, batch, perm=0, metric_perm='NaN')
 viz = VizFuncs(viz_params)
@@ -623,7 +638,11 @@ try:
     (data_path / batch).mkdir()
 except FileExistsError:
     pass
-viz_params['batch'] = batch
+viz_params = {'img_list': img_list,
+'pctls': pctls,
+'data_path': data_path,
+'batch': batch,
+'feat_list_new': feat_list_new}
 log_reg_training(img_list, pctls, feat_list_new, data_path, batch, perm='NaN')
 prediction(img_list, pctls, feat_list_new, data_path, batch, perm='NaN', metric_perm='NaN')
 viz = VizFuncs(viz_params)
