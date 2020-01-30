@@ -80,7 +80,6 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
     # The take this re-ordered row as a list - the new file_list
     file_list = list(file_arr.iloc[0, :])
 
-    print(file_list)
     # Read metadata of first file.
     # This needs to be a band in float32 dtype, because it sets the metadata for the entire stack
     # and we are converting the other bands to float64
@@ -498,4 +497,34 @@ def timer(start,end, formatted = True):
         return str(minutes)
 
 
-
+# Add TFW to stack directory and create geotiff with nodata tags
+# import zipfile
+# from osgeo import gdal
+#
+# img_list = ['4101_LC08_027038_20131103_1']
+#
+# for img in img_list:
+#     img_path = data_path / 'images' / img
+#     stack_path = img_path / 'stack' / 'stack.tif'
+#     img_file = img_path / img
+#     with zipfile.ZipFile(str(img_file.with_suffix('.zip')), 'r') as f:
+#         tfw_old = f.read('{}'.format(img + '.aspect.tfw'))
+#         tfw_new = open(str(stack_path.parent / 'stack.tfw'), 'wb')
+#         tfw_new.write(tfw_old)
+#         tfw_new.close()
+#         src_ds = gdal.Open(str(stack_path))
+#         print(src_ds.GetGeoTransform())
+#         dst_filename = str(stack_path.parent / 'stack_gtiff.tif')
+#         driver_format = 'GTiff'
+#         driver = gdal.GetDriverByName(driver_format)
+#         dst_ds = driver.CreateCopy(dst_filename, src_ds, 0)
+#         dst_ds = None
+#         src_ds = None
+#
+#     dst_filename2 = str(stack_path.parent / 'stack_gtiff2.tif')
+#     with rasterio.open(dst_filename, 'r') as src_ds:
+#         tags = src_ds.tags()
+#         with rasterio.open(dst_filename2, 'w', **src_ds.meta) as dst_ds:
+#             tags['TIFFTAG_GDAL_NODATA'] = -999999
+#             dst_ds.update_tags(**tags)
+#             dst_ds.write(src_ds.read())
