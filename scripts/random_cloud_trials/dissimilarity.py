@@ -49,8 +49,11 @@ feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'develope
 
 batches = ['v13', 'v14', 'v15', 'v16', 'v17']
 trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5']
-uncertainty = False
 exp_path = data_path / 'experiments' / 'random'
+try:
+    exp_path.mkdir(parents=True)
+except FileExistsError:
+    pass
 
 # Set some optimized config parameters
 NUM_PARALLEL_EXEC_UNITS = 4
