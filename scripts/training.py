@@ -20,7 +20,7 @@ from CPR.utils import tif_stacker, cloud_generator, preprocessing, train_val, ti
 
 # ==================================================================================
 
-def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
+def training1(img_list, pctls, model_func, feat_list_new, data_path, batch,
               DROPOUT_RATE=0, HOLDOUT=0.3, **model_params):
     get_model = model_func
 
@@ -40,14 +40,8 @@ def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             X_val, y_val = validation_data[:, 0:14], validation_data[:, 14]
             INPUT_DIMS = X_train.shape[1]
 
-            if uncertainty:
-                model_path = data_path / batch / 'models' / 'nn_mcd' / img
-                metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd' / img / '{}'.format(
-                    img + '_clouds_' + str(pctl))
-            else:
-                model_path = data_path / batch / 'models' / img
-                metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
-                    img + '_clouds_' + str(pctl))
+            model_path = data_path / batch / 'models' / img
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(img + '_clouds_' + str(pctl))
 
             try:
                 metrics_path.mkdir(parents=True)
@@ -62,10 +56,7 @@ def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
 
             print('~~~~~', img, pctl, '% CLOUD COVER')
 
-            if uncertainty:
-                model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
-            else:
-                model = get_model(INPUT_DIMS)  # Model without uncertainty
+            model = get_model(INPUT_DIMS)
 
             start_time = time.time()
             model.fit(X_train, y_train, **model_params, validation_data=(X_val, y_val))
@@ -84,7 +75,7 @@ def training1(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
 # ============================================================================================
 
 
-def training2(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
+def training2(img_list, pctls, model_func, feat_list_new, data_path, batch,
               DROPOUT_RATE=0, HOLDOUT=0.3, **model_params):
     '''
     Removes flood water that is permanent water
@@ -110,14 +101,8 @@ def training2(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
             X_val, y_val = validation_data[:, 0:14], validation_data[:, 14]
             INPUT_DIMS = X_train.shape[1]
 
-            if uncertainty:
-                model_path = data_path / batch / 'models' / 'nn_mcd' / img
-                metrics_path = data_path / batch / 'metrics' / 'training_nn_mcd' / img / '{}'.format(
-                    img + '_clouds_' + str(pctl))
-            else:
-                model_path = data_path / batch / 'models' / img
-                metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
-                    img + '_clouds_' + str(pctl))
+            model_path = data_path / batch / 'models' / img
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(img + '_clouds_' + str(pctl))
 
             try:
                 metrics_path.mkdir(parents=True)
@@ -132,10 +117,7 @@ def training2(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
 
             print('~~~~~', img, pctl, '% CLOUD COVER')
 
-            if uncertainty:
-                model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
-            else:
-                model = get_model(INPUT_DIMS)  # Model without uncertainty
+            model = get_model(INPUT_DIMS)
 
             start_time = time.time()
             model.fit(X_train, y_train, **model_params, validation_data=(X_val, y_val))
@@ -347,7 +329,7 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     return lr_min, lr_max, lrRangeFinder.lrs, lrRangeFinder.losses
 
 
-def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
+def training3(img_list, pctls, model_func, feat_list_new, data_path, batch,
               DROPOUT_RATE=None, HOLDOUT=0.2, **model_params):
     '''
     1. Removes flood water that is permanent water
@@ -401,10 +383,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                                'callbacks': [lrRangeFinder],
                                'use_multiprocessing': True}
 
-            if uncertainty:
-                model = model_func(INPUT_DIMS, DROPOUT_RATE)
-            else:
-                model = model_func(INPUT_DIMS)
+            model = model_func(INPUT_DIMS)
 
             print('Finding learning rate')
             model.fit(X_train, y_train, **lr_model_params, validation_data=(X_val, y_val))
@@ -422,10 +401,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                          CSVLogger(metrics_path / 'training_log.log'),
                          scheduler]
 
-            if uncertainty:
-                model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
-            else:
-                model = get_model(INPUT_DIMS)  # Model without uncertainty
+            model = get_model(INPUT_DIMS)
 
             print('Training full model with best LR')
             start_time = time.time()
@@ -456,8 +432,7 @@ def training3(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
         lr_losses.to_csv(losses_path, index=False)
 
 # ============================================================================================
-def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
-              DROPOUT_RATE=0, **model_params):
+def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **model_params):
     '''
     1. Removes flood water that is permanent water
     2. Finds the optimum learning rate and uses cyclic LR scheduler
@@ -511,10 +486,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                                'callbacks': [lrRangeFinder],
                                'use_multiprocessing': True}
 
-            if uncertainty:
-                model = model_func(INPUT_DIMS, DROPOUT_RATE)
-            else:
-                model = model_func(INPUT_DIMS)
+            model = model_func(INPUT_DIMS)
 
             print('Finding learning rate')
             model.fit(X_train, y_train, **lr_model_params)
@@ -532,10 +504,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                          CSVLogger(metrics_path / 'training_log.log'),
                          scheduler]
 
-            if uncertainty:
-                model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
-            else:
-                model = get_model(INPUT_DIMS)  # Model without uncertainty
+            model = get_model(INPUT_DIMS)
 
             print('Training full model with best LR')
             start_time = time.time()
@@ -568,7 +537,7 @@ def training4(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
 # ============================================================================================
 
 from CPR.utils import preprocessing2
-def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path, batch,
+def training5(img_list, pctls, model_func, feat_list_new, data_path, batch,
               DROPOUT_RATE=0, **model_params):
     '''
     1. Removes ALL pixels that are over permanent water
@@ -623,10 +592,7 @@ def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                                'callbacks': [lrRangeFinder],
                                'use_multiprocessing': True}
 
-            if uncertainty:
-                model = model_func(INPUT_DIMS, DROPOUT_RATE)
-            else:
-                model = model_func(INPUT_DIMS)
+            model = model_func(INPUT_DIMS)
 
             print('Finding learning rate')
             model.fit(X_train, y_train, **lr_model_params)
@@ -644,10 +610,7 @@ def training5(img_list, pctls, model_func, feat_list_new, uncertainty, data_path
                          CSVLogger(metrics_path / 'training_log.log'),
                          scheduler]
 
-            if uncertainty:
-                model = get_model(INPUT_DIMS, DROPOUT_RATE)  # Model with uncertainty
-            else:
-                model = get_model(INPUT_DIMS)  # Model without uncertainty
+            model = get_model(INPUT_DIMS)
 
             print('Training full model with best LR')
             start_time = time.time()
