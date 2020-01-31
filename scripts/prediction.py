@@ -2,24 +2,20 @@ import pandas as pd
 import numpy as np
 import time
 import h5py
-import os
-from models import get_nn1 as get_model
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from CPR.utils import preprocessing, timer
 import tensorflow as tf
 from tensorflow import keras
-import tensorflow.keras.backend as K
-import json
+
 # ==================================================================================
 
-def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **model_params):
+def prediction(img_list, pctls, feat_list_new, data_path, batch, **model_params):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing' / img
-        NUM_PARALLEL_EXEC_UNITS=4
 
         try:
             metrics_path.mkdir(parents=True)
@@ -28,19 +24,15 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, **
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, gaps=True)
-            feat_list_keep = [feat_list_new[i] for i in feat_keep]  # Removed if feat was deleted in preprocessing
-            if remove_perm:
-                perm_index = feat_list_keep.index('GSW_perm')
-                flood_index = feat_list_keep.index('flooded')
-                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
+            data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
-            # There is a problem loading keras models: https://github.com/keras-team/keras/issues/10417
-            # Workaround is to use load_model: https://github.com/keras-team/keras-tuner/issues/75
             start_time = time.time()
             model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model = tf.keras.models.load_model(model_path)
