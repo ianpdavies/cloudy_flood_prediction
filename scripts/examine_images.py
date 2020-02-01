@@ -53,6 +53,25 @@ for img in img_list:
         data[data == -999999] = np.nan
         data[np.isneginf(data)] = np.nan
 
+    # Get flooded image (remove perm water) --------------------------------------
+    flood_index = feat_list_new.index('flooded')
+    perm_index = feat_list_new.index('GSW_perm')
+    indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] == 1))
+    rows, cols = zip(indices)
+    true_flood = data[:, :, flood_index]
+    true_flood[rows, cols] = 0
+    # Now convert to a gray color image
+    true_flood_rgb = np.zeros((true_flood.shape[0], true_flood.shape[1], 4), 'uint8')
+    true_flood_rgb[:, :, 0] = true_flood * 174
+    true_flood_rgb[:, :, 1] = true_flood * 236
+    true_flood_rgb[:, :, 2] = true_flood * 238
+    true_flood_rgb[:, :, 3] = true_flood * 255
+    # Make non-flood pixels transparent
+    indices = np.where((true_flood_rgb[:, :, 0] == 0) & (true_flood_rgb[:, :, 1] == 0) &
+                       (true_flood_rgb[:, :, 2] == 0) & (true_flood_rgb[:, :, 3] == 0))
+    true_flood_rgb[indices] = 0
+    true_flood_rgb = Image.fromarray(true_flood_rgb, mode='RGBA')
+
     for pctl in pctls:
         # Get RGB image --------------------------------------
         rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
@@ -61,15 +80,17 @@ for img in img_list:
         # Get FP/FN image --------------------------------------
         comparison_img_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
         flood_overlay = Image.open(comparison_img_file)
+        flood_overlay_arr = np.array(flood_overlay)
+        indices = np.where((flood_overlay_arr[:, :, 0] == 0) & (flood_overlay_arr[:, :, 1] == 0) &
+                           (flood_overlay_arr[:, :, 2] == 0) & (flood_overlay_arr[:, :, 3] == 255))
+        flood_overlay_arr[indices] = 0
+        flood_overlay = Image.fromarray(flood_overlay_arr, mode='RGBA')
 
         # Create cloud border image --------------------------------------
         clouds_dir = data_path / 'clouds'
         clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
         clouds[np.isnan(data[:, :, 0])] = np.nan
         cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
-        np.sum(cloudmask) / (cloudmask.shape[0] * cloudmask.shape[1])
-        data[cloudmask] = -999999
-        data[data == -999999] = np.nan
 
         from scipy.ndimage import binary_dilation, binary_erosion
         cloudmask_binary = cloudmask.astype('int')
@@ -83,48 +104,12 @@ for img in img_list:
         border[:, :, 2] = cloudmask_border * 0
         border[:, :, 3] = cloudmask_border * 255
         # Make non-border pixels transparent
-        indices = np.where((border[:, :, 0] == 0) & (border[:, :, 1] == 0) & (border[:, :, 2] == 0) & (border[:, :, 3] == 0))
-        rows, cols = zip(indices)
-        border[rows, cols, 0] = 0
-        border[rows, cols, 1] = 0
-        border[rows, cols, 2] = 0
-        border[rows, cols, 3] = 0
+        indices = np.where((border[:, :, 0] == 0) & (border[:, :, 1] == 0) &
+                           (border[:, :, 2] == 0) & (border[:, :, 3] == 0))
+        border[indices] = 0
         border_rgb = Image.fromarray(border, mode='RGBA')
 
-        # Get flooded image (remove perm water) --------------------------------------
-        flood_index = feat_list_new.index('flooded')
-        perm_index = feat_list_new.index('GSW_perm')
-        indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] ==1))
-        rows, cols = zip(indices)
-        true_flood = data[:, :, flood_index]
-        true_flood[rows, cols] = 0
-        # Now convert to a gray color image
-        true_flood_rgb = np.zeros((true_flood.shape[0], true_flood.shape[1], 4), 'uint8')
-        true_flood_rgb[:, :, 0] = true_flood * 174
-        true_flood_rgb[:, :, 1] = true_flood * 236
-        true_flood_rgb[:, :, 2] = true_flood * 238
-        true_flood_rgb[:, :, 3] = true_flood * 255
-        # Make non-flood pixels transparent
-        indices = np.where((true_flood_rgb[:, :, 0] == 0) & (true_flood_rgb[:, :, 1] == 0) & (true_flood_rgb[:, :, 2] == 0) & (true_flood_rgb[:, :, 3] == 0))
-        rows, cols = zip(indices)
-        true_flood_rgb[rows, cols, 0] = 0
-        true_flood_rgb[rows, cols, 1] = 0
-        true_flood_rgb[rows, cols, 2] = 0
-        true_flood_rgb[rows, cols, 3] = 0
-        true_flood_rgb = Image.fromarray(true_flood_rgb, mode='RGBA')
-
-        # Plot all layers together --------------------------------------
-        # Convert black pixels to transparent in comparison image so it can overlay RGB
-        flood_datas = flood_overlay.getdata()
-        new_flood_datas = []
-        for item in flood_datas:
-            if item[0] == 0 and item[1] == 0 and item[2] == 0:
-                new_flood_datas.append((255, 255, 255, 0))
-            else:
-                new_flood_datas.append(item)
-        flood_overlay.putdata(new_flood_datas)
-
-        # Superimpose comparison image and RGB image, then save and close
+        # Plot all layers together --------------------------------------e
         rgb_img.paste(true_flood_rgb, (0, 0), true_flood_rgb)
         rgb_img.paste(flood_overlay, (0, 0), flood_overlay)
         rgb_img.paste(border_rgb, (0, 0), border_rgb)
