@@ -208,7 +208,7 @@ class VizFuncs:
                 data_shape = data_vector_test.shape
                 with rasterio.open(stack_path, 'r') as ds:
                     perm_feat = ds.read(perm_index+1)
-                    prediction_img[perm_feat == 1] = 0
+                    prediction_img[((prediction_img == 1) & (perm_feat == 1))] = 0
 
                 # Add actual flood values to cloud-covered pixel positions
                 flooded_img = np.zeros(shape)
@@ -220,16 +220,15 @@ class VizFuncs:
                 red_actual = np.where(ones, flooded_img, 0.5)  # Actual
                 blue_preds = np.where(ones, prediction_img, 0.5)  # Predictions
                 green_combo = np.minimum(red_actual, blue_preds)
-                alphas = np.ones(shape) * 255
+                alphas = np.ones(shape)
 
                 # Convert black pixels to transparent in fpfn image so it can overlay RGB
-                fpfn_img = np.dstack((red_actual, green_combo, blue_preds, alphas))
+                fpfn_img = np.dstack((red_actual, green_combo, blue_preds, alphas)) * 255
                 fpfn_overlay_file = plot_path / '{}'.format('false_map' + str(pctl) + '.png')
-                indices = np.where(
-                    (fpfn_img[:, :, 0] == 0) & (fpfn_img[:, :, 1] == 0) & (fpfn_img[:, :, 2] == 0) & (
-                                fpfn_img[:, :, 3] == 255))
-                fpfn_img[indices] = 0
-                fpfn_overlay = Image.fromarray(fpfn_img, mode='RGBA')
+                indices = np.where((np.isnan(fpfn_img[:, :, 0])) & np.isnan(fpfn_img[:, :, 1])
+                                   & np.isnan(fpfn_img[:, :, 2]) & (fpfn_img[:, :, 3] == 255))
+                fpfn_img[indices] = [255, 255, 255, 0]
+                fpfn_overlay = Image.fromarray(np.uint8(fpfn_img), mode='RGBA')
                 fpfn_overlay.save(fpfn_overlay_file, dpi=(300, 300))
 
                 # Superimpose comparison image and RGB image, then save and close
@@ -431,7 +430,7 @@ class VizFuncs:
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
         colors = sns.color_palette("colorblind", 4)
-        for j, val in enumerate(df_concat.columns):
+        for j, val in enumerate(df_concat.columns[1:]):
             name = val + 's.png'
             all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1), color=colors[j], alpha=0.3)
             all_metric_fig = all_metric.get_figure()
