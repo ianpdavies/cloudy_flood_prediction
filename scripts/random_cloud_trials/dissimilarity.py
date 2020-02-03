@@ -21,28 +21,9 @@ print('Python Version:', sys.version)
 # Performance metrics vs. image metadata (dry/flood pixels, image size)
 pctls = [10, 20, 50, 70, 90]
 
-img_list = ['4101_LC08_027038_20131103_1',
-            '4101_LC08_027038_20131103_2',
-            '4101_LC08_027039_20131103_1',
-            '4115_LC08_021033_20131227_1',
-            '4115_LC08_021033_20131227_2',
-            '4337_LC08_026038_20160325_1',
-            '4444_LC08_043034_20170303_1',
-            '4444_LC08_043035_20170303_1',
-            '4444_LC08_044032_20170222_1',
-            '4444_LC08_044033_20170222_1',
-            '4444_LC08_044033_20170222_2',
-            '4444_LC08_044033_20170222_3',
-            '4444_LC08_044033_20170222_4',
-            '4444_LC08_044034_20170222_1',
-            '4444_LC08_045032_20170301_1',
-            '4468_LC08_022035_20170503_1',
-            '4468_LC08_024036_20170501_1',
-            '4468_LC08_024036_20170501_2',
-            '4469_LC08_015035_20170502_1',
-            '4469_LC08_015036_20170502_1',
-            '4477_LC08_022033_20170519_1',
-            '4514_LC08_027033_20170826_1']
+# To get list of all folders (images) in directory
+img_list = os.listdir(data_path / 'images')
+img_list.remove('4115_LC08_021033_20131227_test')
 
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
@@ -56,15 +37,16 @@ except FileExistsError:
     pass
 
 # Set some optimized config parameters
-NUM_PARALLEL_EXEC_UNITS = 4
+NUM_PARALLEL_EXEC_UNITS = os.cpu_count()
 tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
-tf.config.threading.set_inter_op_parallelism_threads(2)
+tf.config.threading.set_inter_op_parallelism_threads(4)
 tf.config.set_soft_device_placement(True)
 # tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
 os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
 os.environ["KMP_BLOCKTIME"] = "30"
 os.environ["KMP_SETTINGS"] = "1"
 os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
+
 
 # ======================================================================================================================
 
@@ -170,6 +152,7 @@ def preprocessing_random_clouds(data_path, img, pctl, trial):
 
     return data, data_vector, data_ind, feat_keep
 
+
 # ======================================================================================================================
 # Getting image-wide mean, variance, entropy of each variable in each trial
 
@@ -180,8 +163,15 @@ means_train = []
 variances_train = []
 entropies_train = []
 
-feat_list = ['GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest', 'hand', 'other_landcover',
+img_list = ['4089_LC08_034032_20130917_1']
+feat_list = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest', 'hand',
+             'other_landcover',
              'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+
+from CPR.utils import tif_stacker
+
+for img in img_list:
+    tif_stacker(data_path, img, feat_list, features=True, overwrite=False)
 
 for img in img_list:
     print('Getting means for', img)
@@ -190,13 +180,13 @@ for img in img_list:
         for pctl in pctls:
             print(pctl)
             data_train, data_vector_train, data_ind_train, feat_keep = \
-            preprocessing_random_clouds(data_path, img, pctl, trial)
+                preprocessing_random_clouds(data_path, img, pctl, trial)
             perm_index = feat_keep.index('GSW_perm')
             p = softmax(data_vector_train, axis=1)
             for feat in feat_keep:
                 index = feat_keep.index(feat)
-                means_train.append(np.mean(data_vector_train[:, index], axis=0))
-                variances_train.append(np.var(data_vector_train[:, index], axis=0))
+                means_train.append(np.mean(data_vector_train[:, index]))
+                variances_train.append(np.var(data_vector_train[:, index]))
                 entropies_train.append(entropy(p[:, index]))
 
 np.savetxt(data_path / 'experiments' / 'means_train.csv', means_train, delimiter=",")
@@ -214,13 +204,13 @@ for img in img_list:
         for pctl in pctls:
             print(pctl)
             data_test, data_vector_test, data_ind_test, feat_keep = \
-            preprocessing_random_clouds(data_path, img, pctl, trial)
+                preprocessing_random_clouds(data_path, img, pctl, trial)
             perm_index = feat_list_new.index('GSW_perm')
             p = softmax(data_vector_test, axis=1)
             for feat in feat_keep:
                 index = feat_keep.index(feat)
-                means_test.append(np.mean(data_vector_test[:, index], axis=0))
-                variances_test.append(np.var(data_vector_test[:, index], axis=0))
+                means_test.append(np.mean(data_vector_test[:, index]))
+                variances_test.append(np.var(data_vector_test[:, index]))
                 entropies_test.append(entropy(p[:, index]))
 
 np.savetxt(data_path / 'experiments' / 'means_test.csv', means_test, delimiter=",")
@@ -229,6 +219,7 @@ np.savetxt(data_path / 'experiments' / 'entropies_test.csv', entropies_test, del
 
 # ======================================================================================================================
 from numpy import genfromtxt
+
 means_train = genfromtxt(data_path / 'experiments' / 'means_train.csv', delimiter=',')
 variances_train = genfromtxt(data_path / 'experiments' / 'variances_train.csv', delimiter=',')
 entropies_train = genfromtxt(data_path / 'experiments' / 'entropies_train.csv', delimiter=',')
@@ -237,10 +228,10 @@ variances_test = genfromtxt(data_path / 'experiments' / 'variances_test.csv', de
 entropies_test = genfromtxt(data_path / 'experiments' / 'entropies_test.csv', delimiter=',')
 
 # Make arrays
-data = pd.DataFrame({'image': np.repeat(img_list, len(pctls)*len(trials)*len(feat_list)),
-                     'cloud_cover': np.repeat(pctls, len(img_list)*len(trials)*len(feat_list)),
-                     'trial': np.tile(trials, len(pctls)*len(img_list)*len(feat_list)),
-                     'feature': np.tile(feat_list, len(pctls)*len(img_list)*len(trials)),
+data = pd.DataFrame({'image': np.repeat(img_list, len(pctls) * len(trials) * len(feat_list)),
+                     'cloud_cover': np.repeat(pctls, len(img_list) * len(trials) * len(feat_list)),
+                     'trial': np.tile(trials, len(pctls) * len(img_list) * len(feat_list)),
+                     'feature': np.tile(feat_list, len(pctls) * len(img_list) * len(trials)),
                      'mean_train': means_train,
                      'variance_train': variances_train,
                      'entropy_train': entropies_train,
@@ -280,7 +271,6 @@ merge.groupby(['image', 'cloud_cover'])
 
 trial_metrics.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
 trial_metrics.groupby(['image', 'cloud_cover']).var().reset_index()
-
 
 # ======================================================================================================================
 # Measuring dissimilarity between random cloud trial images using PCA and Mahalanobis distance
@@ -390,6 +380,3 @@ trial_metrics.groupby(['image', 'cloud_cover']).var().reset_index()
 #
 # plt.figure()
 # plt.plot(k2, gv2)
-
-
-

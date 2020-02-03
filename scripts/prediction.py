@@ -9,6 +9,7 @@ from tensorflow import keras
 
 # ==================================================================================
 
+
 def prediction(img_list, pctls, feat_list_new, data_path, batch, **model_params):
     for j, img in enumerate(img_list):
         times = []

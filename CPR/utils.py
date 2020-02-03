@@ -217,7 +217,8 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
     data[data == -999999] = np.nan
 
     # Get indices of non-nan values. These are the indices of the original image array
-    data_ind = np.where(~np.isnan(data[:, :, 1]))
+    nans = np.sum(data, axis=2)
+    data_ind = np.where(~np.isnan(nans))
 
     # Reshape into a 2D array, where rows = pixels and cols = features
     data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
