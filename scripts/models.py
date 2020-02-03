@@ -3,30 +3,8 @@ from tensorflow import keras
 import tensorflow.keras.backend as K
 import tensorflow.keras.models
 
-# # ==================================================================================
 
-# Using Functional API
-# def get_NN_MCD():
-#     tf.keras.backend.clear_session()
-#     inputs = tf.keras.layers.Input(shape=(INPUT_DIMS))
-#     x = tf.keras.layers.Dropout(rate=DROPOUT_RATE)(inputs, training=True)
-#     x = tf.keras.layers.Dense(units=29, activation='relu')(x)
-#     x = tf.keras.layers.Dropout(rate=DROPOUT_RATE)(x, training=True)  
-#     x = tf.keras.layers.Dense(units=15, activation='relu')(x)
-#     outputs = tf.keras.layers.Dense(2, activation='softmax')(x)
-#     model = tf.keras.Model(inputs=inputs, outputs=outputs)
-#     model.compile(optimizer='adam',
-#                   loss='sparse_categorical_crossentropy',      
-# #                   metrics=[tf.keras.metrics.Recall()])
-# #                   metrics=[tf.keras.metrics.F1()])
-#                   metrics=['sparse_categorical_accuracy'])
-#     return model
-
-# Using Sequential API
-
-# Custom metric functions
-
-# ==================================================================================
+# ======================================================================================================================
 # 2 dense layer NN with dropout before ReLU layers
 
 def get_nn_mcd1(INPUT_DIMS, DROPOUT_RATE):
@@ -46,6 +24,7 @@ def get_nn_mcd1(INPUT_DIMS, DROPOUT_RATE):
                   loss='sparse_categorical_crossentropy',
                   metrics=['sparse_categorical_accuracy'])
     return model
+
 
 # ==================================================================================
 # 2 dense layer NN with dropout before ReLU layers, and L2 regularization before batch normalization.
@@ -72,7 +51,8 @@ def get_nn_mcd2(INPUT_DIMS, DROPOUT_RATE, weight_decay=0.005):
                   metrics=['sparse_categorical_accuracy'])
     return model
 
-# # ==================================================================================
+
+# ======================================================================================================================
 
 def get_nn1(INPUT_DIMS):
     tf.keras.backend.clear_session()
@@ -82,18 +62,19 @@ def get_nn1(INPUT_DIMS):
                                     activation='relu')),
     model.add(tf.keras.layers.Dense(units=12,
                                     activation='relu')),
-#     model.add(tf.keras.layers.Dropout(rate=dropout_rate)(training=True)),
-#     model.add(tf.keras.layers.Flatten()),
+    #     model.add(tf.keras.layers.Dropout(rate=dropout_rate)(training=True)),
+    #     model.add(tf.keras.layers.Flatten()),
     model.add(tf.keras.layers.Dense(2,
                                     activation='softmax'))
     model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
-#                   metrics=[tf.keras.metrics.Recall()])
-#                   metrics=[tf.keras.metrics.F1()])
+                  #                   metrics=[tf.keras.metrics.Recall()])
+                  #                   metrics=[tf.keras.metrics.F1()])
                   metrics=['sparse_categorical_accuracy'])
     return model
 
-# ==================================================================================
+
+# ======================================================================================================================
 # NN with batch normalization - OOPS this model has activation after input layer and only one dense layer!
 def get_nn_bn(INPUT_DIMS):
     tf.keras.backend.clear_session()
@@ -111,7 +92,8 @@ def get_nn_bn(INPUT_DIMS):
                   metrics=['sparse_categorical_accuracy'])
     return model
 
-# ==================================================================================
+
+# ======================================================================================================================
 # NN with batch normalization, now with two dense layers
 def get_nn_bn2(INPUT_DIMS):
     tf.keras.backend.clear_session()
@@ -130,7 +112,8 @@ def get_nn_bn2(INPUT_DIMS):
                   metrics=['sparse_categorical_accuracy'])
     return model
 
-# ==================================================================================
+
+# ======================================================================================================================
 # NN with batch normalization, with 3 dense layers
 def get_nn_bn3(INPUT_DIMS):
     tf.keras.backend.clear_session()
@@ -152,18 +135,21 @@ def get_nn_bn3(INPUT_DIMS):
                   metrics=['sparse_categorical_accuracy'])
     return model
 
+
 # ======================================================================================================================
 # Concrete dropout with aleatoric and epistemic uncertainty
-from tensorflow.keras.layers import Input, Dense, Dropout, \
-    concatenate, BatchNormalization, Activation
+
+# Models come from Kyle Dorman: https://github.com/kyle-dorman/bayesian-neural-network-blogpost
+
+from tensorflow.keras.layers import Input, Dense, Dropout, concatenate, BatchNormalization, Activation, RepeatVector, \
+    TimeDistributed, Layer
 from tensorflow_probability import distributions
-from tensorflow.keras import models
+from tensorflow.keras import Model, models
 import tensorflow.keras.backend as K
 import numpy as np
 
 
 def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D, batch_size, dropout_rate, callbacks):
-    # optimizer = tf.keras.optimizers.Adam()
     tf.keras.backend.clear_session()
     inp = Input(shape=input_shape[1:])
     x = inp
@@ -182,9 +168,9 @@ def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D,
     logits_variance = concatenate([means, log_var], name='logits_variance')
     softmax_output = Activation('softmax', name='softmax_output')(means)
     model = models.Model(inputs=inp, outputs=[logits_variance, softmax_output])
-    # model = models.Model(inputs=inp, outputs=logits_variance)
 
     iterable = K.variable(np.ones(T))
+
     def heteroscedastic_categorical_crossentropy(true, pred):
         mean = pred[:, :D]
         log_var = pred[:, D:]
@@ -194,7 +180,6 @@ def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D,
         # undistorted loss
         undistorted_loss = K.categorical_crossentropy(mean, true, from_logits=True)
         # apply montecarlo simulation
-        # T = 20
         dist = distributions.Normal(loc=K.zeros_like(log_std), scale=log_std)
         monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, mean, dist,
                                                                          undistorted_loss, D), iterable,
@@ -210,10 +195,10 @@ def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D,
             distorted_loss = K.categorical_crossentropy(pred + std_samples, true, from_logits=True)
             diff = undistorted_loss - distorted_loss
             return -K.elu(diff)
+
         return map_fn
 
     model.compile(optimizer='Adam',
-                  # loss=heteroscedastic_categorical_crossentropy)
                   loss={'logits_variance': heteroscedastic_categorical_crossentropy,
                         'softmax_output': 'categorical_crossentropy'},
                   metrics={'softmax_output': 'categorical_accuracy'},
@@ -221,14 +206,9 @@ def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D,
                   )
     hist = model.fit(X_train,
                      {'logits_variance': Y_train, 'softmax_output': Y_train},
-                     # epochs=nb_epoch, batch_size=batch_size, verbose=1, validation_split=0.3)
                      epochs=epochs, batch_size=batch_size, verbose=1, callbacks=callbacks)
     loss = hist.history['loss'][-1]
-    return model#, -0.5 * loss  # return ELBO up to const.
-
-# -----------------------------------------------------------
-from tensorflow.keras.layers import RepeatVector, TimeDistributed, Layer
-from tensorflow.keras import Model
+    return model
 
 # Take a mean of the results of a TimeDistributed layer.
 # Applying TimeDistributedMean()(TimeDistributed(T)(x)) to an
@@ -244,6 +224,7 @@ class TimeDistributedMean(Layer):
 
     def call(self, x):
         return K.mean(x, axis=1)
+
 
 # Apply the predictive entropy function for input with C classes.
 # Input of shape (None, C, ...) returns output with shape (None, ...)
@@ -262,6 +243,7 @@ class PredictiveEntropy(Layer):
     def call(self, x):
         return -1 * K.sum(K.log(x) * x, axis=1)
 
+
 def get_epistemic_uncertainty_model(model, epistemic_monte_carlo_simulations):
     # model = load_bayesian_model(checkpoint)
     inpt = Input(shape=(model.input_shape[1:]))
@@ -276,4 +258,3 @@ def get_epistemic_uncertainty_model(model, epistemic_monte_carlo_simulations):
     epistemic_model = Model(inputs=inpt, outputs=[variance, softmax_mean])
 
     return epistemic_model
-
