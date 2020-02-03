@@ -256,7 +256,7 @@ class VizFuncs:
                 data[data == -999999] = np.nan
                 data[np.isneginf(data)] = np.nan
 
-            # Get flooded image (remove perm water) --------------------------------------
+            # Get flooded image (including perm water) --------------------------------------
             flood_index = self.feat_list_new.index('flooded')
             perm_index = self.feat_list_new.index('GSW_perm')
             indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] == 1))
@@ -415,18 +415,29 @@ class VizFuncs:
         file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
         df_concat = pd.concat(pd.read_csv(file) for file in file_list)
 
-        # Average of metric values together in one plot
+        # Median of metric values together in one plot
         if len(self.pctls) > 1:
-            mean_plot = df_concat.groupby('cloud_cover').median().plot(ylim=(0, 1))
+            median_plot = df_concat.groupby('cloud_cover').median().plot(ylim=(0, 1))
         else:
-            mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').median().reset_index(),
+            median_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').median().reset_index(),
+                                                        id_vars='cloud_cover'),
+                                           x='cloud_cover', y='value',
+                                           hue='variable')
+            median_plot.set(ylim=(0, 1))
+        metrics_fig = median_plot.get_figure()
+        metrics_fig.savefig(plot_path / 'median_metrics.png', dpi=300)
+
+        # Mean of metric values together in one plot
+        if len(self.pctls) > 1:
+            mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
+        else:
+            mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').mean().reset_index(),
                                                         id_vars='cloud_cover'),
                                            x='cloud_cover', y='value',
                                            hue='variable')
             mean_plot.set(ylim=(0, 1))
-
         metrics_fig = mean_plot.get_figure()
-        metrics_fig.savefig(plot_path / 'median_metrics.png', dpi=300)
+        metrics_fig.savefig(plot_path / 'mean_metrics.png', dpi=300)
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
         colors = sns.color_palette("colorblind", 4)

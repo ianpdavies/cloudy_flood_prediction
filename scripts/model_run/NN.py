@@ -1,7 +1,6 @@
 import __init__
 from models import get_nn_bn2 as model_func
 import tensorflow as tf
-import tensorflow.keras.backend as K
 import os
 from training import training4
 from prediction import prediction
@@ -15,12 +14,9 @@ print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# All images at 10-90%, no MCD, no val data, using get_nn_bn2
-# Batch size = 8192
-# ==================================================================================
 # Parameters
 
-batch = 'v28'
+batch = 'NN'
 pctls = [10, 30, 50, 70, 90]
 BATCH_SIZE = 8192
 EPOCHS = 100
@@ -33,7 +29,7 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-img_list = ['4050_LC08_023036_20130429_2']
+
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
@@ -65,14 +61,13 @@ os.environ['GOTO_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 os.environ['OMP_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 
 # ==================================================================================
-
-# training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **model_params)
-# prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
+training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **model_params)
+prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 viz = VizFuncs(viz_params)
-# viz.metric_plots()
-# viz.cir_image()
-# viz.time_plot()
-# viz.false_map(probs=False, save=False)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(probs=False, save=False)
 viz.false_map_borders()
-# viz.metric_plots_multi()
-# viz.median_highlight()
+viz.metric_plots_multi()
+viz.median_highlight()

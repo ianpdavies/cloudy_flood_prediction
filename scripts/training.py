@@ -452,7 +452,7 @@ def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **mo
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_train[
@@ -498,7 +498,7 @@ def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **mo
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=0.005, patience=10),
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.0001, patience=10),
                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
@@ -650,7 +650,7 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
     1. Removes ALL pixels that are over permanent water
     2. Finds the optimum learning rate and uses cyclic LR scheduler
     to train the model
-    3. No validation set for training
+    3. No validation set for training 
     4.
     '''
     get_model = model_func

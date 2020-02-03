@@ -15,7 +15,7 @@ import h5py
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 from CPR.configs import data_path
 import skopt
-from skopt import forest_minimize, dump
+from skopt import forest_minimize
 from skopt.utils import use_named_args
 from sklearn.model_selection import cross_val_score
 
@@ -23,14 +23,10 @@ from sklearn.model_selection import cross_val_score
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Training on half of images WITH validation data. Compare with v24
-# Batch size = 8192
-# ==================================================================================
 # Parameters
 
-batch = 'v31'
+batch = 'RF'
 pctls = [10, 30, 50, 70, 90]
-NUM_PARALLEL_EXEC_UNITS = 24
 
 try:
     (data_path / batch).mkdir()
@@ -40,8 +36,6 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-
-img_list = ['4444_LC08_044033_20170222_2']
 
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
@@ -88,27 +82,28 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
             except FileExistsError:
                 pass
 
-            param_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + 'params.gz')
+            param_path = model_path / '{}'.format('4514_LC08_027033_20170826_1_clouds_50params.pkl')
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
 
-            # Hyperparameter optimization
-            print('Hyperparameter search')
-            base_rf = RandomForestClassifier(random_state=0, n_estimators=100, max_leaf_nodes=10)
+            # # Hyperparameter optimization
+            # print('Hyperparameter search')
+            # base_rf = RandomForestClassifier(random_state=0, n_estimators=100, max_leaf_nodes=10)
 
-            space = [skopt.space.Integer(2, 1000, name="max_leaf_nodes"),
-                     skopt.space.Integer(2, 200, name="n_estimators"),
-                     skopt.space.Integer(2, 3000, name="max_depth")]
+            # space = [skopt.space.Integer(2, 1000, name="max_leaf_nodes"),
+            # skopt.space.Integer(2, 200, name="n_estimators"),
+            # skopt.space.Integer(2, 3000, name="max_depth")]
 
-            @use_named_args(space)
-            def objective(**params):
-                base_rf.set_params(**params)
-                return -np.mean(cross_val_score(base_rf, X_train, y_train, cv=5, n_jobs=n_jobs, scoring="f1"))
+            # @use_named_args(space)
+            # def objective(**params):
+            # base_rf.set_params(**params)
+            # return -np.mean(cross_val_score(base_rf, X_train, y_train, cv=5, n_jobs=n_jobs, scoring="f1"))
 
-            res_rf = forest_minimize(objective, space, base_estimator='RF', n_calls=11,
-                                     random_state=0, verbose=False, n_jobs=n_jobs)
+            # res_rf = forest_minimize(objective, space, base_estimator='RF', n_calls=11,
+            # random_state=0, verbose=True, n_jobs=n_jobs)
+            # print(type(res_rf))
+            # skopt.utils.dump(res_rf, param_path, store_objective=False)
 
-            dump(res_rf, param_path)
-
+            res_rf = skopt.utils.load(param_path)
             # Training
             print('Training with optimized hyperparameters')
             start_time = time.time()
@@ -116,7 +111,7 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
                                         max_leaf_nodes=res_rf.x[0],
                                         n_estimators=res_rf.x[1],
                                         max_depth=res_rf.x[2],
-                                        n_jobs=n_jobs)
+                                        n_jobs=-1)
             rf.fit(X_train, y_train)
             end_time = time.time()
             times.append(timer(start_time, end_time, False))
@@ -129,7 +124,7 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
 
-def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
+def prediction_rf(img_list, pctls, feat_list_new, data_path, batch):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -146,12 +141,10 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
             print('Preprocessing', img, pctl, '% cloud cover')
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
                                                                                   test=True)
-            if remove_perm:
-                perm_index = feat_keep.index('GSW_perm')
-                flood_index = feat_keep.index('flooded')
-                data_vector_test[
-                    data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
-            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
+            data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
@@ -193,35 +186,13 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm):
 
 
 # ======================================================================================================================
-
-img_list = ['4514_LC08_027033_20170826_1']
-pctls = [50]
-
-times = []
-start_time = time.time()
-rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs=20)
-end_time = time.time()
-times.append(timer(start_time, end_time, True))
-
-start_time = time.time()
-rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs=40)
-end_time = time.time()
-times.append(timer(start_time, end_time, True))
-
-start_time = time.time()
-rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs=60)
-end_time = time.time()
-times.append(timer(start_time, end_time, True))
-
-np.savetxt(data_path / 'v31' / 'times20_40_60_njobs.csv', times, delimiter=",")
-
-# prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True)
-#
-# viz = VizFuncs(viz_params)
-# viz.metric_plots()
-# viz.cir_image()
-# viz.time_plot()
-# viz.false_map(probs=True, save=False)
-# viz.false_map_border()
-# viz.metric_plots_multi()
-# viz.median_highlight()
+rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs=None)
+prediction_rf(img_list, pctls, feat_list_new, data_path, batch)
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(probs=True, save=False)
+viz.false_map_border()
+viz.metric_plots_multi()
+viz.median_highlight()

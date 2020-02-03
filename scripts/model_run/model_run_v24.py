@@ -85,16 +85,16 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 # ==================================================================================
 # Training and prediction with random batches of clouds
 
-cloud_dir = data_path / 'clouds'
-
-training4(img_list, pctls, model_func, feat_list_new, uncertainty,
-          data_path, batch, HOLDOUT, **model_params)
-
-prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
+# cloud_dir = data_path / 'clouds'
+#
+# training4(img_list, pctls, model_func, feat_list_new, uncertainty,
+#           data_path, batch, HOLDOUT, **model_params)
+#
+# prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm=True, **model_params)
 
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.time_plot()
-viz.false_map()
+# viz.false_map()
 viz.metric_plots_multi()
 viz.time_size()

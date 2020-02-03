@@ -6,17 +6,12 @@ import tensorflow as tf
 import sys
 import os
 import multiprocessing
-from training import training3
-from prediction import prediction
-from results_viz import VizFuncs
-import numpy as np
-import pandas as pd
 import time
-import pickle
-from sklearn.ensemble import RandomForestClassifier
 import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.linear_model import LogisticRegression
 import h5py
+from scipy.ndimage import binary_dilation
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 from CPR.configs import data_path
 
@@ -25,12 +20,7 @@ print('Tensorflow version:',  tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Training on half of images WITH validation data. Compare with v24
-# Batch size = 8192
-# ==================================================================================
 # Parameters
-
-uncertainty = False  # Should be True if running with MCD
 batch = 'v35'
 # pctls = [10, 30, 50, 70, 90]
 pctls = [30]
@@ -75,7 +65,6 @@ feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'develope
 viz_params = {'img_list': img_list,
               'pctls': pctls,
               'data_path': data_path,
-              'uncertainty': uncertainty,
               'batch': batch,
               'feat_list_new': feat_list_new,
               'buffer_iters': buffer_iters}
@@ -91,12 +80,6 @@ os.environ["KMP_SETTINGS"] = "1"
 os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 # ======================================================================================================================
-
-from sklearn.linear_model import LogisticRegression
-
-# ======================================================================================================================
-
-import rasterio
 
 def preprocessing_buffer(data_path, img, pctl, feat_list_new, test):
     # Masks stacked image with cloudmask by converting cloudy values to NaN.
@@ -198,7 +181,7 @@ def preprocessing_buffer(data_path, img, pctl, feat_list_new, test):
 
     return data, data_vector, data_ind, feat_keep
 
-from scipy.ndimage import binary_dilation
+
 def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, buffer_iters, buffer_flood_only):
     from imageio import imwrite
 
@@ -263,7 +246,7 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
 
 
 
-def prediction(img_list, pctls, feat_list_new, data_path, batch, remove_perm, buffer_iters):
+def prediction_buffer(img_list, pctls, feat_list_new, data_path, batch, remove_perm, buffer_iters):
     for img in img_list:
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -679,7 +662,7 @@ class VizFuncs:
 # ======================================================================================================================
 
 log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, buffer_iters, buffer_flood_only=False)
-prediction(img_list, pctls, feat_list_new, data_path, batch, True, buffer_iters)
+prediction_buffer(img_list, pctls, feat_list_new, data_path, batch, True, buffer_iters)
 
 viz = VizFuncs(viz_params)
 viz.metric_plots()

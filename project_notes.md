@@ -38,39 +38,90 @@ Project Notes
         - Manually put clouds over these areas and run experiment.
 
 3. Visualization
- - Can clouds be just borders with transparent fill? To better visualize overlay.
+    - Can clouds be just borders with transparent fill? To better visualize overlay.
+
+4. ☒ Logistic regression, SVM, RF results
+    - Run log reg and RF on all images at all pctls
+    - Take the best performing one and tune hyperparameters
+    - Compare to NN
+    - Logistic regression
+        - Performs better than NN, and faster (I think)
+        - But can't be run in parallel, so there is a solid floor to training/prediction time
+    - RF
+        - Appears to perform poorly using default hyperparams - high precision and low recall, super conservative estimates
+        - Might be able to improve with tuning 
+
+5. ☒ Train on small dataset to reduce sparseness of the data
+     -  Use binary dilation to buffer flooded pixels
+        - Train with varying dilation iterations 10-50 around (a) all water and (b) just flooded pixels
+        - Train with dilation iterations around all water + random pixels selected throughout image
+        - Depending on the result above, train model with buffers around clouds vs. only around water/flood
+            - binary_dilation buffers around NaNs, so will have to turn those to 0 while making the mask to remove cloud
+            buffers
+        - BUFFER EXPERIMENT:
+            - Run the above model permutations with half of images and compare to log reg with half of images
+
+6. Random cloud trials
+    - According to Max (CSSS consulting) I should run 30-100 trials. Time permitting, I can do this on the QERM servers.
+
+7. Uncertainty
+     - ☒ Get uncertainty estimates from logistic regression
+     - Compare these uncertainty estimates to those from the NN. 
+     - ☒ Test remove_perm=True/False again with log reg. The log reg buffer tests
+
+------
+- Rerun cloud trials with more samples (30-100)
+- Rerun val data vs. no val data to see which is better
+- Visually inspect images to see why some perform better
+- Compare log reg probs vs. Bayesian NN
+- Run on more images with final best performing model
+
+Experiments
+1. Val data vs. no val data
+2. Perm water masking
+3. RF vs. LR vs. NN
+4. Random cloud trials on best performing model from 3.
+5. Visual inspection of images to explain variance
+6. (maybe) experiment with randomly taking out patches of image with pixels that might be useful, suggested by 5.
+6. Uncertainty: LR probs vs. Bayesian NN
+
+To do:
+ - ☒ Make cloud borders
+    - Remove setdata() section of false_map() function, make it like border creation to save time
+ - ☒ Rerun v39 because perm water isn't being removed properly - still showing up as TP in false maps
+ - Rerun NN using val data/perm water settings
+ - Train on 2/3 of images and test on remaining 1/3
+ - Which does better - LR or NN?
+    - Make AUC/ROC plots
+ - Inspect images
+ - Does Bayesian NN perform as well as NN?
+ - Compare BNN to LR probs
+    - Is BNN aleatoric just predicting GSW layer? 
+ - Delete old models and test scripts
+    - Run only the models needed for experiments that will go in thesis
+
+
+Models to run:
+- ☒ LR with different permanent water masks, 10-90% CC
+- RF using best data versions from val data/perm water experiments
+- LR using best data versions from val data/perm water experiments
+- NN using best data versions from val data/perm water experiments
+- Random cloud trials using whichever model performed best (LR/RF/NN).
+    - At 10-90% CC or fixed at one? Or perhaps only 25/50/75%? Save time and space
+- 
+-Line 211 in results_viz where I mask out perm water in predictions img - need to see if that new operation is needed 
+elsewhere
+- Feature engineering?
  
-4. Thin clouds vs thick clouds? At same % cover.
+Custom loss function for NN? Macro F1 that uses probs instead of 0/1 so the loss function is differentiable
+https://www.kaggle.com/rejpalcz/best-loss-function-for-f1-score-metric
 
-5. Logistic regression, SVM, RF results
- - Run log reg and RF on all images at all pctls
- - Take the best performing one and tune hyperparameters
- - Compare to NN
- - Logistic regression
-    - Performs better than NN, and faster (I think)
-    - But can't be run in parallel, so there is a solid floor to training/prediction time
- - RF
-    - Appears to perform poorly using default hyperparams - high precision and low recall, super conservative estimates
-    - Might be able to improve with tuning 
+CNN?
+https://bamos.github.io/2016/08/09/deep-completion/
 
-6. Train on small dataset to reduce sparseness of the data
- -  Use binary dilation to buffer flooded pixels
-    - Train with varying dilation iterations 10-50 around (a) all water and (b) just flooded pixels
-    - Train with dilation iterations around all water + random pixels selected throughout image
-    - Depending on the result above, train model with buffers around clouds vs. only around water/flood
-        - binary_dilation buffers around NaNs, so will have to turn those to 0 while making the mask to remove cloud
-        buffers
-    - BUFFER EXPERIMENT:
-        - Run the above model permutations with half of images and compare to log reg with half of images   
-7. Random cloud trials
- - According to Max (CSSS consulting) I should run 30-100 trials. Time permitting, I can do this on the QERM servers.
+Found updated DFO database file but no polygon extent, only lat/long. Can add buffer around it to get images in similar way.
 
-8. Uncertainty
- - Get uncertainty estimates from logistic regression
- - Compare these uncertainty estimates to those from the NN. 
- MAKE SURE CLOUD THRESHOLDING IS WORKING CORRECTLY AND THAT ISN'T WHY LOG REG IS DOING SO WELL!!!
- Test remove_perm=True/False again with log reg. The log reg buffer tests 
- ------
+------
  
 ### How to set up QERM servers
 
