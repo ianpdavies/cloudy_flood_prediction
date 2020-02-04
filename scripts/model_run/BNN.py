@@ -12,7 +12,6 @@ from CPR.configs import data_path
 # Version numbers
 print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
-
 # ==================================================================================
 # Parameters
 
@@ -20,7 +19,7 @@ batch = 'BNN'
 # pctls = [10, 30, 50, 70, 90]
 pctls = [50]
 batch_size = 8192
-epochs = 100
+epochs = 3
 MC_passes = 50
 T = 50
 dropout_rate = 0.2
@@ -69,11 +68,11 @@ os.environ['OMP_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 # ==================================================================================
 # training_bnn(img_list, pctls, feat_list_new, data_path, batch, **model_params)
 prediction_bnn(img_list, pctls, feat_list_new, data_path, batch, MC_passes)
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.cir_image()
-viz.time_plot()
-viz.false_map(probs=False, save=False)
-viz.false_map_borders()
-viz.metric_plots_multi()
-viz.median_highlight()
+# viz = VizFuncs(viz_params)
+# viz.metric_plots()
+# viz.cir_image()
+# viz.time_plot()
+# viz.false_map(probs=False, save=False)
+# viz.false_map_borders()
+# viz.metric_plots_multi()
+# viz.median_highlight()

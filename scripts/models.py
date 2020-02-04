@@ -146,21 +146,25 @@ from tensorflow.keras.layers import Input, Dense, Dropout, concatenate, BatchNor
 from tensorflow_probability import distributions
 from tensorflow.keras import Model, models
 import tensorflow.keras.backend as K
+from tensorflow.keras.utils import get_custom_objects
+from loss_functions import bayesian_categorical_crossentropy
 import numpy as np
 
 
-def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D, batch_size, dropout_rate, callbacks):
+def load_bayesian_model(checkpoint, T, D, iterable):
+    get_custom_objects().update({"bayesian_categorical_crossentropy_internal": bayesian_categorical_crossentropy(T, D, iterable)})
+    return tf.keras.models.load_model(checkpoint)
+
+
+def get_aleatoric_uncertainty_model(X_train, Y_train, epochs, T, D, batch_size, dropout_rate, callbacks):
     tf.keras.backend.clear_session()
-    inp = Input(shape=input_shape[1:])
+    inp = Input(shape=X_train.shape[1:])
     x = inp
     x = BatchNormalization()(x)
     x = Dropout(dropout_rate)(x, training=True)
     x = Dense(24, activation='relu')(x)
     x = BatchNormalization()(x)
     x = Dropout(dropout_rate)(x, training=True)
-    # x = Dense(12, activation='relu')(x)
-    # x = BatchNormalization()(x)
-    # x = Dropout(0.2)(x, training=True)
 
     means = Dense(D, name='means')(x)
     log_var_pre = Dense(1, name='log_var_pre')(x)
@@ -169,50 +173,21 @@ def get_aleatoric_uncertainty_model(epochs, X_train, Y_train, input_shape, T, D,
     softmax_output = Activation('softmax', name='softmax_output')(means)
     model = models.Model(inputs=inp, outputs=[logits_variance, softmax_output])
 
-    iterable = K.variable(np.ones(T))
-
-    def heteroscedastic_categorical_crossentropy(true, pred):
-        mean = pred[:, :D]
-        log_var = pred[:, D:]
-        log_std = K.sqrt(log_var)
-        # variance depressor
-        logvar_dep = K.exp(log_var) - K.ones_like(log_var)
-        # undistorted loss
-        undistorted_loss = K.categorical_crossentropy(mean, true, from_logits=True)
-        # apply montecarlo simulation
-        dist = distributions.Normal(loc=K.zeros_like(log_std), scale=log_std)
-        monte_carlo_results = K.map_fn(gaussian_categorical_crossentropy(true, mean, dist,
-                                                                         undistorted_loss, D), iterable,
-                                       name='monte_carlo_results')
-
-        var_loss = K.mean(monte_carlo_results, axis=0) * undistorted_loss
-
-        return var_loss + undistorted_loss + K.sum(logvar_dep, -1)
-
-    def gaussian_categorical_crossentropy(true, pred, dist, undistorted_loss, num_classes):
-        def map_fn(i):
-            std_samples = dist.sample(1)
-            distorted_loss = K.categorical_crossentropy(pred + std_samples, true, from_logits=True)
-            diff = undistorted_loss - distorted_loss
-            return -K.elu(diff)
-
-        return map_fn
-
     model.compile(optimizer='Adam',
-                  loss={'logits_variance': heteroscedastic_categorical_crossentropy,
+                  loss={'logits_variance': bayesian_categorical_crossentropy(T, D, iterable),
                         'softmax_output': 'categorical_crossentropy'},
                   metrics={'softmax_output': 'categorical_accuracy'},
-                  loss_weights={'logits_variance': .2, 'softmax_output': 1.}
-                  )
-    hist = model.fit(X_train,
-                     {'logits_variance': Y_train, 'softmax_output': Y_train},
-                     epochs=epochs, batch_size=batch_size, verbose=1, callbacks=callbacks)
-    loss = hist.history['loss'][-1]
+                  loss_weights={'logits_variance': .2, 'softmax_output': 1.})
+
+    model.fit(X_train,
+              {'logits_variance': Y_train, 'softmax_output': Y_train}, epochs=epochs,
+              batch_size=batch_size, verbose=2, callbacks=callbacks)
     return model
+
 
 # Take a mean of the results of a TimeDistributed layer.
 # Applying TimeDistributedMean()(TimeDistributed(T)(x)) to an
-# input of shape (None, ...) returns putpur of same size.
+# input of shape (None, ...) returns output of same size.
 class TimeDistributedMean(Layer):
     def build(self, input_shape):
         super(TimeDistributedMean, self).build(input_shape)
@@ -244,10 +219,11 @@ class PredictiveEntropy(Layer):
         return -1 * K.sum(K.log(x) * x, axis=1)
 
 
-def get_epistemic_uncertainty_model(model, epistemic_monte_carlo_simulations):
-    # model = load_bayesian_model(checkpoint)
+def get_epistemic_uncertainty_model(checkpoint, T, D):
+    iterable = K.variable(np.ones(T))
+    model = load_bayesian_model(checkpoint, T, D, iterable)
     inpt = Input(shape=(model.input_shape[1:]))
-    x = RepeatVector(epistemic_monte_carlo_simulations)(inpt)
+    x = RepeatVector(T)(inpt)
     # Keras TimeDistributed can only handle a single output from a model :(
     # and we technically only need the softmax outputs.
     hacked_model = Model(inputs=model.inputs, outputs=model.outputs[1])
