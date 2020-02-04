@@ -18,7 +18,7 @@ from CPR.utils import tif_stacker, cloud_generator, preprocessing, train_val, ti
 # from models import get_nn1 as model_func
 
 
-# ==================================================================================
+# ======================================================================================================================
 
 def training1(img_list, pctls, model_func, feat_list_new, data_path, batch,
               DROPOUT_RATE=0, HOLDOUT=0.3, **model_params):
@@ -72,7 +72,7 @@ def training1(img_list, pctls, model_func, feat_list_new, data_path, batch,
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
 
-# ============================================================================================
+# ======================================================================================================================
 
 
 def training2(img_list, pctls, model_func, feat_list_new, data_path, batch,
@@ -134,7 +134,7 @@ def training2(img_list, pctls, model_func, feat_list_new, data_path, batch,
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
 
-# ============================================================================================
+# ======================================================================================================================
 # Learning rate finder
 # From here: https://mancap314.github.io/cyclical-learning-rates-with-tensorflow-implementation.html
 # ipynb here: https://github.com/mancap314/miscellanous/blob/master/lr_optimization.ipynb
@@ -431,7 +431,7 @@ def training3(img_list, pctls, model_func, feat_list_new, data_path, batch,
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
 
-# ============================================================================================
+# ======================================================================================================================
 def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **model_params):
     '''
     1. Removes flood water that is permanent water
@@ -534,7 +534,7 @@ def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **mo
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
 
-# ============================================================================================
+# ======================================================================================================================
 
 from CPR.utils import preprocessing2
 def training5(img_list, pctls, model_func, feat_list_new, data_path, batch,
@@ -640,7 +640,7 @@ def training5(img_list, pctls, model_func, feat_list_new, data_path, batch,
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
 
-# ============================================================================================
+# ======================================================================================================================
 from tensorflow.keras.utils import to_categorical
 
 
@@ -650,7 +650,7 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
     1. Removes ALL pixels that are over permanent water
     2. Finds the optimum learning rate and uses cyclic LR scheduler
     to train the model
-    3. No validation set for training 
+    3. No validation set for training
     4.
     '''
     get_model = model_func
@@ -705,3 +705,51 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
         times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
+# ======================================================================================================================
+from models import get_aleatoric_uncertainty_model, get_epistemic_uncertainty_model
+from tensorflow.keras.utils import to_categorical
+
+
+def training_bnn(img_list, pctls, feat_list_new, data_path, batch, **model_params):
+    for j, img in enumerate(img_list):
+        print(img + ': stacking tif, generating clouds')
+        times = []
+        tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
+        cloud_generator(img, data_path, overwrite=False)
+
+        for i, pctl in enumerate(pctls):
+            print(img, pctl, '% CLOUD COVER')
+            print('Preprocessing')
+            tf.keras.backend.clear_session()
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new, test=False)
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
+            data_vector_train[
+                data_vector_train[:, perm_index] == 1, flood_index] = 0
+            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
+            shape = data_vector_train.shape
+            X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
+            y_train = to_categorical(y_train)
+            D = len(set(y_train[:, 0]))  # Target classes
+
+            model_path = data_path / batch / 'models' / img
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(img + '_clouds_' + str(pctl))
+            try:
+                metrics_path.mkdir(parents=True)
+                model_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+            model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            print('Training model')
+            start_time = time.time()
+            aleatoric_model = get_aleatoric_uncertainty_model(X_train, y_train, **model_params, D=D)
+            end_time = time.time()
+            times.append(timer(start_time, end_time, False))
+            aleatoric_model.save(model_path)
+
+        metrics_path = metrics_path.parent
+        times = [float(i) for i in times]
+        times = np.column_stack([pctls, times])
+        times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
+        times_df.to_csv(metrics_path / 'training_times.csv', index=False)
