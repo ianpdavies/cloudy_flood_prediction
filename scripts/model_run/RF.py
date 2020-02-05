@@ -82,7 +82,7 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
             except FileExistsError:
                 pass
 
-            param_path = model_path / '{}'.format('4514_LC08_027033_20170826_1_clouds_50params.pkl')
+            param_path = data_path / batch / 'models' /  '4514_LC08_027033_20170826_1' / '{}'.format('4514_LC08_027033_20170826_1_clouds_50params.pkl')
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
 
             # # Hyperparameter optimization
@@ -193,6 +193,6 @@ viz.metric_plots()
 viz.cir_image()
 viz.time_plot()
 viz.false_map(probs=True, save=False)
-viz.false_map_border()
+viz.false_map_borders()
 viz.metric_plots_multi()
 viz.median_highlight()
