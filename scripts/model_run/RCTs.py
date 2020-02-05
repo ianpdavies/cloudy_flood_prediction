@@ -1,4 +1,4 @@
-from models import get_nn_bn2 as model_func
+import __init__
 import tensorflow as tf
 import os
 import pathlib
@@ -30,8 +30,7 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-img_list = ['4115_LC08_021033_20131227_test']
-pctls = [50]
+
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
