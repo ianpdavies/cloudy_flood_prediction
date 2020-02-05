@@ -233,6 +233,10 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
     # Normalize data - only the non-binary variables
     data_vector[:, 0:shape[1] - 2] = (data_vector[:, 0:shape[1] - 2] - data_mean) / data_std
 
+    # Make sure NaNs are in the same position element-wise in image
+    mask = np.sum(data, axis=2)
+    data[np.isnan(mask)] = np.nan
+
     return data, data_vector, data_ind, feat_keep
 
 
