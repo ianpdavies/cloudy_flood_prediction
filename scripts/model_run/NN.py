@@ -51,7 +51,6 @@ config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=NUM_PARALLEL_EXEC
                        allow_soft_placement=True, device_count={'CPU': NUM_PARALLEL_EXEC_UNITS})
 session = tf.compat.v1.Session(config=config)
 tf.compat.v1.keras.backend.set_session(session)
-# os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["KMP_BLOCKTIME"] = "30"
 os.environ["KMP_SETTINGS"] = "1"
 os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"

@@ -16,10 +16,9 @@ print('Python Version:', sys.version)
 # Parameters
 
 batch = 'BNN'
-# pctls = [10, 30, 50, 70, 90]
-pctls = [50]
+pctls = [10, 30, 50, 70, 90]
 batch_size = 8192
-epochs = 3
+epochs = 50
 MC_passes = 50
 T = 50
 dropout_rate = 0.2
@@ -30,9 +29,8 @@ except FileExistsError:
     pass
 
 # Get all images in image directory
-# img_list = os.listdir(data_path / 'images')
-# img_list.remove('4115_LC08_021033_20131227_test')
-img_list = ['4115_LC08_021033_20131227_test']
+img_list = os.listdir(data_path / 'images')
+img_list.remove('4115_LC08_021033_20131227_test')
 
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
@@ -66,13 +64,13 @@ os.environ['GOTO_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 os.environ['OMP_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 
 # ==================================================================================
-# training_bnn(img_list, pctls, feat_list_new, data_path, batch, **model_params)
+training_bnn(img_list, pctls, feat_list_new, data_path, batch, **model_params)
 prediction_bnn(img_list, pctls, feat_list_new, data_path, batch, MC_passes)
-# viz = VizFuncs(viz_params)
-# viz.metric_plots()
-# viz.cir_image()
-# viz.time_plot()
-# viz.false_map(probs=False, save=False)
-# viz.false_map_borders()
-# viz.metric_plots_multi()
-# viz.median_highlight()
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+viz.cir_image()
+viz.time_plot()
+viz.false_map(probs=False, save=False)
+viz.false_map_borders()
+viz.metric_plots_multi()
+viz.median_highlight()
