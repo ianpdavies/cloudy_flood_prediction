@@ -112,6 +112,22 @@ def get_nn_bn2(INPUT_DIMS):
                   metrics=['sparse_categorical_accuracy'])
     return model
 
+# ======================================================================================================================
+# NN with batch normalization, now with two dense layers
+def get_nn_bn2_noBN(INPUT_DIMS):
+    tf.keras.backend.clear_session()
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                  # optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+    return model
 
 # ======================================================================================================================
 # NN with batch normalization, with 3 dense layers
@@ -173,6 +189,7 @@ def get_aleatoric_uncertainty_model(X_train, Y_train, epochs, T, D, batch_size, 
     softmax_output = Activation('softmax', name='softmax_output')(means)
     model = models.Model(inputs=inp, outputs=[logits_variance, softmax_output])
 
+    iterable = K.variable(np.ones(T))
     model.compile(optimizer='Adam',
                   loss={'logits_variance': bayesian_categorical_crossentropy(T, D, iterable),
                         'softmax_output': 'categorical_crossentropy'},
