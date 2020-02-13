@@ -11,6 +11,7 @@ import h5py
 sys.path.append('../')
 from CPR.configs import data_path
 import seaborn as sns
+from skimage import exposure
 
 SMALL_SIZE = 8
 MEDIUM_SIZE = 10
@@ -156,6 +157,45 @@ class VizFuncs:
             cir_file = plot_path / '{}'.format('cir_img' + '.png')
             cir_img.save(cir_file, dpi=(300, 300))
 
+    def rgb_image(self, percent, overwrite):
+        def linear_stretch(input, percent):
+            p_low, p_high = np.percentile(input[~np.isnan(input)], (percent, 100 - percent))
+            img_rescale = exposure.rescale_intensity(input, in_range=(p_low, p_high))
+            return img_rescale
+
+        for img in self.img_list:
+            spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
+            plot_path = data_path / self.batch / 'plots' / img
+            rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
+
+            if overwrite is False:
+                if rgb_file.exists():
+                    print('RGB image already exists for ' + img)
+                    continue
+                else:
+                    print('No RGB image for ' + img + ', creating one')
+
+            print('Stacking RGB image')
+            band_list = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7']
+            tif_stacker(data_path, img, band_list, features=False, overwrite=False)
+
+            print('Processing RGB image')
+            with rasterio.open(spectra_stack_path, 'r') as f:
+                red, green, blue = f.read(4), f.read(3), f.read(2)
+                red[red == -999999] = np.nan
+                green[green == -999999] = np.nan
+                blue[blue == -999999] = np.nan
+                rgb = np.dstack((red, green, blue))
+
+            rgb = linear_stretch(rgb, percent)
+
+            rgb_img = Image.fromarray((rgb * 255).astype(np.uint8()))
+            rgb_img = ImageEnhance.Contrast(rgb_img).enhance(1.2)
+
+            print('Saving RGB image')
+            rgb_img.save(rgb_file, dpi=(300, 300))
+
+
     def false_map(self, probs, save=True):
         """
         Creates map of FP/FNs overlaid on RGB image
@@ -168,45 +208,15 @@ class VizFuncs:
             print('Creating FN/FP map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
             bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
-
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
-
-            # Get RGB image
-            print('Stacking RGB image')
-            band_list = ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7']
-            tif_stacker(data_path, img, band_list, features=False, overwrite=False)
-            spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
-
-            # Function to normalize the grid values
-            def normalize(array):
-                """Normalizes numpy arrays into scale 0.0 - 1.0"""
-                array_min, array_max = np.nanmin(array), np.nanmax(array)
-                return ((array - array_min) / (array_max - array_min))
-
-            print('Processing RGB image')
-            with rasterio.open(spectra_stack_path, 'r') as f:
-                red, green, blue = f.read(4), f.read(3), f.read(2)
-                red[red == -999999] = np.nan
-                green[green == -999999] = np.nan
-                blue[blue == -999999] = np.nan
-                redn = normalize(red)
-                greenn = normalize(green)
-                bluen = normalize(blue)
-                rgb = np.dstack((redn, greenn, bluen))
-
-            # Convert to PIL image, enhance, and save
-            rgb_img = Image.fromarray((rgb * 255).astype(np.uint8()))
-            rgb_img = ImageEnhance.Contrast(rgb_img).enhance(1.5)
-            rgb_img = ImageEnhance.Sharpness(rgb_img).enhance(2)
-            rgb_img = ImageEnhance.Brightness(rgb_img).enhance(2)
-
-            print('Saving RGB image')
-            rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
-            rgb_img.save(rgb_file, dpi=(300, 300))
 
             # Reshape predicted values back into image band
             with rasterio.open(stack_path, 'r') as ds:
                 shape = ds.read(1).shape  # Shape of full original image
+
+            # Get RGB image
+            rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
+            rgb_img = Image.open(rgb_file)
 
             for j, pctl in enumerate(self.pctls):
                 print('Fetching flood predictions for', str(pctl)+'{}'.format('%'))
