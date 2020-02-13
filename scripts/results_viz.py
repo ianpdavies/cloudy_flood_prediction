@@ -11,6 +11,19 @@ import h5py
 sys.path.append('../')
 from CPR.configs import data_path
 import seaborn as sns
+
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+BIGGER_SIZE = 12
+
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
 # ==================================================================================
 
 
@@ -42,9 +55,18 @@ class VizFuncs:
                 pass
 
             metrics = pd.read_csv(metrics_path / 'metrics.csv')
+
             if len(self.pctls) > 1:
-                metrics_plot = metrics.plot(x='cloud_cover', y=['recall', 'precision', 'f1', 'accuracy'],
-                                                   ylim=(0, 1))
+                fig, ax = plt.subplots(figsize=(5, 3))
+                metrics_plot = metrics.plot(x='cloud_cover', y=['accuracy', 'precision', 'recall', 'f1'],
+                                            ylim=(0, 1), ax=ax, style='.-', colormap='Dark2')
+                ax.legend(['Accuracy', 'Precision', 'Recall', 'F1'], loc='lower left', bbox_to_anchor=(0.0, 1.01),
+                          ncol=4, borderaxespad=0, frameon=False)
+                plt.xticks([10, 30, 50, 70, 90])
+                plt.xlabel('Cloud Cover')
+                plt.tight_layout()
+                metrics_fig = metrics_plot.get_figure()
+                metrics_fig.savefig(plot_path / 'metrics_plot.png', dpi=300)
             else:
                 metrics_plot = sns.scatterplot(data=pd.melt(metrics, id_vars='cloud_cover'), x='cloud_cover', y='value',
                                      hue='variable')
@@ -74,7 +96,13 @@ class VizFuncs:
 
             times = pd.read_csv(metrics_path / 'training_times.csv')
             if len(self.pctls) > 1:
-                time_plot = times.plot(x='cloud_cover', y=['training_time'])
+
+                fig, ax = plt.subplots(figsize=(5, 3))
+                time_plot = times.plot(x='cloud_cover', y=['training_time'], ax=ax, style='.-', colormap='Dark2')
+                ax.legend(['Training Time (minutes)'], loc='lower left', bbox_to_anchor=(0.0, 1.01), borderaxespad=0,
+                          frameon=False)
+                plt.xlabel('Cloud Cover')
+                plt.tight_layout()
             else:
                 time_plot = times.plot.scatter(x='cloud_cover', y=['training_time'])
 
@@ -417,7 +445,15 @@ class VizFuncs:
 
         # Median of metric values together in one plot
         if len(self.pctls) > 1:
-            median_plot = df_concat.groupby('cloud_cover').median().plot(ylim=(0, 1))
+            fig, ax = plt.subplots(figsize=(5, 3))
+            medians = df_concat.groupby('cloud_cover').median().reset_index(level=0)
+            median_plot = medians.plot(x='cloud_cover', y=['accuracy', 'precision', 'recall', 'f1'], ylim=(0, 1), ax=ax,
+                                       style='.-', colormap='Dark2')
+            ax.legend(['Accuracy', 'Precision', 'Recall', 'F1'], loc='lower left', bbox_to_anchor=(0.0, 1.01), ncol=4,
+                      borderaxespad=0, frameon=False)
+            plt.xticks([10, 30, 50, 70, 90])
+            plt.xlabel('Cloud Cover')
+            plt.tight_layout()
         else:
             median_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').median().reset_index(),
                                                         id_vars='cloud_cover'),
@@ -429,7 +465,15 @@ class VizFuncs:
 
         # Mean of metric values together in one plot
         if len(self.pctls) > 1:
-            mean_plot = df_concat.groupby('cloud_cover').mean().plot(ylim=(0, 1))
+            fig, ax = plt.subplots(figsize=(5, 3))
+            means = df_concat.groupby('cloud_cover').mean().reset_index(level=0)
+            mean_plot = means.plot(x='cloud_cover', y=['accuracy', 'precision', 'recall', 'f1'], ylim=(0, 1), ax=ax,
+                                       style='.-', colormap='Dark2')
+            ax.legend(['Accuracy', 'Precision', 'Recall', 'F1'], loc='lower left', bbox_to_anchor=(0.0, 1.01), ncol=4,
+                      borderaxespad=0, frameon=False)
+            plt.xticks([10, 30, 50, 70, 90])
+            plt.xlabel('Cloud Cover')
+            plt.tight_layout()
         else:
             mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').mean().reset_index(),
                                                         id_vars='cloud_cover'),
@@ -458,23 +502,47 @@ class VizFuncs:
         except FileExistsError:
             pass
 
-        colors = sns.color_palette("colorblind", 4)
-
-        metrics = ['accuracy', 'recall', 'precision', 'f1']
+        metric_names = ['accuracy', 'precision', 'recall', 'f1']
+        metric_names_fancy = ['Accuracy', 'Precision', 'Recall', 'F1']
         file_list = [metrics_path / img / 'metrics.csv' for img in self.img_list]
         df_concat = pd.concat(pd.read_csv(file) for file in file_list)
         median_metrics = df_concat.groupby('cloud_cover').median().reset_index()
 
-        for i, metric in enumerate(metrics):
-            plt.figure(figsize=(7, 5), dpi=300)
-            for file in file_list:
-                metrics = pd.read_csv(file)
-                plt.plot(metrics['cloud_cover'], metrics[metric], color=colors[i], linewidth=1, alpha=0.3)
-            plt.plot(median_metrics['cloud_cover'], median_metrics[metric], color=colors[i], linewidth=3, alpha=0.9)
-            plt.ylim(0, 1)
-            plt.xlabel('Cloud Cover', fontsize=13)
-            plt.ylabel(metric.capitalize(), fontsize=13)
-            plt.savefig(plot_path / '{}'.format(metric + '_highlight.png'))
+        dark2_colors = sns.color_palette("Dark2", 8)
+        color_inds = [0, 2, 5, 7]
+        colors = []
+        for i in color_inds:
+            colors.append(dark2_colors[i])
+
+        fig = plt.figure(figsize=(7, 2.5))
+        axes = [plt.subplot(1, 4, i + 1) for i in range(4)]
+        for i, ax in enumerate(axes):
+            metric = metric_names[i]
+            if i is 0:
+                for file in file_list:
+                    metrics = pd.read_csv(file)
+                    metrics.plot(x='cloud_cover', y=metric, ylim=(0, 1), ax=ax, color=colors[i], lw=1, alpha=0.3)
+                median_metrics.plot(x='cloud_cover', y=metric, ylim=(0, 1), ax=ax, style='.-', color=colors[i], lw=2,
+                                    alpha=0.9)
+                ax.set_title(metric_names_fancy[i], fontsize=10)
+                ax.get_legend().remove()
+                ax.set_xlabel('Cloud Cover')
+                ax.set_xticks([10, 30, 50, 70, 90])
+            else:
+                for file in file_list:
+                    metrics = pd.read_csv(file)
+                    metrics.plot(x='cloud_cover', y=metric, ylim=(0, 1), ax=ax, color=colors[i], lw=1, alpha=0.3)
+                median_metrics.plot(x='cloud_cover', y=metric, ylim=(0, 1), ax=ax, style='.-', color=colors[i], lw=2,
+                                    alpha=0.9)
+                ax.set_title(metric_names_fancy[i], fontsize=10)
+                ax.get_legend().remove()
+                ax.get_yaxis().set_visible(False)
+                ax.set_xlabel('')
+                ax.set_xticks([])
+        plt.subplots_adjust(wspace=0.05, hspace=0.05)
+        plt.gcf().subplots_adjust(bottom=0.2)
+        plt.ylabel(metric.capitalize())
+        plt.savefig(plot_path / '{}'.format('median_highlights.png'), dpi=300)
 
     def time_size(self):
         """
