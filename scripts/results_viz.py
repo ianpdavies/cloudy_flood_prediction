@@ -284,13 +284,14 @@ class VizFuncs:
                 data[data == -999999] = np.nan
                 data[np.isneginf(data)] = np.nan
 
-            # Get flooded image (including perm water) --------------------------------------
+
+            # Get flood image, remove perm water --------------------------------------
             flood_index = self.feat_list_new.index('flooded')
             perm_index = self.feat_list_new.index('GSW_perm')
-            indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] == 1))
-            rows, cols = zip(indices)
+            perm_img = data[:, :, perm_index]
             true_flood = data[:, :, flood_index]
-            true_flood[rows, cols] = 0
+            true_flood[((true_flood == 1) & (perm_img == 1))] = 0
+
             # Now convert to a gray color image
             true_flood_rgb = np.zeros((true_flood.shape[0], true_flood.shape[1], 4), 'uint8')
             true_flood_rgb[:, :, 0] = true_flood * 174
