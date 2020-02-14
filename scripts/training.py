@@ -286,6 +286,8 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     min_ = np.argmax(smoothed_diffs <= 0)  # where the (smoothed) loss starts to decrease
     max_ = np.argmax(smoothed_diffs >= 0)  # where the (smoothed) loss restarts to increase
     max_ = max_ if max_ > 0 else smoothed_diffs.shape[0]  # because max_ == 0 if it never restarts to increase
+    if max_ - min_ < 2:
+        max_ += 2
 
     smoothed_losses_ = smoothed_losses[min_: max_]  # restrain the window to the min_, max_ interval
     # Take min and max loss in this restrained window
@@ -815,17 +817,17 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.0005, patience=10),
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.001, patience=10),
                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
                          scheduler]
 
-            model = model_func(input_dims, dropout_rate)
+            model = get_model(input_dims, dropout_rate)
 
             print('Training full model with best LR')
             start_time = time.time()
-            model.fit(X_train, y_train, **model_params, callbacks=callbacks, verbose=2)
+            model.fit(X_train, y_train, **model_params, callbacks=callbacks)
             end_time = time.time()
             times.append(timer(start_time, end_time, False))
             # model.save(model_path)
