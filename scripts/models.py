@@ -257,44 +257,6 @@ def get_epistemic_uncertainty_model(checkpoint, T, D):
 # https://github.com/ykwon0407/UQ_BNN
 # https://gitlab.com/wdeback/dl-keras-tutorial/blob/master/notebooks/3-cnn-segment-retina-uncertainty.ipynb
 
-def get_nn_bn2_kwon(input_dims, dropout_rate):
-    tf.keras.backend.clear_session()
-    model = tf.keras.Sequential()
-    model.add(tf.keras.layers.Input(shape=input_dims, name="Input")),
-    model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=dropout_rate))),
-    model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
-    model.add(tf.keras.layers.Activation("relu")),
-    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
-    model.add(tf.keras.layers.Lambda(lambda x: K.dropout(x, level=dropout_rate))),
-    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
-    model.add(tf.keras.layers.Activation("relu")),
-    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
-    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
-    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['sparse_categorical_accuracy'])
-    return model
-
-
-def get_nn_bn2_kwon(input_dims, dropout_rate):
-    tf.keras.backend.clear_session()
-    inp = Input(shape=input_dims, name='Input')
-    x = inp
-    x = Dense(24, activation='relu')(x, name='Dense_1')
-    x = BatchNormalization()(x, name='BatchNormalization_1')
-    x = Dropout(dropout_rate)(x, training=True, name='Dropout_1')
-    x = Dense(12, activation='relu')(x, name='Dense_2')
-    x = BatchNormalization()(x, name='BatchNormalization_2')
-    x = Dropout(dropout_rate)(x, training=True, name='Dropout_2')
-    output = Dense(2, activation='softmax')(x, name='output')
-    model = models.Model(inputs=inp, outputs=output)
-
-    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['sparse_categorical_accuracy'])
-
-    return model
-
 
 def get_nn_bn1_kwon(input_dims, dropout_rate):
     tf.keras.backend.clear_session()
@@ -306,7 +268,47 @@ def get_nn_bn1_kwon(input_dims, dropout_rate):
     output = Dense(2, activation='softmax', name='output')(x)
     model = models.Model(inputs=inp, outputs=output)
 
-    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+
+    return model
+
+
+def get_nn_bn2_kwon(input_dims, dropout_rate):
+    tf.keras.backend.clear_session()
+    inp = Input(shape=input_dims, name='Input')
+    x = inp
+    x = Dense(24, activation='relu', name='Dense_1')(x)
+    x = BatchNormalization(name='BatchNormalization_1')(x)
+    x = Dropout(dropout_rate, name='Dropout_1')(x, training=True)
+    x = Dense(12, activation='relu', name='Dense_2')(x)
+    x = BatchNormalization(name='BatchNormalization_2')(x)
+    x = Dropout(dropout_rate, name='Dropout_2')(x, training=True)
+    output = Dense(2, activation='softmax', name='output')(x)
+    model = models.Model(inputs=inp, outputs=output)
+
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['sparse_categorical_accuracy'])
+
+    return model
+
+
+def get_nn_bn2_kwon_v2(input_dims, dropout_rate):
+    tf.keras.backend.clear_session()
+    inp = Input(shape=input_dims, name='Input')
+    x = inp
+    x = Dense(12, activation='relu', name='Dense_1')(x)
+    x = BatchNormalization(name='BatchNormalization_1')(x)
+    x = Dropout(dropout_rate, name='Dropout_1')(x, training=True)
+    x = Dense(6, activation='relu', name='Dense_2')(x)
+    x = BatchNormalization(name='BatchNormalization_2')(x)
+    x = Dropout(dropout_rate, name='Dropout_2')(x, training=True)
+    output = Dense(2, activation='softmax', name='output')(x)
+    model = models.Model(inputs=inp, outputs=output)
+
+    model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
                   metrics=['sparse_categorical_accuracy'])
 

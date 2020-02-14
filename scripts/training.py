@@ -815,7 +815,7 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.0001, patience=10),
+            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.0005, patience=10),
                          tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
                                                             save_best_only=True),
                          CSVLogger(metrics_path / 'training_log.log'),
@@ -825,7 +825,7 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
 
             print('Training full model with best LR')
             start_time = time.time()
-            model.fit(X_train, y_train, **model_params, callbacks=callbacks)
+            model.fit(X_train, y_train, **model_params, callbacks=callbacks, verbose=2)
             end_time = time.time()
             times.append(timer(start_time, end_time, False))
             # model.save(model_path)
