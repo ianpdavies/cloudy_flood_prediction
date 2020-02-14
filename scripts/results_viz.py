@@ -119,8 +119,7 @@ class VizFuncs:
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
             print('Creating FN/FP map for {}'.format(img))
-            plot_path = data_path / self.batch / 'plots' / img
-            bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
+            band_combo_dir = data_path / 'band_combos'
 
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
@@ -154,7 +153,7 @@ class VizFuncs:
             cir_img = ImageEnhance.Brightness(cir_img).enhance(2)
 
             print('Saving CIR image')
-            cir_file = plot_path / '{}'.format('cir_img' + '.png')
+            cir_file = band_combo_dir / '{}'.format(img + '_cir_img' + '.png')
             cir_img.save(cir_file, dpi=(300, 300))
 
     def rgb_image(self, percent, overwrite):
@@ -165,8 +164,13 @@ class VizFuncs:
 
         for img in self.img_list:
             spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
-            plot_path = data_path / self.batch / 'plots' / img
-            rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
+            band_combo_dir = data_path / 'rgb_img'
+            rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
+
+            try:
+                band_combo_dir.mkdir(parents=True)
+            except FileExistsError:
+                pass
 
             if overwrite is False:
                 if rgb_file.exists():
@@ -206,6 +210,7 @@ class VizFuncs:
         for i, img in enumerate(self.img_list):
             print('Creating FN/FP map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
+            band_combo_dir = data_path / 'band_combos'
             bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
@@ -214,7 +219,7 @@ class VizFuncs:
                 shape = ds.read(1).shape  # Shape of full original image
 
             # Get RGB image
-            rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
+            rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
             rgb_img = Image.open(rgb_file)
 
             for j, pctl in enumerate(self.pctls):
@@ -286,6 +291,7 @@ class VizFuncs:
             img_path = data_path / 'images' / img
             stack_path = img_path / 'stack' / 'stack.tif'
             plot_path = data_path / self.batch / 'plots' / img
+            band_combo_dir = data_path / 'band_combos'
 
             with rasterio.open(str(stack_path), 'r') as ds:
                 data = ds.read()
@@ -315,7 +321,7 @@ class VizFuncs:
 
             for pctl in self.pctls:
                 # Get RGB image --------------------------------------
-                rgb_file = plot_path / '{}'.format('rgb_img' + '.png')
+                rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
                 rgb_img = Image.open(rgb_file)
 
                 # Get FP/FN image --------------------------------------
@@ -364,6 +370,7 @@ class VizFuncs:
             img_path = data_path / 'images' / img
             stack_path = img_path / 'stack' / 'stack.tif'
             plot_path = data_path / self.batch / 'plots' / img
+            band_combo_dir = data_path / 'band_combos'
 
             with rasterio.open(str(stack_path), 'r') as ds:
                 data = ds.read()
@@ -392,7 +399,7 @@ class VizFuncs:
 
             for pctl in self.pctls:
                 # Get CIR image
-                cir_file = plot_path / '{}'.format('cir_img' + '.png')
+                cir_file = band_combo_dir / '{}'.format(img + '_cir_img' + '.png')
                 cir_img = Image.open(cir_file)
 
                 # Get FP/FN image
