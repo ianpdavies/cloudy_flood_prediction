@@ -1,16 +1,21 @@
 from CPR.utils import preprocessing
+import matplotlib
 import matplotlib.pyplot as plt
 from CPR.configs import data_path
 import rasterio
 from rasterio.windows import Window
 import numpy as np
 
+figure_path = data_path / 'figures'
+try:
+    figure_path.mkdir(parents=True)
+except FileExistsError:
+    pass
 # ======================================================================================================================
-
 # Displaying all feature layers of an image
 # Need to figure out how to reproject them to make them not tilted. Below is a solution where I just clip them instead,
 # but it would be nice to show more of the image
-img = '4514_LC08_027033_20170826_1'
+img = '4050_LC08_023036_20130429_1'
 batch = 'v2'
 pctl = 50
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
@@ -19,40 +24,24 @@ feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'develope
 stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
 # Read only a portion of the image
-window = Window.from_slices((500, 1400), (270, 1300))
+window = Window.from_slices((950, 1250), (1400, 1900))
 with rasterio.open(stack_path, 'r') as src:
     w = src.read(window=window)
     w[w == -999999] = np.nan
     w[np.isneginf(w)] = np.nan
 
-titles = feat_list_new
-fig, axes = plt.subplots(4, 4, figsize=(30, 20))
-i = 0
-for j, col in enumerate(axes):
-    for k, row in enumerate(axes):
-        ax = axes[j][k]
-        ax.imshow(w[i])
-        ax.set_title(titles[i], fontdict={'fontsize': 10})
-        ax.axis('off')
-        i += 1
+feat_list_fancy = ['Max SW extent', 'Dist from max SW', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
+                 'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Permanent water', 'Flooded']
 
-titles = ['Max SW extent', 'Dist from max SW', 'Permanent water', 'Aspect', 'Curve', 'Developed', 'Elevation',
-                 'Forested', 'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Flooded']
-import matplotlib.gridspec as gridspec
-plt.figure(figsize=(15, 15))
-gs1 = gridspec.GridSpec(4, 4)
-gs1.update(wspace=0.1, hspace=0.25) # set the spacing between axes.
-
-i = 0
-for j, col in enumerate(axes):
-    for k, row in enumerate(axes):
-        ax = plt.subplot(gs1[i])
-        ax.imshow(w[i])
-        ax.set_title(titles[i], fontdict={'fontsize': 10})
-        ax.axis('off')
-        i += 1
-
-ax.get_figure()
+titles = feat_list_fancy
+plt.figure(figsize=(6, 4))
+axes = [plt.subplot(4, 4, i + 1) for i in range(16)]
+for i, ax in enumerate(axes):
+    ax.imshow(w[i])
+    ax.set_title(titles[i], fontdict={'fontsize': 10, 'fontname': 'Helvetica'})
+    ax.axis('off')
+plt.tight_layout()
+plt.savefig(figure_path / 'features.png', dpi=300)
 
 # ======================================================================================================================
 # Varying cloud cover image
@@ -68,7 +57,7 @@ titles = ['10%', '30%', '50%', '70%', '90%']
 
 plt.figure(figsize=(13, 8))
 gs1 = gridspec.GridSpec(1, 5)
-gs1.update(wspace=0.1, hspace=0.25) # set the spacing between axes.
+gs1.update(wspace=0.1, hspace=0.25)  # set the spacing between axes.
 
 blues_reversed = matplotlib.cm.get_cmap('Blues_r')
 
@@ -107,35 +96,37 @@ ax.set_yticklabels(corr_matrix.columns, rotation=0)
 ax.set_xticklabels(corr_matrix.columns)
 sns.set_style({'xtick.bottom': True}, {'ytick.left': True})
 
+
 # ======================================================================================================================
-def highlight_plot():
-    print('Making highlight plots')
-    plt.ioff()
-    metrics_path = data_path / batch / 'metrics' / 'testing'
-    plot_path = data_path / batch / 'plots'
-    try:
-        plot_path.mkdir(parents=True)
-    except FileExistsError:
-        pass
+# Visualizing correlation matrices
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
 
-    colors = sns.color_palette("colorblind", 4)
+feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
-    metrics = ['accuracy', 'recall', 'precision', 'f1']
-    file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
-    df_concat = pd.concat(pd.read_csv(file) for file in file_list)
-    mean_metrics = df_concat.groupby('cloud_cover').mean().reset_index()
+col_names = ['Extent', 'Distance', 'Aspect', 'Curve', 'Develop', 'Elev', 'Forest', 'HAND', 'Other', 'Crop', 'Slope', 'SPI', 'TWI',
+             'Wetland', 'Flood']
 
-    for i, metric in enumerate(metrics):
-        plt.figure(figsize=(7, 5), dpi=300)
-        for file in file_list:
-            metrics = pd.read_csv(file)
-            plt.plot(metrics['cloud_cover'], metrics[metric], color=colors[i], linewidth=1, alpha=0.3)
-        plt.plot(mean_metrics['cloud_cover'], mean_metrics[metric], color=colors[i], linewidth=3, alpha=0.9)
-        plt.ylim(0, 1)
-        plt.xlabel('Cloud Cover', fontsize=13)
-        plt.ylabel(metric.capitalize(), fontsize=13)
-        plt.savefig(plot_path / '{}'.format(metric + '_highlight.png'))
+feat_list_fancy = ['Max SW extent', 'Dist from max SW', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
+                 'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Flooded']
 
-highlight_plot()
+perm_index = feat_list_new.index('GSW_perm')
 
-
+plt.figure()
+cor_arr = np.load(data_path / 'corr_matrix_permzero.npy')
+cor_arr = np.delete(cor_arr, perm_index, axis=1)
+cor_arr = np.delete(cor_arr, perm_index, axis=0)
+cor_df = pd.DataFrame(data=cor_arr, columns=col_names)
+cmap = sns.diverging_palette(220, 10, as_cmap=True)
+mask = np.zeros_like(cor_arr, dtype=np.bool)
+mask[np.triu_indices_from(mask)] = True
+g = sns.heatmap(cor_df, mask=mask, cmap=cmap, vmax=1, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5},
+                xticklabels=col_names, yticklabels=col_names)
+g.set_yticklabels(g.get_yticklabels(), rotation=0, fontsize=8)
+bottom, top = g.get_ylim()
+g.set_ylim(bottom + 1, top - 1)
+plt.tight_layout()
+plt.savefig(figure_path / 'corr_matrix.png', dpi=300)

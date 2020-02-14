@@ -195,7 +195,6 @@ class VizFuncs:
             print('Saving RGB image')
             rgb_img.save(rgb_file, dpi=(300, 300))
 
-
     def false_map(self, probs, save=True):
         """
         Creates map of FP/FNs overlaid on RGB image
