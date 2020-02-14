@@ -189,6 +189,8 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
 
+    data_vector[:, 0:shape[1] - 2] = scaler.transform(data_vector[:, 0:shape[1] - 2])
+
     if 0 in train_std.tolist():
         print('Removing', feat_keep[train_std.tolist().index(0)], 'because std=0 in training data')
         zero_feat = train_std.tolist().index(0)
@@ -231,8 +233,6 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
 
     # Remove NaNs
     data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-
-    data_vector[:, 0:shape[1] - 2] = scaler.transform(data_vector[:, 0:shape[1] - 2])
 
     # Make sure NaNs are in the same position element-wise in image
     mask = np.sum(data, axis=2)
