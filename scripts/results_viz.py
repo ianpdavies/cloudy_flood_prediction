@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 from CPR.utils import preprocessing, tif_stacker
 from PIL import Image, ImageEnhance
 import h5py
+from matplotlib.patches import Patch
+from matplotlib.colors import ListedColormap
+import numpy.ma as ma
 sys.path.append('../')
 from CPR.configs import data_path
 import seaborn as sns
@@ -623,241 +626,100 @@ class VizFuncs:
 
     def uncertainty_map(self):
         plt.ioff()
-        for img in self.img_list:
-            img_path = data_path / 'images' / img
-            stack_path = img_path / 'stack' / 'stack.tif'
+        my_dpi = 300
+
+        # Get predictions and variances
+        for i, img in enumerate(self.img_list):
+            print('Creating uncertainty map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
-            band_combo_dir = data_path / 'band_combos'
+            unc_bin_file = data_path / self.batch / 'uncertainties' / img / 'std_errors.h5'
+            stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
-# # # Create histogram of pixel values
-# # from rasterio.plot import show_hist
-# # with rasterio.open(spectra_stack_path, 'r') as f:
-# #     dat = f.read((4, 3, 2))
-# #     dat[dat==-999999] = np.nan
-# #     show_hist(
-# #         dat, bins=50, lw=0.0, stacked=True, alpha=0.3,
-# #         histtype='stepfilled', title="Histogram")
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
 
-# ============================================================================
+            # Reshape variance values back into image band
+            with rasterio.open(stack_path, 'r') as ds:
+                shape = ds.read(1).shape  # Shape of full original image
 
-# # Get predictions and uncertainties
-# probs = True
-# for i, img in enumerate(img_list):
-#     print('Creating FN/FP map for {}'.format(img))
-#     plot_path = data_path / batch / 'plots' / img
-#     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
-#     preds_bin_file = data_path / batch / 'predictions' / img / 'predictions.h5'
-#
-#     # Reshape variance values back into image band
-#     with rasterio.open(stack_path, 'r') as ds:
-#         shape = ds.read(1).shape  # Shape of full original image
-#
-#     for j, pctl in enumerate(pctls):
-#         print('Fetching prediction uncertainties for', str(pctl) + '{}'.format('%'))
-#
-#         data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
-#                                                                               test=True)
-#         if probs:
-#             with h5py.File(preds_bin_file, 'r') as f:
-#                 uncertainties = f[str(pctl)]
-#                 uncertainties = np.array(uncertainties)
-#                 predictions = np.argmax(uncertainties, axis=1)
-#                 uncertainties = uncertainties[:, 1]
-#         else:
-#             vars_bin_file = data_path / batch / 'variances' / img / 'variances.h5'
-#             with h5py.File(vars_bin_file, 'r') as f:
-#                 uncertainties = f[str(pctl)]
-#                 uncertainties = np.array(uncertainties)
-#             with h5py.File(preds_bin_file, 'r') as f:
-#                 predictions = f[str(pctl)]
-#                 predictions = np.array(predictions)
-#
-#         prediction_img = np.zeros(shape)
-#         prediction_img[:] = np.nan
-#         rows, cols = zip(data_ind_test)
-#         prediction_img[rows, cols] = predictions
-#
-#         unc_img = np.zeros(shape)
-#         unc_img[:] = np.nan
-#         rows, cols = zip(data_ind_test)
-#         unc_img[rows, cols] = uncertainties
-#
-#         # ----------------------------------------------------------------
-#         # Plotting
-#         plt.ioff()
-#         plot_path = data_path / batch / 'plots' / img
-#         try:
-#             plot_path.mkdir(parents=True)
-#         except FileExistsError:
-#             pass
-#         # ----------------------------------------------------------------
-#         # # Plot predicted floods
-#         # colors = ['saddlebrown', 'blue']
-#         # class_labels = ['Predicted No Flood', 'Predicted Flood']
-#         # legend_patches = [Patch(color=icolor, label=label)
-#         #                   for icolor, label in zip(colors, class_labels)]
-#         # cmap = ListedColormap(colors)
-#         #
-#         # fig, ax = plt.subplots(figsize=(10, 10))
-#         # ax.imshow(prediction_img, cmap=cmap)
-#         # ax.legend(handles=legend_patches,
-#         #           facecolor='white',
-#         #           edgecolor='white')
-#         # ax.get_xaxis().set_visible(False)
-#         # ax.get_yaxis().set_visible(False)
-#         #
-#         # myFig = ax.get_figure()
-#         # myFig.savefig(plot_path / 'predictions.png', dpi=myDpi)
-#         # plt.close('all')
-#
-#         # ----------------------------------------------------------------
-#         # Plot variance
-#         # fig, ax = plt.subplots(figsize=(10, 10))
-#         fig, ax = plt.subplots()
-#         img = ax.imshow(unc_img, cmap='plasma')
-#         ax.get_xaxis().set_visible(False)
-#         ax.get_yaxis().set_visible(False)
-#         im_ratio = unc_img.shape[0] / unc_img.shape[1]
-#         fig.colorbar(img, ax=ax, fraction=0.046*im_ratio, pad=0.04*im_ratio)
-#         myFig = ax.get_figure()
-#         myFig.savefig(plot_path / 'uncertainty.png', dpi=myDpi)
-#         plt.close('all')
-#
-#         # ----------------------------------------------------------------
-#         # Plot trues and falses
-#         flood_index = feat_keep.index('flooded')
-#         floods = data_test[:, :, flood_index]
-#         tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
-#         tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
-#         fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
-#         fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
-#         falses = fp + fn
-#         trues = tp + tn
-#         # Mask out clouds, etc.
-#         tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
-#         tn = ma.masked_array(tn, mask=np.isnan(prediction_img))
-#         fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
-#         fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
-#         falses = ma.masked_array(falses, mask=np.isnan(prediction_img))
-#         trues = ma.masked_array(trues, mask=np.isnan(prediction_img))
-#
-#         true_false = fp + (fn * 2) + (tp * 3)
-#         colors = ['saddlebrown',
-#                   'red',
-#                   'limegreen',
-#                   'blue']
-#         class_labels = ['True Negatives',
-#                         'False Floods',
-#                         'Missed Floods',
-#                         'True Floods']
-#         legend_patches = [Patch(color=icolor, label=label)
-#                           for icolor, label in zip(colors, class_labels)]
-#         cmap = ListedColormap(colors)
-#
-#         # fig, ax = plt.subplots(figsize=(10, 10))
-#         fig, ax = plt.subplots()
-#         ax.imshow(true_false, cmap=cmap)
-#         ax.legend(handles=legend_patches,
-#                   facecolor='white',
-#                   edgecolor='white')
-#         ax.get_xaxis().set_visible(False)
-#         ax.get_yaxis().set_visible(False)
-#
-#         myFig = ax.get_figure()
-#         myFig.savefig(plot_path / 'truefalse.png', dpi=myDpi)
-#         plt.close('all')
-#
-#         # ======================================================================================================================
-#         # Plot uncertainty and predictions but with perm water noted
-#         perm_index = feat_keep.index('GSW_perm')
-#         perm_water = (data_test[:, :, perm_index] == 1)
-#         perm_water_mask = np.ones(shape)
-#         perm_water_mask = ma.masked_array(perm_water_mask, mask=~perm_water)
-#
-#         # ----------------------------------------------------------------
-#         # Plot predicted floods with perm water noted
-#         colors = ['gray', 'saddlebrown', 'blue']
-#         class_labels = ['Permanent Water', 'Predicted No Flood', 'Predicted Flood']
-#         # Would be nice to add hatches over permanent water
-#         legend_patches = [Patch(color=icolor, label=label)
-#                           for icolor, label, in zip(colors, class_labels)]
-#         cmap = ListedColormap(colors)
-#         prediction_img_mask = prediction_img.copy()
-#         prediction_img_mask[perm_water] = -1
-#
-#         fig, ax = plt.subplots(figsize=(10, 10))
-#         ax.imshow(prediction_img_mask, cmap=cmap)
-#         ax.legend(handles=legend_patches,
-#                   facecolor='white',
-#                   edgecolor='white')
-#         ax.get_xaxis().set_visible(False)
-#         ax.get_yaxis().set_visible(False)
-#
-#         myFig = ax.get_figure()
-#         myFig.savefig(plot_path / 'predictions_perm.png', dpi=myDpi)
-#         plt.close('all')
-#
-#         # ----------------------------------------------------------------
-#         # Plot uncertainty with perm water noted
-#         colors = ['darkgray']
-#         legend_patches = [Patch(color=colors[0], label='Permanent Water')]
-#         cmap = ListedColormap(colors)
-#
-#         # fig, ax = plt.subplots(figsize=(10, 10))
-#         fig, ax = plt.subplots()
-#         ax.imshow(unc_img, cmap='plasma')
-#         ax.imshow(perm_water_mask, cmap=cmap)
-#         ax.legend(handles=legend_patches, facecolor='white', edgecolor='white')
-#         ax.get_xaxis().set_visible(False)
-#         ax.get_yaxis().set_visible(False)
-#         im_ratio = unc_img.shape[0] / unc_img.shape[1]
-#         fig.colorbar(img, ax=ax, fraction=0.046*im_ratio, pad=0.04*im_ratio)
-#         myFig = ax.get_figure()
-#         myFig.savefig(plot_path / 'uncertainty_perm.png', dpi=myDpi)
-#         plt.close('all')
-#
-#         # ----------------------------------------------------------------
-#         # Plot trues and falses with perm noted
-#         floods = data_test[:, :, flood_index]
-#         tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
-#         tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
-#         fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
-#         fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
-#         falses = fp + fn
-#         trues = tp + tn
-#         # Mask out clouds, etc.
-#         tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
-#         tn = ma.masked_array(tn, mask=np.isnan(prediction_img))
-#         fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
-#         fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
-#         falses = ma.masked_array(falses, mask=np.isnan(prediction_img))
-#         trues = ma.masked_array(trues, mask=np.isnan(prediction_img))
-#
-#         true_false = fp + (fn * 2) + (tp * 3)
-#         true_false[perm_water] = -1
-#         colors = ['darkgray',
-#                   'saddlebrown',
-#                   'red',
-#                   'limegreen',
-#                   'blue']
-#         class_labels = ['Permanent Water',
-#                         'True Negatives',
-#                         'False Floods',
-#                         'Missed Floods',
-#                         'True Floods']
-#         legend_patches = [Patch(color=icolor, label=label)
-#                           for icolor, label in zip(colors, class_labels)]
-#         cmap = ListedColormap(colors)
-#
-#         # fig, ax = plt.subplots(figsize=(10, 10))
-#         fig, ax = plt.subplots()
-#         ax.imshow(true_false, cmap=cmap)
-#         ax.legend(handles=legend_patches,
-#                   facecolor='white',
-#                   edgecolor='white')
-#         ax.get_xaxis().set_visible(False)
-#         ax.get_yaxis().set_visible(False)
-#
-#         myFig = ax.get_figure()
-#         myFig.savefig(plot_path / 'truefalse_perm.png', dpi=myDpi)
-#         plt.close('all')
+            for j, pctl in enumerate(self.pctls):
+                with h5py.File(unc_bin_file, 'r') as f:
+                    uncertainties = f[str(pctl)]
+                    uncertainties = np.array(uncertainties)  # Copy h5 dataset to array
+
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                      self.feat_list_new,
+                                                                                      test=True)
+                unc_image = np.zeros(shape)
+                unc_image[:] = np.nan
+                rows, cols = zip(data_ind_test)
+                unc_image[rows, cols] = uncertainties
+
+                fig, ax = plt.subplots()
+                img = ax.imshow(unc_image, cmap='plasma')
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+                im_ratio = unc_image.shape[0] / unc_image.shape[1]
+                fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                plt.tight_layout()
+                plt.savefig(plot_path / 'uncertainty.png', dpi=my_dpi, pad_inches=0.0)
+
+    def fpfn_map(self):
+        my_dpi = 300
+        plt.ioff()
+        # Get predictions and variances
+        for i, img in enumerate(self.img_list):
+            print('Creating FN/FP map for {}'.format(img))
+            plot_path = data_path / self.batch / 'plots' / img
+            preds_bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
+            stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+
+            # Reshape variance values back into image band
+            with rasterio.open(stack_path, 'r') as ds:
+                shape = ds.read(1).shape  # Shape of full original image
+
+            for j, pctl in enumerate(self.pctls):
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                      self.feat_list_new, test=True)
+
+                print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
+                with h5py.File(preds_bin_file, 'r') as f:
+                    predictions = f[str(pctl)]
+                    predictions = np.argmax(np.array(predictions), axis=1)  # Copy h5 dataset to array
+
+                prediction_img = np.zeros(shape)
+                prediction_img[:] = np.nan
+                rows, cols = zip(data_ind_test)
+                prediction_img[rows, cols] = predictions
+
+                perm_index = feat_keep.index('GSW_perm')
+                flood_index = feat_keep.index('flooded')
+                floods = data_test[:, :, flood_index]
+                perm_water = (data_test[:, :, perm_index] == 1)
+                tp = np.logical_and(prediction_img == 1, floods == 1).astype('int')
+                tn = np.logical_and(prediction_img == 0, floods == 0).astype('int')
+                fp = np.logical_and(prediction_img == 1, floods == 0).astype('int')
+                fn = np.logical_and(prediction_img == 0, floods == 1).astype('int')
+
+                # Mask out clouds, etc.
+                tp = ma.masked_array(tp, mask=np.isnan(prediction_img))
+                fp = ma.masked_array(fp, mask=np.isnan(prediction_img))
+                fn = ma.masked_array(fn, mask=np.isnan(prediction_img))
+
+                true_false = fp + (fn * 2) + (tp * 3)
+                true_false[perm_water] = -1
+                colors = ['darkgray', 'saddlebrown', 'limegreen', 'red', 'blue']
+                class_labels = ['Permanent Water', 'True Negatives', 'False Floods', 'Missed Floods', 'True Floods']
+                legend_patches = [Patch(color=icolor, label=label)
+                                  for icolor, label in zip(colors, class_labels)]
+                cmap = ListedColormap(colors)
+                fig, ax = plt.subplots(figsize=(8, 5))
+                ax.imshow(true_false, cmap=cmap)
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+                ax.legend(labels=class_labels, handles=legend_patches, loc='lower left', bbox_to_anchor=(0, 1),
+                          ncol=5, borderaxespad=0, frameon=False, prop={'size': 7})
+                plt.tight_layout()
+                plt.savefig(plot_path / 'fpfn.png', dpi=my_dpi, pad_inches=0.0)
