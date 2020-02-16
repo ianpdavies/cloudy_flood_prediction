@@ -111,7 +111,7 @@ class VizFuncs:
             time_plot.savefig(plot_path / 'training_times.png', dpi=300)
             plt.close('all')
 
-    def cir_image(self):
+    def cir_image(self, overwrite):
         """
         Creates CIR image
         """
@@ -120,8 +120,20 @@ class VizFuncs:
         for i, img in enumerate(self.img_list):
             print('Creating FN/FP map for {}'.format(img))
             band_combo_dir = data_path / 'band_combos'
-
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+            cir_file = band_combo_dir / '{}'.format(img + '_cir_img' + '.png')
+
+            try:
+                band_combo_dir.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
+            if overwrite is False:
+                if cir_file.exists():
+                    print('RGB image already exists for ' + img)
+                    continue
+                else:
+                    print('No RGB image for ' + img + ', creating one')
 
             # Get RGB image
             print('Stacking image')
@@ -153,7 +165,6 @@ class VizFuncs:
             cir_img = ImageEnhance.Brightness(cir_img).enhance(2)
 
             print('Saving CIR image')
-            cir_file = band_combo_dir / '{}'.format(img + '_cir_img' + '.png')
             cir_img.save(cir_file, dpi=(300, 300))
 
     def rgb_image(self, percent, overwrite):
@@ -164,7 +175,7 @@ class VizFuncs:
 
         for img in self.img_list:
             spectra_stack_path = data_path / 'images' / img / 'stack' / 'spectra_stack.tif'
-            band_combo_dir = data_path / 'rgb_img'
+            band_combo_dir = data_path / 'band_combos'
             rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
 
             try:
@@ -194,7 +205,7 @@ class VizFuncs:
             rgb = linear_stretch(rgb, percent)
 
             rgb_img = Image.fromarray((rgb * 255).astype(np.uint8()))
-            rgb_img = ImageEnhance.Contrast(rgb_img).enhance(1.2)
+            # rgb_img = ImageEnhance.Contrast(rgb_img).enhance(1.2)
 
             print('Saving RGB image')
             rgb_img.save(rgb_file, dpi=(300, 300))
@@ -609,6 +620,14 @@ class VizFuncs:
         pixel_times_fig.savefig(plot_path / 'size_times.png', dpi=300)
 
         plt.close('all')
+
+    def uncertainty_map(self):
+        plt.ioff()
+        for img in self.img_list:
+            img_path = data_path / 'images' / img
+            stack_path = img_path / 'stack' / 'stack.tif'
+            plot_path = data_path / self.batch / 'plots' / img
+            band_combo_dir = data_path / 'band_combos'
 
 # # # Create histogram of pixel values
 # # from rasterio.plot import show_hist
