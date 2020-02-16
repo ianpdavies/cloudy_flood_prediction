@@ -287,7 +287,7 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     max_ = np.argmax(smoothed_diffs >= 0)  # where the (smoothed) loss restarts to increase
     max_ = max_ if max_ > 0 else smoothed_diffs.shape[0]  # because max_ == 0 if it never restarts to increase
     if max_ - min_ < 2:
-        max_ += 2
+        max_ += 3
 
     smoothed_losses_ = smoothed_losses[min_: max_]  # restrain the window to the min_, max_ interval
     # Take min and max loss in this restrained window
