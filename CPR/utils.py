@@ -164,10 +164,6 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
         data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
         train_std = data_vector[:, 0:data_vector.shape[1] - 2].std(0)
 
-        shape = data_vector.shape
-        scaler = StandardScaler()
-        scaler.fit(data_vector[:, 0: shape[1] - 2])
-
         # Getting std of test dataset
         # Remove NaNs (real clouds, ice, missing data, etc). from cloudmask
         data = ds.read()
@@ -188,8 +184,6 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
-
-    data_vector[:, 0:shape[1] - 2] = scaler.transform(data_vector[:, 0:shape[1] - 2])
 
     if 0 in train_std.tolist():
         print('Removing', feat_keep[train_std.tolist().index(0)], 'because std=0 in training data')
@@ -233,6 +227,12 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
 
     # Remove NaNs
     data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+
+    data_mean = data_vector[:, 0:shape[1] - 2].mean(0)
+    data_std = data_vector[:, 0:shape[1] - 2].std(0)
+
+    # Normalize data - only the non-binary variables
+    data_vector[:, 0:shape[1] - 2] = (data_vector[:, 0:shape[1] - 2] - data_mean) / data_std
 
     # Make sure NaNs are in the same position element-wise in image
     mask = np.sum(data, axis=2)
