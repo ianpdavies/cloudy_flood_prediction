@@ -342,6 +342,36 @@ def preprocessing2(data_path, img, pctl, feat_list_new, test, normalize=True):
 
 # ======================================================================================================================
 
+
+def preprocessing_gen_model(data_path, img_list_train):
+    data_vector_list = []
+    for img in img_list_train:
+        img_path = data_path / 'images' / img
+        stack_path = img_path / 'stack' / 'stack.tif'
+        with rasterio.open(str(stack_path), 'r') as ds:
+            data = ds.read()
+            data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+            data[data == -999999] = np.nan
+            data[np.isneginf(data)] = np.nan
+
+        # Reshape into a 2D array, where rows = pixels and cols = features
+        data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+        data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+        data_vector_list.append(data_vector)
+
+    data_vector_all = np.concatenate(data_vector_list, axis=0)
+    shape = data_vector_all.shape
+    data_mean = data_vector_all[:, 0:shape[1] - 2].mean(0)
+    data_std = data_vector_all[:, 0:shape[1] - 2].std(0)
+
+    # Normalize data - only the non-binary variables
+    data_vector_all[:, 0:shape[1] - 2] = (data_vector_all[:, 0:shape[1] - 2] - data_mean) / data_std
+
+    return data_vector_all
+
+
+# ======================================================================================================================
+
 def train_val(data_vector, holdout):
     """
     Splits data into train/validation sets after standardizing and removing NaNs
