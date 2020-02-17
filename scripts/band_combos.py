@@ -101,27 +101,71 @@ def hist_equalize_rgb(img, view_hist=False, view_img=False, std_low=1.75, std_hi
     if save:
         rgb_img.save(rgb_file, dpi=(300, 300))
 
+    return rgb_enhanced
 
+from skimage import exposure
+band_combo_dir = data_path / 'band_combos'
 for img in img_list:
     hist_equalize_rgb(img, view_hist=False, std_low=1.75, std_high=1.75, save=True)
 
 img = '4444_LC08_044033_20170222_3'
-hist_equalize_rgb(img, view_hist=False, std_low=2.2, std_high=2.2, save=True)
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.1, std_high=2.1, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=7)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4444_LC08_045032_20170301_1'
-hist_equalize_rgb(img, view_hist=False, std_low=2.5, std_high=2.5, save=True)
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.5, std_high=2.5, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.49, gain=10)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4468_LC08_022035_20170503_1'
 hist_equalize_rgb(img, view_hist=False, std_low=2.5, std_high=2.7, save=True)
 
 img = '4516_LC08_017038_20170921_1'
-hist_equalize_rgb(img, view_hist=False, std_low=2.7, std_high=2.7, save=True)
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.7, std_high=2.7, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=8)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4594_LC08_022034_20180404_1'
-hist_equalize_rgb(img, view_hist=False, std_low=2.7, std_high=2.7, save=True)
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=7)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4444_LC08_043035_20170303_1'
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=1.75, std_high=1.75, save=False)
+rgb_enhanced = exposure.adjust_sigmoid(rgb, cutoff=0.55, gain=6)
+rgb_enhanced = exposure.adjust_gamma(rgb_enhanced, gamma=1.1, gain=1)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4594_LC08_022035_20180404_1'
-hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=True)
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=10)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4115_LC08_021033_20131227_2'
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.5, std_high=2.5, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=6)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+plt.imshow(rgb_enhanced)
+
+img = '4468_LC08_024036_20170501_1'
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4444_LC08_044034_20170222_1'
 hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=True)
@@ -136,7 +180,48 @@ img = '4444_LC08_044033_20170222_2'
 hist_equalize_rgb(img, view_hist=False, std_low=2.6, std_high=2.6, save=True)
 
 img = '4080_LC08_028033_20130806_1'
-hist_equalize_rgb(img, view_hist=False, std_low=2.6, std_high=2.6, save=True)
+rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.6, std_high=2.6, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.1, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=10)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4101_LC08_027038_20131103_2'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4101_LC08_027038_20131103_1'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4101_LC08_027039_20131103_1'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4468_LC08_024036_20170501_2'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4089_LC08_034032_20130917_1'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2, std_high=2, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=5.5)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4444_LC08_044033_20170222_1'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=1.8, std_high=1.8, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=6)
+plt.imshow(rgb_enhanced)
 
 plt.close('all')
 
@@ -190,6 +275,3 @@ def hist_equalize_cir(img, view_hist=False, view_img=False, std_low=1.75, std_hi
 
     if save:
         cir_img.save(cir_file, dpi=(300, 300))
-
-# img = '4089_LC08_034032_20130917_1'
-# hist_equalize_cir(img, view_hist=True, view_img=True, std_low=2.6, std_high=2.6, save=False)
