@@ -11,6 +11,7 @@ import h5py
 from matplotlib.patches import Patch
 from matplotlib.colors import ListedColormap
 import numpy.ma as ma
+
 sys.path.append('../')
 from CPR.configs import data_path
 import seaborn as sns
@@ -20,13 +21,14 @@ SMALL_SIZE = 8
 MEDIUM_SIZE = 10
 BIGGER_SIZE = 12
 
-plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
-plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
-plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
-plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
-plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
 
 # ==================================================================================
 
@@ -73,13 +75,11 @@ class VizFuncs:
                 metrics_fig.savefig(plot_path / 'metrics_plot.png', dpi=300)
             else:
                 metrics_plot = sns.scatterplot(data=pd.melt(metrics, id_vars='cloud_cover'), x='cloud_cover', y='value',
-                                     hue='variable')
+                                               hue='variable')
                 metrics_plot.set(ylim=(0, 1))
 
             metrics_fig = metrics_plot.get_figure()
             metrics_fig.savefig(plot_path / 'metrics_plot.png', dpi=300)
-
-
 
             plt.close('all')
 
@@ -228,6 +228,11 @@ class VizFuncs:
             bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
             # Reshape predicted values back into image band
             with rasterio.open(stack_path, 'r') as ds:
                 shape = ds.read(1).shape  # Shape of full original image
@@ -237,7 +242,7 @@ class VizFuncs:
             rgb_img = Image.open(rgb_file)
 
             for j, pctl in enumerate(self.pctls):
-                print('Fetching flood predictions for', str(pctl)+'{}'.format('%'))
+                print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
                 # Read predictions
                 with h5py.File(bin_file, 'r') as f:
                     if probs:
@@ -260,10 +265,11 @@ class VizFuncs:
                 # Remove perm water from predictions and actual
                 perm_index = feat_keep.index('GSW_perm')
                 flood_index = feat_keep.index('flooded')
-                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+                data_vector_test[
+                    data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
                 data_shape = data_vector_test.shape
                 with rasterio.open(stack_path, 'r') as ds:
-                    perm_feat = ds.read(perm_index+1)
+                    perm_feat = ds.read(perm_index + 1)
                     prediction_img[((prediction_img == 1) & (perm_feat == 1))] = 0
 
                 # Add actual flood values to cloud-covered pixel positions
@@ -291,7 +297,7 @@ class VizFuncs:
                 if save:
                     rgb_img.paste(fpfn_overlay, (0, 0), fpfn_overlay)
                     print('Saving overlay image for', str(pctl) + '{}'.format('%'))
-                    rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300,300))
+                    rgb_img.save(plot_path / '{}'.format('false_map_overlay' + str(pctl) + '.png'), dpi=(300, 300))
                 plt.close('all')
 
     def false_map_borders(self):
@@ -307,12 +313,16 @@ class VizFuncs:
             plot_path = data_path / self.batch / 'plots' / img
             band_combo_dir = data_path / 'band_combos'
 
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
             with rasterio.open(str(stack_path), 'r') as ds:
                 data = ds.read()
                 data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
                 data[data == -999999] = np.nan
                 data[np.isneginf(data)] = np.nan
-
 
             # Get flood image, remove perm water --------------------------------------
             flood_index = self.feat_list_new.index('flooded')
@@ -385,6 +395,11 @@ class VizFuncs:
             stack_path = img_path / 'stack' / 'stack.tif'
             plot_path = data_path / self.batch / 'plots' / img
             band_combo_dir = data_path / 'band_combos'
+
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
 
             with rasterio.open(str(stack_path), 'r') as ds:
                 data = ds.read()
@@ -487,9 +502,9 @@ class VizFuncs:
             plt.tight_layout()
         else:
             median_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').median().reset_index(),
-                                                        id_vars='cloud_cover'),
-                                           x='cloud_cover', y='value',
-                                           hue='variable')
+                                                       id_vars='cloud_cover'),
+                                          x='cloud_cover', y='value',
+                                          hue='variable')
             median_plot.set(ylim=(0, 1))
         metrics_fig = median_plot.get_figure()
         metrics_fig.savefig(plot_path / 'median_metrics.png', dpi=300)
@@ -499,7 +514,7 @@ class VizFuncs:
             fig, ax = plt.subplots(figsize=(5, 3))
             means = df_concat.groupby('cloud_cover').mean().reset_index(level=0)
             mean_plot = means.plot(x='cloud_cover', y=['accuracy', 'precision', 'recall', 'f1'], ylim=(0, 1), ax=ax,
-                                       style='.-', colormap='Dark2')
+                                   style='.-', colormap='Dark2')
             ax.legend(['Accuracy', 'Precision', 'Recall', 'F1'], loc='lower left', bbox_to_anchor=(0.0, 1.01), ncol=4,
                       borderaxespad=0, frameon=False)
             plt.xticks([10, 30, 50, 70, 90])
@@ -507,9 +522,9 @@ class VizFuncs:
             plt.tight_layout()
         else:
             mean_plot = sns.scatterplot(data=pd.melt(df_concat.groupby('cloud_cover').mean().reset_index(),
-                                                        id_vars='cloud_cover'),
-                                           x='cloud_cover', y='value',
-                                           hue='variable')
+                                                     id_vars='cloud_cover'),
+                                        x='cloud_cover', y='value',
+                                        hue='variable')
             mean_plot.set(ylim=(0, 1))
         metrics_fig = mean_plot.get_figure()
         metrics_fig.savefig(plot_path / 'mean_metrics.png', dpi=300)
@@ -624,12 +639,13 @@ class VizFuncs:
 
         plt.close('all')
 
-    def uncertainty_map(self):
+    def uncertainty_map_LR(self):
+        data_path = self.data_path
         plt.ioff()
         my_dpi = 300
 
         # Get predictions and variances
-        for i, img in enumerate(self.img_list):
+        for img in self.img_list:
             print('Creating uncertainty map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
             unc_bin_file = data_path / self.batch / 'uncertainties' / img / 'std_errors.h5'
@@ -644,7 +660,7 @@ class VizFuncs:
             with rasterio.open(stack_path, 'r') as ds:
                 shape = ds.read(1).shape  # Shape of full original image
 
-            for j, pctl in enumerate(self.pctls):
+            for pctl in self.pctls:
                 with h5py.File(unc_bin_file, 'r') as f:
                     uncertainties = f[str(pctl)]
                     uncertainties = np.array(uncertainties)  # Copy h5 dataset to array
@@ -652,6 +668,60 @@ class VizFuncs:
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
                                                                                       self.feat_list_new,
                                                                                       test=True)
+
+                unc_image = np.zeros(shape)
+                unc_image[:] = np.nan
+                rows, cols = zip(data_ind_test)
+                unc_image[rows, cols] = uncertainties
+
+                fig, ax = plt.subplots()
+                im = ax.imshow(unc_image, cmap='plasma')
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+                im_ratio = unc_image.shape[0] / unc_image.shape[1]
+                fig.colorbar(im, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                plt.tight_layout()
+                plt.savefig(plot_path / '{}'.format('map_uncertainty_s' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+
+                plt.close('all')
+
+    def uncertainty_map_NN(self):
+        data_path = self.data_path
+        plt.ioff()
+        my_dpi = 300
+
+        # Get predictions and variances
+        for i, img in enumerate(self.img_list):
+            print('Creating uncertainty map for {}'.format(img))
+            plot_path = data_path / self.batch / 'plots' / img
+            aleatoric_bin_file = data_path / self.batch / 'uncertainties' / img / 'aleatoric_uncertainties.h5'
+            epistemic_bin_file = data_path / self.batch / 'uncertainties' / img / 'epistemic_uncertainties.h5'
+            stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
+            # Reshape variance values back into image band
+            with rasterio.open(stack_path, 'r') as ds:
+                shape = ds.read(1).shape  # Shape of full original image
+
+            for pctl in self.pctls:
+                with h5py.File(aleatoric_bin_file, 'r') as f:
+                    aleatoric = f[str(pctl)]
+                    aleatoric = np.array(aleatoric)
+
+                with h5py.File(epistemic_bin_file, 'r') as f:
+                    epistemic = f[str(pctl)]
+                    epistemic = np.array(epistemic)
+
+                uncertainties = aleatoric + epistemic
+
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                      self.feat_list_new, test=True)
+
+                # Aleatoric + epistemic
                 unc_image = np.zeros(shape)
                 unc_image[:] = np.nan
                 rows, cols = zip(data_ind_test)
@@ -664,23 +734,60 @@ class VizFuncs:
                 im_ratio = unc_image.shape[0] / unc_image.shape[1]
                 fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
                 plt.tight_layout()
-                plt.savefig(plot_path / 'uncertainty.png', dpi=my_dpi, pad_inches=0.0)
+                plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+
+                # Aleatoric
+                aleatoric_image = np.zeros(shape)
+                aleatoric_image[:] = np.nan
+                rows, cols = zip(data_ind_test)
+                aleatoric_image[rows, cols] = aleatoric
+
+                fig, ax = plt.subplots()
+                img = ax.imshow(aleatoric_image, cmap='plasma')
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+                im_ratio = aleatoric_image.shape[0] / aleatoric_image.shape[1]
+                fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                plt.tight_layout()
+                plt.savefig(plot_path / '{}'.format('map_aleatoric_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+
+                # Epistemic
+                epistemic_image = np.zeros(shape)
+                epistemic_image[:] = np.nan
+                rows, cols = zip(data_ind_test)
+                epistemic_image[rows, cols] = epistemic
+
+                fig, ax = plt.subplots()
+                img = ax.imshow(epistemic_image, cmap='plasma')
+                ax.get_xaxis().set_visible(False)
+                ax.get_yaxis().set_visible(False)
+                im_ratio = epistemic_image.shape[0] / epistemic_image.shape[1]
+                fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                plt.tight_layout()
+                plt.savefig(plot_path / '{}'.format('map_epistemic_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+                plt.close('all')
 
     def fpfn_map(self):
-        my_dpi = 300
+        data_path = self.data_path
         plt.ioff()
+        my_dpi = 300
         # Get predictions and variances
-        for i, img in enumerate(self.img_list):
+        for img in self.img_list:
             print('Creating FN/FP map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
             preds_bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
             # Reshape variance values back into image band
             with rasterio.open(stack_path, 'r') as ds:
                 shape = ds.read(1).shape  # Shape of full original image
 
-            for j, pctl in enumerate(self.pctls):
+            for pctl in self.pctls:
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
                                                                                       self.feat_list_new, test=True)
 
@@ -722,4 +829,6 @@ class VizFuncs:
                 ax.legend(labels=class_labels, handles=legend_patches, loc='lower left', bbox_to_anchor=(0, 1),
                           ncol=5, borderaxespad=0, frameon=False, prop={'size': 7})
                 plt.tight_layout()
-                plt.savefig(plot_path / 'fpfn.png', dpi=my_dpi, pad_inches=0.0)
+                plt.savefig(plot_path / '{}'.format('map_fpfn_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+
+                plt.close('all')
