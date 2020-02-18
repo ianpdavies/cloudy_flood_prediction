@@ -122,18 +122,12 @@ for img in img_list:
             p = softmax(data_vector_train, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                means_train.append(np.mean(data_vector_train[:, index]))
-                means_train_arr = np.array(means_train)
                 with open(exp_path / 'means_train.csv', 'ab') as f:
-                    np.savetxt(f, means_train_arr)
-                variances_train.append(np.var(data_vector_train[:, index]))
-                variances_train_arr = np.array(means_train)
+                    np.savetxt(f, np.mean(data_vector_train[:, index]))
                 with open(exp_path / 'variances_train.csv', 'ab') as f:
-                    np.savetxt(f, variances_train_arr)
-                entropies_train.append(entropy(p[:, index]))
-                entropies_train_arr = np.array(means_train)
+                    np.savetxt(f, np.var(data_vector_train[:, index]))
                 with open(exp_path / 'entropies_train.csv', 'ab') as f:
-                    np.savetxt(f, entropies_train_arr)
+                    np.savetxt(f, entropy(p[:, index]))
 
 np.savetxt(exp_path / 'means_train.csv', means_train, delimiter=",")
 np.savetxt(exp_path / 'variances_train.csv', variances_train, delimiter=",")
@@ -154,22 +148,16 @@ for img in img_list:
             p = softmax(data_vector_test, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                means_test.append(np.mean(data_vector_test[:, index]))
-                means_test_arr = np.array(means_test)
                 with open(exp_path / 'means_test.csv', 'ab') as f:
-                    np.savetxt(f, means_test_arr)
-                variances_test.append(np.var(data_vector_test[:, index]))
-                variances_test_arr = np.array(means_test)
+                    np.savetxt(f, np.mean(data_vector_test[:, index]))
                 with open(exp_path / 'variances_test.csv', 'ab') as f:
-                    np.savetxt(f, variances_test_arr)
-                entropies_test.append(entropy(p[:, index]))
-                entropies_test_arr = np.array(means_test)
+                    np.savetxt(f, np.var(data_vector_test[:, index]))
                 with open(exp_path / 'entropies_test.csv', 'ab') as f:
-                    np.savetxt(f, entropies_test_arr)
+                    np.savetxt(f, entropy(p[:, index]))
 
-np.savetxt(exp_path / 'means_test2.csv', means_test, delimiter=",")
-np.savetxt(exp_path / 'variances_test2.csv', variances_test, delimiter=",")
-np.savetxt(exp_path / 'entropies_test2.csv', entropies_test, delimiter=",")
+np.savetxt(exp_path / 'means_test.csv', means_test, delimiter=",")
+np.savetxt(exp_path / 'variances_test.csv', variances_test, delimiter=",")
+np.savetxt(exp_path / 'entropies_test.csv', entropies_test, delimiter=",")
 
 # ======================================================================================================================
 
@@ -302,10 +290,6 @@ try:
 except FileExistsError:
     pass
 
-means_train = []
-variances_train = []
-entropies_train = []
-
 # Extract cloud files
 clouds_dir = data_path / 'clouds'
 for trial in trials:
@@ -331,22 +315,12 @@ for img in img_list:
             p = softmax(data_vector_train, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                means_train.append(np.mean(data_vector_train[:, index]))
-                means_train_arr = np.array(means_train)
                 with open(exp_path / 'means_train.csv', 'ab') as f:
-                    np.savetxt(f, means_train_arr)
-                variances_train.append(np.var(data_vector_train[:, index]))
-                variances_train_arr = np.array(means_train)
+                    np.savetxt(f, np.mean(data_vector_train[:, index]))
                 with open(exp_path / 'variances_train.csv', 'ab') as f:
-                    np.savetxt(f, variances_train_arr)
-                entropies_train.append(entropy(p[:, index]))
-                entropies_train_arr = np.array(means_train)
+                    np.savetxt(f, np.var(data_vector_train[:, index]))
                 with open(exp_path / 'entropies_train.csv', 'ab') as f:
-                    np.savetxt(f, entropies_train_arr)
-
-means_test = []
-variances_test = []
-entropies_test = []
+                    np.savetxt(f, entropy(p[:, index]))
 
 for img in img_list:
     print('Getting means for', img)
@@ -360,16 +334,10 @@ for img in img_list:
             p = softmax(data_vector_test, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                means_test.append(np.mean(data_vector_test[:, index]))
-                means_test_arr = np.array(means_test)
                 with open(exp_path / 'means_test.csv', 'ab') as f:
-                    np.savetxt(f, means_test_arr)
-                variances_test.append(np.var(data_vector_test[:, index]))
-                variances_test_arr = np.array(means_test)
+                    np.savetxt(f, np.mean(data_vector_test[:, index]))
                 with open(exp_path / 'variances_test.csv', 'ab') as f:
-                    np.savetxt(f, variances_test_arr)
-                entropies_test.append(entropy(p[:, index]))
-                entropies_test_arr = np.array(means_test)
+                    np.savetxt(f, np.var(data_vector_test[:, index]))
                 with open(exp_path / 'entropies_test.csv', 'ab') as f:
-                    np.savetxt(f, entropies_test_arr)
+                    np.savetxt(f, entropy(p[:, index]))
 
