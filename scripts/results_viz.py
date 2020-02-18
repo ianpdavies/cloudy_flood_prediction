@@ -669,10 +669,15 @@ class VizFuncs:
                                                                                       self.feat_list_new,
                                                                                       test=True)
 
+                perm_index = feat_keep.index('GSW_perm')
+                perm = data_test[:, :, perm_index]
+
                 unc_image = np.zeros(shape)
                 unc_image[:] = np.nan
                 rows, cols = zip(data_ind_test)
                 unc_image[rows, cols] = uncertainties
+
+                unc_image[perm == 1] = 0
 
                 fig, ax = plt.subplots()
                 im = ax.imshow(unc_image, cmap='plasma')
