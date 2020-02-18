@@ -726,11 +726,16 @@ class VizFuncs:
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
                                                                                       self.feat_list_new, test=True)
 
+                perm_index = feat_keep.index('GSW_perm')
+                perm = data_test[:, :, perm_index]
+
                 # Aleatoric + epistemic
                 unc_image = np.zeros(shape)
                 unc_image[:] = np.nan
                 rows, cols = zip(data_ind_test)
                 unc_image[rows, cols] = uncertainties
+
+                unc_image[perm == 1] = 0
 
                 fig, ax = plt.subplots()
                 img = ax.imshow(unc_image, cmap='plasma')
@@ -747,6 +752,8 @@ class VizFuncs:
                 rows, cols = zip(data_ind_test)
                 aleatoric_image[rows, cols] = aleatoric
 
+                aleatoric_image[perm == 1] = 0
+
                 fig, ax = plt.subplots()
                 img = ax.imshow(aleatoric_image, cmap='plasma')
                 ax.get_xaxis().set_visible(False)
@@ -761,6 +768,8 @@ class VizFuncs:
                 epistemic_image[:] = np.nan
                 rows, cols = zip(data_ind_test)
                 epistemic_image[rows, cols] = epistemic
+
+                epistemic_image[perm == 1] = 0
 
                 fig, ax = plt.subplots()
                 img = ax.imshow(epistemic_image, cmap='plasma')
