@@ -648,7 +648,8 @@ class VizFuncs:
         for img in self.img_list:
             print('Creating uncertainty map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
-            unc_bin_file = data_path / self.batch / 'uncertainties' / img / 'std_errors.h5'
+            se_lower_bin_file = data_path / self.batch / 'uncertainties' / img / 'se_lower.h5'
+            se_upper_bin_file = data_path / self.batch / 'uncertainties' / img / 'se_upper.h5'
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
 
             try:
@@ -661,13 +662,19 @@ class VizFuncs:
                 shape = ds.read(1).shape  # Shape of full original image
 
             for pctl in self.pctls:
-                with h5py.File(unc_bin_file, 'r') as f:
-                    uncertainties = f[str(pctl)]
-                    uncertainties = np.array(uncertainties)  # Copy h5 dataset to array
+                with h5py.File(se_lower_bin_file, 'r') as f:
+                    lower = f[str(pctl)]
+                    lower = np.array(lower)  # Copy h5 dataset to array
+
+                with h5py.File(se_upper_bin_file, 'r') as f:
+                    upper = f[str(pctl)]
+                    upper = np.array(upper)  # Copy h5 dataset to array
 
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
                                                                                       self.feat_list_new,
                                                                                       test=True)
+
+                uncertainties = upper - lower
 
                 perm_index = feat_keep.index('GSW_perm')
                 perm = data_test[:, :, perm_index]
@@ -678,15 +685,20 @@ class VizFuncs:
                 unc_image[rows, cols] = uncertainties
 
                 unc_image[perm == 1] = 0
+                cutoff_value = np.nanpercentile(unc_image, 99.99)  # Truncate values so outliers don't skew colorbar
+                unc_image[unc_image > cutoff_value] = np.round(cutoff_value, 0)
 
                 fig, ax = plt.subplots()
-                im = ax.imshow(unc_image, cmap='plasma')
+                im = ax.imshow(unc_image, cmap='magma')
                 ax.get_xaxis().set_visible(False)
                 ax.get_yaxis().set_visible(False)
                 im_ratio = unc_image.shape[0] / unc_image.shape[1]
-                fig.colorbar(im, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                cbar = fig.colorbar(im, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                # cbar_labels = [label.get_text() for label in cbar.ax.get_yticklabels()]  # Add + to cbar max value
+                # cbar_labels[-1] = cbar_labels[-1] + '+'
+                # cbar.ax.set_yticklabels(cbar_labels)
                 plt.tight_layout()
-                plt.savefig(plot_path / '{}'.format('map_uncertainty_s' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+                plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
 
                 plt.close('all')
 

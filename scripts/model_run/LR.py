@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from CPR.utils import preprocessing, tif_stacker
 from sklearn.covariance import EmpiricalCovariance
 import h5py
+from LR_conf_intervals import get_se, get_probs
 
 sys.path.append('../')
 from CPR.configs import data_path
@@ -38,8 +39,6 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-img_list = [img_list[0]]
-pctls = [30]
 
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation',
@@ -108,7 +107,8 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         uncertainties_path = data_path / batch / 'uncertainties' / img
-        se_bin_file = uncertainties_path / 'std_errors.h5'
+        se_lower_bin_file = uncertainties_path / 'se_lower.h5'
+        se_upper_bin_file = uncertainties_path / 'se_upper.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing' / img
 
         try:
@@ -145,23 +145,28 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
                     del f[str(pctl)]
                 f.create_dataset(str(pctl), data=pred_probs)
 
-            # Compute standard errors from # https://stackoverflow.com/questions/47414842/confidence-interval-of-probability-prediction-from-logistic-regression-statsmode/47419474
-            cov = EmpiricalCovariance().fit(X_test).covariance_
-            gradient = (pred_probs[:, 1] * (1 - pred_probs[:, 1]) * X_test.T).T  # matrix gradients for each observation
-            std_errors = np.array([np.sqrt(np.dot(np.dot(g, cov), g)) for g in gradient])
+            # Computer standard errors
+            SE_est = get_se(X_test, y_test, trained_model)
+            probs, upper, lower = get_probs(trained_model, X_test, SE_est, z=1.96)  # probs is redundant, predicted above
 
             try:
                 uncertainties_path.mkdir(parents=True)
             except FileExistsError:
                 pass
 
-            with h5py.File(se_bin_file, 'a') as f:
+            with h5py.File(se_lower_bin_file, 'a') as f:
                 if str(pctl) in f:
-                    print('Deleting earlier epistemic predictions')
+                    print('Deleting earlier lower SEs')
                     del f[str(pctl)]
-                f.create_dataset(str(pctl), data=std_errors)
+                f.create_dataset(str(pctl), data=lower)
 
-            times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
+            with h5py.File(se_upper_bin_file, 'a') as f:
+                if str(pctl) in f:
+                    print('Deleting earlier upper SEs')
+                    del f[str(pctl)]
+                f.create_dataset(str(pctl), data=upper)
+
+            times.append(timer(start_time, time.time(), False))
 
             print('Evaluating predictions')
             perm_mask = data_test[:, :, perm_index]
@@ -175,7 +180,8 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
 
-            del preds, pred_probs, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
+            del preds, probs, pred_probs, upper, lower, X_test, y_test, \
+                trained_model, data_test, data_vector_test, data_ind_test
 
         metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
                                columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
@@ -184,12 +190,11 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
                                 columns=['cloud_cover', 'testing_time'])
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
-        return std_errors
 
 
 # ======================================================================================================================
 log_reg_training(img_list, pctls, feat_list_new, data_path, batch)
-std_errors = log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch)
+log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.metric_plots_multi()
@@ -198,5 +203,4 @@ viz.false_map(probs=True, save=False)
 viz.false_map_borders()
 viz.false_map_borders_cir()
 viz.fpfn_map()
-viz.uncertainty_map()
-
+viz.uncertainty_map_LR()
