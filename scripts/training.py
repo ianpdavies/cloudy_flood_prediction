@@ -286,23 +286,25 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     min_ = np.argmax(smoothed_diffs <= 0)  # where the (smoothed) loss starts to decrease
     max_ = np.argmax(smoothed_diffs >= 0)  # where the (smoothed) loss restarts to increase
     max_ = max_ if max_ > 0 else smoothed_diffs.shape[0]  # because max_ == 0 if it never restarts to increase
-    if max_ - min_ < 2:
-        max_ += 3
+
 
     smoothed_losses_ = smoothed_losses[min_: max_]  # restrain the window to the min_, max_ interval
     # Take min and max loss in this restrained window
-    min_smoothed_loss_ = min(smoothed_losses_[:-1])
-    max_smoothed_loss_ = max(smoothed_losses_[:-1])
-    delta = max_smoothed_loss_ - min_smoothed_loss_
+    try:
+        min_smoothed_loss_ = min(smoothed_losses_[:-1])
+        max_smoothed_loss_ = max(smoothed_losses_[:-1])
+        delta = max_smoothed_loss_ - min_smoothed_loss_
 
-    lr_arg_max = np.argmax(smoothed_losses_ <= min_smoothed_loss_ + .05 * delta)
-    lr_arg_min = np.argmax(smoothed_losses_ <= min_smoothed_loss_ + .5 * delta)
+        lr_arg_max = np.argmax(smoothed_losses_ <= min_smoothed_loss_ + .05 * delta)
+        lr_arg_min = np.argmax(smoothed_losses_ <= min_smoothed_loss_ + .5 * delta)
 
-    lr_arg_min += min_
-    lr_arg_max += min_
+        lr_arg_min += min_
+        lr_arg_max += min_
+        lrs = lrRangeFinder.lrs[lr_arg_min: lr_arg_max]
+        lr_min, lr_max = min(lrs), max(lrs)
+    except ValueError:
+        lr_min, lr_max = 0.8, 1.5
 
-    lrs = lrRangeFinder.lrs[lr_arg_min: lr_arg_max]
-    lr_min, lr_max = min(lrs), max(lrs)
 
     print('lr range: [{}, {}]'.format(lr_min, lr_max))
 
@@ -827,7 +829,7 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
 
             print('Training full model with best LR')
             start_time = time.time()
-            model.fit(X_train, y_train, **model_params, callbacks=callbacks)
+            model.fit(X_train, y_train, **model_params, callbacks=callbacks, verbose=2)
             end_time = time.time()
             times.append(timer(start_time, end_time, False))
             # model.save(model_path)
