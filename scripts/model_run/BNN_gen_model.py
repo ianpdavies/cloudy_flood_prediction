@@ -1,10 +1,9 @@
 import __init__
-from models import get_nn_bn2 as model_func
+from models import get_nn_bn2_kwon_v2 as model_func
 import tensorflow as tf
 from tensorflow.keras.callbacks import CSVLogger
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import h5py
-import rasterio
 import pandas as pd
 import numpy as np
 import random
@@ -24,10 +23,12 @@ print('Python Version:', sys.version)
 # ==================================================================================
 # Parameters
 
-batch = 'NN_gen_model'
+batch = 'BNN_gen_model'
 pctls = [10, 30, 50, 70, 90]
-BATCH_SIZE = 8192
-EPOCHS = 100
+batch_size = 8192
+epochs = 50
+MC_passes = 50
+dropout_rate = 0.2
 
 try:
     (data_path / batch).mkdir()
@@ -37,9 +38,10 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-
-random.seed(32)
-random.shuffle(img_list)
+img_list = img_list[0:3]
+pctls = [50]
+# random.seed(32)
+# random.shuffle(img_list)
 
 num_train = np.floor(len(img_list) * (2/3)).astype('int')
 img_list_train = img_list[0:num_train]
@@ -49,10 +51,8 @@ img_list_test = img_list[num_train:len(img_list)]
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
-model_params = {'batch_size': BATCH_SIZE,
-                'epochs': 11,
-                'verbose': 2,
-                'use_multiprocessing': True}
+model_params = {'epochs': epochs,
+                'batch_size': batch_size}
 
 viz_params = {'img_list': img_list_test,
               'pctls': pctls,
@@ -60,16 +60,17 @@ viz_params = {'img_list': img_list_test,
               'batch': batch,
               'feat_list_new': feat_list_new}
 
-# Set some optimized config parameters
-NUM_PARALLEL_EXEC_UNITS = os.cpu_count()
+NUM_PARALLEL_EXEC_UNITS = 8
 config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=NUM_PARALLEL_EXEC_UNITS, inter_op_parallelism_threads=4,
                                   allow_soft_placement=True, device_count={'CPU': NUM_PARALLEL_EXEC_UNITS})
 session = tf.compat.v1.Session(config=config)
 tf.compat.v1.keras.backend.set_session(session)
-# os.environ["OMP_NUM_THREADS"] = "4"
 os.environ["KMP_BLOCKTIME"] = "30"
 os.environ["KMP_SETTINGS"] = "1"
 os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
+os.environ['MKL_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
+os.environ['GOTO_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
+os.environ['OMP_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 
 os.environ['MKL_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 os.environ['GOTO_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
@@ -263,7 +264,7 @@ def lr_plots(lrRangeFinder, lr_plots_path):
     return lr_min, lr_max, lrRangeFinder.lrs, lrRangeFinder.losses
 
 
-def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, batch, **model_params):
+def training_BNN_gen_model(img_list_train, feat_list_new, model_func, data_path, batch, dropout_rate, **model_params):
     get_model = model_func
     times = []
     lr_mins = []
@@ -279,7 +280,7 @@ def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, 
     data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
     shape = data_vector_train.shape
     X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
-    INPUT_DIMS = X_train.shape[1]
+    input_dims = X_train.shape[1]
 
     model_path = data_path / batch / 'models'
     metrics_path = data_path / batch / 'metrics' / 'training'
@@ -304,7 +305,7 @@ def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, 
                        'callbacks': [lrRangeFinder],
                        'use_multiprocessing': True}
 
-    model = model_func(INPUT_DIMS)
+    model = model_func(input_dims, dropout_rate)
 
     print('Finding learning rate')
     model.fit(X_train, y_train, **lr_model_params)
@@ -322,14 +323,13 @@ def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, 
                  CSVLogger(metrics_path / 'training_log.log'),
                  scheduler]
 
-    model = get_model(INPUT_DIMS)
+    model = get_model(input_dims, dropout_rate)
 
     print('Training full model with best LR')
     start_time = time.time()
     model.fit(X_train, y_train, **model_params, callbacks=callbacks)
     end_time = time.time()
     times.append(timer(start_time, end_time, False))
-    # model.save(model_path)
 
     metrics_path = metrics_path.parent
     times = [float(i) for i in times]
@@ -352,14 +352,17 @@ def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, 
     lr_losses.to_csv(losses_path, index=False)
 
 
-def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **model_params):
-    model_path = data_path / batch / 'models' / 'gen_model.h5'
-    trained_model = tf.keras.models.load_model(model_path)
+def prediction_BNN_gen_model(img_list, pctls, feat_list_new, data_path, batch, MC_passes, **model_params):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
+        model_path = data_path / batch / 'models' / 'gen_model.h5'
+
+        uncertainties_path = data_path / batch / 'uncertainties' / img
+        aleatoric_bin_file = uncertainties_path / 'aleatoric_uncertainties.h5'
+        epistemic_bin_file = uncertainties_path / 'epistemic_uncertainties.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing' / img
 
         try:
@@ -369,18 +372,27 @@ def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **mod
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+                                                                                  test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
-            data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            data_vector_test[
+                data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
             data_shape = data_vector_test.shape
-            X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
+            X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
             start_time = time.time()
-            preds = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
-            preds = np.argmax(preds, axis=1)  # Display most probable value
+            model = tf.keras.models.load_model(model_path)
+            p_hat = []
+            for t in range(MC_passes):
+                p_hat.append(
+                    model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)[:, 1])
+            p_hat = np.array(p_hat)
+            preds = np.round(np.mean(p_hat, axis=0))
+            aleatoric = np.mean(p_hat * (1 - p_hat), axis=0)
+            epistemic = np.mean(p_hat ** 2, axis=0) - np.mean(p_hat, axis=0) ** 2
 
             try:
                 preds_path.mkdir(parents=True)
@@ -393,7 +405,24 @@ def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **mod
                     del f[str(pctl)]
                 f.create_dataset(str(pctl), data=preds)
 
-            times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
+            try:
+                uncertainties_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
+            with h5py.File(epistemic_bin_file, 'a') as f:
+                if str(pctl) in f:
+                    print('Deleting earlier epistemic predictions')
+                    del f[str(pctl)]
+                f.create_dataset(str(pctl), data=epistemic)
+
+            with h5py.File(aleatoric_bin_file, 'a') as f:
+                if str(pctl) in f:
+                    print('Deleting earlier epistemic predictions')
+                    del f[str(pctl)]
+                f.create_dataset(str(pctl), data=aleatoric)
+
+            times.append(timer(start_time, time.time(), False))
 
             print('Evaluating predictions')
             accuracy.append(accuracy_score(y_test, preds))
@@ -401,23 +430,25 @@ def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **mod
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
 
-            del preds, X_test, y_test, data_test, data_vector_test, data_ind_test
+            del preds, p_hat, aleatoric, epistemic, X_test, y_test, model, data_test, data_vector_test, data_ind_test
 
         metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
                                columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
-        times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
+        times = [float(i) for i in times]
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
                                 columns=['cloud_cover', 'testing_time'])
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
 
+
 # ======================================================================================================================
-training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, batch, **model_params)
-prediction_gen_model(img_list_test, pctls, feat_list_new, data_path, batch, **model_params)
+training_BNN_gen_model(img_list_train, feat_list_new, model_func, data_path, batch, dropout_rate, **model_params)
+prediction_BNN_gen_model(img_list_test, pctls, feat_list_new, data_path, batch, MC_passes, **model_params)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
-viz.cir_image()
+viz.metric_plots_multi()
+viz.time_plot()
 viz.false_map(probs=False, save=False)
 viz.false_map_borders()
-viz.metric_plots_multi()
-viz.median_highlight()
+viz.fpfn_map()
+viz.uncertainty_map_NN()

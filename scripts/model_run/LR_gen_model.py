@@ -38,6 +38,8 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
+
+random.seed(32)
 random.shuffle(img_list)
 
 num_train = np.floor(len(img_list) * (2/3)).astype('int')
@@ -49,7 +51,7 @@ feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'develope
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
                  'flooded']
 
-viz_params = {'img_list': img_list,
+viz_params = {'img_list': img_list_test,
               'pctls': pctls,
               'data_path': data_path,
               'batch': batch,
