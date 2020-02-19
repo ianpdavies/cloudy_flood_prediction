@@ -43,11 +43,10 @@ except FileExistsError:
 # ======================================================================================================================
 
 
-def preprocessing_random_clouds(data_path, img, pctl, trial):
+def preprocessing_random_clouds(data_path, img, pctl, trial, test):
     """
     Preprocessing but gets cloud image from random cloud file directories
     """
-    test = True
     img_path = data_path / 'images' / img
     stack_path = img_path / 'stack' / 'stack.tif'
     clouds_dir = data_path / 'clouds' / 'random' / trial
@@ -117,7 +116,7 @@ for img in img_list:
         print(trial)
         for pctl in pctls:
             print(pctl)
-            data_train, data_vector_train, data_ind_train = preprocessing_random_clouds(data_path, img, pctl, trial)
+            data_train, data_vector_train, data_ind_train = preprocessing_random_clouds(data_path, img, pctl, trial, test=False)
             perm_index = feat_list_new.index('GSW_perm')
             p = softmax(data_vector_train, axis=1)
             for feat in feat_list_new:
@@ -129,10 +128,6 @@ for img in img_list:
                 with open(exp_path / 'entropies_train.csv', 'ab') as f:
                     np.savetxt(f, entropy(p[:, index]))
 
-np.savetxt(exp_path / 'means_train.csv', means_train, delimiter=",")
-np.savetxt(exp_path / 'variances_train.csv', variances_train, delimiter=",")
-np.savetxt(exp_path / 'entropies_train.csv', entropies_train, delimiter=",")
-
 means_test = []
 variances_test = []
 entropies_test = []
@@ -143,7 +138,7 @@ for img in img_list:
         print(trial)
         for pctl in pctls:
             print(pctl)
-            data_test, data_vector_test, data_ind_test = preprocessing_random_clouds(data_path, img, pctl, trial)
+            data_test, data_vector_test, data_ind_test = preprocessing_random_clouds(data_path, img, pctl, trial, test=True)
             perm_index = feat_list_new.index('GSW_perm')
             p = softmax(data_vector_test, axis=1)
             for feat in feat_list_new:
@@ -155,9 +150,6 @@ for img in img_list:
                 with open(exp_path / 'entropies_test.csv', 'ab') as f:
                     np.savetxt(f, entropy(p[:, index]))
 
-np.savetxt(exp_path / 'means_test.csv', means_test, delimiter=",")
-np.savetxt(exp_path / 'variances_test.csv', variances_test, delimiter=",")
-np.savetxt(exp_path / 'entropies_test.csv', entropies_test, delimiter=",")
 
 # ======================================================================================================================
 
