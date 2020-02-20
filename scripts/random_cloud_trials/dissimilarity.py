@@ -1,13 +1,9 @@
 import __init__
-import pandas as pd
 import numpy as np
-import seaborn as sns
 import rasterio
 from zipfile import ZipFile
 import sys
 import os
-import pickle
-import tensorflow as tf
 from scipy.special import softmax
 from scipy.stats import entropy
 
@@ -93,9 +89,6 @@ def preprocessing_random_clouds(data_path, img, pctl, trial, test):
 
 # ======================================================================================================================
 # Getting image-wide mean, variance, entropy of each variable in each trial
-means_train = []
-variances_train = []
-entropies_train = []
 
 # Extract cloud files
 clouds_dir = data_path / 'clouds'
@@ -110,8 +103,12 @@ for trial in trials:
     with ZipFile(trial_clouds_zip, 'r') as src:
         src.extractall(trial_clouds_dir)
 
+
 for img in img_list:
-    print('Getting means for', img)
+    print('Getting train means for', img)
+    means_train = []
+    variances_train = []
+    entropies_train = []
     for trial in trials:
         print(trial)
         for pctl in pctls:
@@ -121,19 +118,23 @@ for img in img_list:
             p = softmax(data_vector_train, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                with open(exp_path / 'means_train.csv', 'ab') as f:
-                    np.savetxt(f, np.mean(data_vector_train[:, index]))
-                with open(exp_path / 'variances_train.csv', 'ab') as f:
-                    np.savetxt(f, np.var(data_vector_train[:, index]))
-                with open(exp_path / 'entropies_train.csv', 'ab') as f:
-                    np.savetxt(f, entropy(p[:, index]))
+                means_train.append(np.mean(data_vector_train[:, index]))
+                variances_train.append(np.var(data_vector_train[:, index]))
+                p_feat = p[:, index]
+                entropies_train.append(entropy(p_feat[p_feat != 0]))
+    with open(exp_path / 'means_train.csv', 'ab') as f:
+        np.savetxt(f, np.array(means_train), delimiter=',')
+    with open(exp_path / 'variances_train.csv', 'ab') as f:
+        np.savetxt(f, np.array(variances_train), delimiter=',')
+    with open(exp_path / 'entropies_train.csv', 'ab') as f:
+        np.savetxt(f, np.array(entropies_train), delimiter=',')
 
-means_test = []
-variances_test = []
-entropies_test = []
 
 for img in img_list:
-    print('Getting means for', img)
+    print('Getting test means for', img)
+    means_test = []
+    variances_test = []
+    entropies_test = []
     for trial in trials:
         print(trial)
         for pctl in pctls:
@@ -143,23 +144,26 @@ for img in img_list:
             p = softmax(data_vector_test, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                with open(exp_path / 'means_test.csv', 'ab') as f:
-                    np.savetxt(f, np.mean(data_vector_test[:, index]))
-                with open(exp_path / 'variances_test.csv', 'ab') as f:
-                    np.savetxt(f, np.var(data_vector_test[:, index]))
-                with open(exp_path / 'entropies_test.csv', 'ab') as f:
-                    np.savetxt(f, entropy(p[:, index]))
+                means_test.append(np.mean(data_vector_test[:, index]))
+                variances_test.append(np.var(data_vector_test[:, index]))
+                p_feat = p[:, index]
+                entropies_test.append(entropy(p_feat[p_feat != 0]))
+    with open(exp_path / 'means_test.csv', 'ab') as f:
+        np.savetxt(f, np.array(means_test), delimiter=',')
+    with open(exp_path / 'variances_test.csv', 'ab') as f:
+        np.savetxt(f, np.array(variances_test), delimiter=',')
+    with open(exp_path / 'entropies_test.csv', 'ab') as f:
+        np.savetxt(f, np.array(entropies_test), delimiter=',')
 
 
 # ======================================================================================================================
 
 
-def preprocessing_random_clouds_standard(data_path, img, pctl, trial):
+def preprocessing_random_clouds_standard(data_path, img, pctl, trial, test):
     """
     Preprocessing but gets cloud image from random cloud file directories
     Does standardize features; any feature with original std=0 becomes the average standardized value
     """
-    test = True
     img_path = data_path / 'images' / img
     stack_path = img_path / 'stack' / 'stack.tif'
     clouds_dir = data_path / 'clouds' / 'random' / trial
@@ -294,42 +298,54 @@ for trial in trials:
     trial_clouds_zip = clouds_dir / 'random' / '{}'.format(trial + '.zip')
     with ZipFile(trial_clouds_zip, 'r') as src:
         src.extractall(trial_clouds_dir)
-
+#
 for img in img_list:
-    print('Getting means for', img)
+    print('Getting train means for', img)
+    means_train = []
+    variances_train = []
+    entropies_train = []
     for trial in trials:
         print(trial)
         for pctl in pctls:
             print(pctl)
-            data_train, data_vector_train, data_ind_train = \
-                preprocessing_random_clouds_standard(data_path, img, pctl, trial)
+            data_train, data_vector_train, data_ind_train = preprocessing_random_clouds_standard(data_path, img, pctl, trial, test=False)
             perm_index = feat_list_new.index('GSW_perm')
             p = softmax(data_vector_train, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                with open(exp_path / 'means_train.csv', 'ab') as f:
-                    np.savetxt(f, np.mean(data_vector_train[:, index]))
-                with open(exp_path / 'variances_train.csv', 'ab') as f:
-                    np.savetxt(f, np.var(data_vector_train[:, index]))
-                with open(exp_path / 'entropies_train.csv', 'ab') as f:
-                    np.savetxt(f, entropy(p[:, index]))
+                means_train.append(np.mean(data_vector_train[:, index]))
+                variances_train.append(np.var(data_vector_train[:, index]))
+                p_feat = p[:, index]
+                entropies_train.append(entropy(p_feat[p_feat != 0]))
+    with open(exp_path / 'means_train.csv', 'ab') as f:
+        np.savetxt(f, np.array(means_train), delimiter=',')
+    with open(exp_path / 'variances_train.csv', 'ab') as f:
+        np.savetxt(f, np.array(variances_train), delimiter=',')
+    with open(exp_path / 'entropies_train.csv', 'ab') as f:
+        np.savetxt(f, np.array(entropies_train), delimiter=',')
+
 
 for img in img_list:
-    print('Getting means for', img)
+    print('Getting test means for', img)
+    means_test = []
+    variances_test = []
+    entropies_test = []
     for trial in trials:
         print(trial)
         for pctl in pctls:
             print(pctl)
-            data_test, data_vector_test, data_ind_test = \
-                preprocessing_random_clouds_standard(data_path, img, pctl, trial)
+            data_test, data_vector_test, data_ind_test = preprocessing_random_clouds_standard(data_path, img, pctl, trial, test=True)
             perm_index = feat_list_new.index('GSW_perm')
             p = softmax(data_vector_test, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
-                with open(exp_path / 'means_test.csv', 'ab') as f:
-                    np.savetxt(f, np.mean(data_vector_test[:, index]))
-                with open(exp_path / 'variances_test.csv', 'ab') as f:
-                    np.savetxt(f, np.var(data_vector_test[:, index]))
-                with open(exp_path / 'entropies_test.csv', 'ab') as f:
-                    np.savetxt(f, entropy(p[:, index]))
-
+                means_test.append(np.mean(data_vector_test[:, index]))
+                variances_test.append(np.var(data_vector_test[:, index]))
+                p_feat = p[:, index]
+                entropies_test.append(entropy(p_feat[p_feat != 0]))
+    with open(exp_path / 'means_test.csv', 'ab') as f:
+        np.savetxt(f, np.array(means_test), delimiter=',')
+    with open(exp_path / 'variances_test.csv', 'ab') as f:
+        np.savetxt(f, np.array(variances_test), delimiter=',')
+    with open(exp_path / 'entropies_test.csv', 'ab') as f:
+        np.savetxt(f, np.array(entropies_test), delimiter=',')
