@@ -221,7 +221,22 @@ img = '4444_LC08_044033_20170222_1'
 rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=1.8, std_high=1.8, save=False)
 rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
 rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=6)
-plt.imshow(rgb_enhanced)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4337_LC08_026038_20160325_1'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=3.5, std_high=3.5, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.1, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=6.5)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
+
+img = '4477_LC08_022033_20170519_1'
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=3.5, std_high=3.5, save=False)
+rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.1, gain=1)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=6.5)
+rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
+rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 plt.close('all')
 
