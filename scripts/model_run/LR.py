@@ -1,7 +1,6 @@
 # Logistic regression
 
 import __init__
-import tensorflow as tf
 import os
 import time
 from sklearn.linear_model import LogisticRegression
@@ -11,18 +10,12 @@ from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 import pandas as pd
 from results_viz import VizFuncs
 import sys
-import rasterio
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-from CPR.utils import preprocessing, tif_stacker
-from sklearn.covariance import EmpiricalCovariance
 import h5py
 from LR_conf_intervals import get_se, get_probs
 
 sys.path.append('../')
 from CPR.configs import data_path
-import seaborn as sns
 
 # ==================================================================================
 # Parameters
@@ -30,7 +23,6 @@ pctls = [10, 30, 50, 70, 90]
 
 batch = 'LR'
 
-print('NOW CREATING BATCH', batch)
 try:
     (data_path / batch).mkdir()
 except FileExistsError:
