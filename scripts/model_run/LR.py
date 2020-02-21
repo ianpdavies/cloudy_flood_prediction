@@ -60,8 +60,6 @@ def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
                                                                                      feat_list_new,
                                                                                      test=False)
             perm_index = feat_keep.index('GSW_perm')
-            flood_index = feat_keep.index('flooded')
-            data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
