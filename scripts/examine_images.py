@@ -1,18 +1,35 @@
 # This script is for examining images, features, and predictions to visually identify patterns
 import numpy as np
 import sys
+import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import rasterio
 from PIL import Image
+from rasterio.windows import Window
+import os
+import pandas as pd
+from matplotlib import gridspec
+
 sys.path.append('../')
 from CPR.configs import data_path
-
-batch = 'v30'
 
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
-img_list = ['4444_LC08_044033_20170222_2',
+feat_list_fancy = ['Max SW extent', 'Dist from max SW', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
+                 'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Permanent water', 'Flooded']
+
+
+# img_list = os.listdir(data_path / 'images')
+# img_list.remove('4115_LC08_021033_20131227_test')
+
+img_list = ['4050_LC08_023036_20130429_1',
+            '4050_LC08_023036_20130429_2',
+            '4061_LC08_025031_20130529_1',
+            '4080_LC08_028033_20130806_1',
+            '4080_LC08_028034_20130806_1',
+            '4089_LC08_034032_20130917_1',
             '4101_LC08_027038_20131103_1',
             '4101_LC08_027038_20131103_2',
             '4101_LC08_027039_20131103_1',
@@ -23,6 +40,7 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4444_LC08_043035_20170303_1',
             '4444_LC08_044032_20170222_1',
             '4444_LC08_044033_20170222_1',
+            '4444_LC08_044033_20170222_2',
             '4444_LC08_044033_20170222_3',
             '4444_LC08_044033_20170222_4',
             '4444_LC08_044034_20170222_1',
@@ -33,11 +51,152 @@ img_list = ['4444_LC08_044033_20170222_2',
             '4469_LC08_015035_20170502_1',
             '4469_LC08_015036_20170502_1',
             '4477_LC08_022033_20170519_1',
-            '4514_LC08_027033_20170826_1']
+            '4514_LC08_027033_20170826_1',
+            '4516_LC08_017038_20170921_1',
+            '4594_LC08_022034_20180404_1',
+            '4594_LC08_022035_20180404_1']
 
 pctls = [10, 30, 50, 70, 90]
 myDpi = 300
 plt.subplots_adjust(top=0.98, bottom=0.055, left=0.024, right=0.976, hspace=0.2, wspace=0.2)
+
+SMALL_SIZE = 8
+MEDIUM_SIZE = 10
+BIGGER_SIZE = 12
+
+plt.rc('font', size=SMALL_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=SMALL_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+# ======================================================================================================================
+# Plot entire RGB image to get bounding box
+img = '4444_LC08_043034_20170303_1'
+pctl = None
+# batch = 'v30'
+feat = 'curve'
+
+stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+band_combo_dir = data_path / 'band_combos'
+rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
+rgb_img = Image.open(rgb_file)
+
+plt.imshow(rgb_img)
+
+# ======================================================================================================================
+# View all features in bounding box
+y_top = 980
+y_bottom = 1400
+x_left = 750
+x_right = 1250
+
+# Read only a portion of the image
+window = Window.from_slices((y_top, y_bottom), (x_left, x_right))
+
+# Read only a portion of the image
+window = Window.from_slices((y_top, y_bottom), (x_left, x_right))
+# window = Window.from_slices((950, 1250), (1400, 1900))
+with rasterio.open(stack_path, 'r') as src:
+    w = src.read(window=window)
+    w[w == -999999] = np.nan
+    w[np.isneginf(w)] = np.nan
+
+
+titles = feat_list_fancy
+plt.figure(figsize=(6, 4))
+axes = [plt.subplot(4, 4, i + 1) for i in range(16)]
+for i, ax in enumerate(axes):
+    ax.imshow(w[i])
+    ax.set_title(titles[i], fontdict={'fontsize': 8, 'fontname': 'Helvetica'})
+    ax.axis('off')
+# plt.tight_layout()
+plt.subplots_adjust(wspace=-.7, hspace=0.1)
+
+
+with rasterio.open(stack_path, 'r') as ds:
+    data = ds.read()
+    data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
+    data[data == -999999] = np.nan
+    data[np.isneginf(data)] = np.nan
+
+plt.figure(figsize=(6, 4))
+plt.imshow(data[:, :, feat_list_new.index(feat)])
+for i, ax in enumerate(axes):
+    ax.imshow()
+    ax.set_title(feat_list_fancy[i], fontdict={'fontsize': 10, 'fontname': 'Helvetica'})
+    ax.axis('off')
+plt.tight_layout()
+
+
+# ======================================================================================================================
+# Find images that performed worst/best
+
+
+batches = ['LR_allwater', 'RF', 'NN_allwater']
+img_list = os.listdir(data_path / 'images')
+img_list.remove('4115_LC08_021033_20131227_test')
+
+metrics = ['accuracy', 'f1', 'recall', 'precision']
+metrics_fancy = ['Accuracy', 'F1', 'Recall', 'Precision']
+
+dark2_colors = sns.color_palette("Dark2", 8)
+color_inds = [0, 2, 5, 7]
+colors = []
+for j in range(4):
+    for i in color_inds:
+        colors.append(dark2_colors[i])
+
+for batch in batches:
+    metrics_path = data_path / batch / 'metrics' / 'testing'
+    file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
+    df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+    image_numbers = np.repeat(range(0, len(img_list)), len(pctls))
+    df_concat['image_numbers'] = image_numbers
+
+    plt.figure(figsize=(7.5, 9))
+    axes = [plt.subplot(4, 1, i + 1) for i in range(4)]
+    grouped = df_concat.groupby('image_numbers').mean().reset_index()
+    for i, ax in enumerate(axes):
+        # ax.scatter(df_concat['image_numbers'], df_concat[metrics[i]], s=12)
+        ax.scatter(grouped['image_numbers'], grouped[metrics[i]], s=12)
+        ax.set_ylabel(metrics_fancy[i])
+        ax.set_ylim([0, 1])
+        ax.axhline(0.5, ls='--', zorder=1, color='grey', alpha=0.5)
+        ax.set_xticks(range(31))
+    axes[0].set_title(batch, fontsize=BIGGER_SIZE)
+    plt.tight_layout()
+    plt.savefig(data_path / batch / 'plots' / 'image_mean_metrics.png', dpi=myDpi)
+
+metrics = ['accuracy', 'f1', 'recall', 'precision']
+metrics_fancy = ['Accuracy', 'F1', 'Recall', 'Precision']
+
+legend_patches = [Patch(color=icolor, label=label)
+                  for icolor, label in zip(colors, batches)]
+
+plt.figure(figsize=(9, 9))
+axes = [plt.subplot(4, 1, i + 1) for i in range(4)]
+
+# Compare all batches image by image
+for k, batch in enumerate(batches):
+    metrics_path = data_path / batch / 'metrics' / 'testing'
+    file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
+    df_concat = pd.concat(pd.read_csv(file) for file in file_list)
+    image_numbers = np.repeat(range(0, len(img_list)), len(pctls))
+    df_concat['image_numbers'] = image_numbers
+    grouped = df_concat.groupby('image_numbers').mean().reset_index()
+    for i, ax in enumerate(axes):
+        # ax.scatter(df_concat['image_numbers'], df_concat[metrics[i]], s=12)
+        ax.scatter(grouped['image_numbers'], grouped[metrics[i]], s=12, color=colors[k])
+        ax.set_ylabel(metrics_fancy[i])
+        ax.set_ylim([0, 1])
+        ax.axhline(0.5, ls='--', zorder=1, color='grey', alpha=0.5)
+        ax.set_xticks(range(31))
+    axes[0].legend(labels=batches, handles=legend_patches, loc='lower left', bbox_to_anchor=(0.1, 1),
+          ncol=3, borderaxespad=0, frameon=False, prop={'size': 7})
+    plt.tight_layout()
 
 # ======================================================================================================================
 # Plot RGB + FP/FN + cloud borders
@@ -93,6 +252,7 @@ for img in img_list:
         cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
 
         from scipy.ndimage import binary_dilation, binary_erosion
+
         cloudmask_binary = cloudmask.astype('int')
         cloudmask_border = binary_erosion(cloudmask_binary, iterations=2)
         cloudmask_border = binary_dilation(cloudmask_binary, iterations=3)
