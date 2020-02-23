@@ -12,6 +12,7 @@ import h5py
 import numpy as np
 import pandas as pd
 import sys
+
 sys.path.append('../../')
 from CPR.configs import data_path
 
@@ -30,10 +31,17 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-
+img_list = ['4469_LC08_015035_20170502_1',
+            '4469_LC08_015036_20170502_1',
+            '4477_LC08_022033_20170519_1',
+            '4514_LC08_027033_20170826_1',
+            '4516_LC08_017038_20170921_1',
+            '4594_LC08_022034_20180404_1',
+            '4594_LC08_022035_20180404_1']
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+
 
 # ======================================================================================================================
 
@@ -43,7 +51,7 @@ def log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, tria
         print(img + ': stacking tif, generating clouds')
         times = []
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
-        cloud_generator(img, data_path, overwrite=True)
+        # cloud_generator(img, data_path, overwrite=True)  # Made all of them ahead of time to analyze dissimilarity concurrently
 
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
@@ -152,6 +160,8 @@ def prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial):
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
                                 columns=['cloud_cover', 'testing_time'])
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
+
+
 # ======================================================================================================================
 # Training and prediction with random batches of clouds
 
@@ -172,15 +182,32 @@ try:
 except FileNotFoundError:
     pass
 
-num_trials = 10
-for num in range(num_trials):
-    trial = 'trial' + str(num+1)
+trial_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+for trial_num in trial_nums:
+    trial = 'trial' + str(trial_num)
     print('RUNNING', trial, '################################################################')
+    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+    if not os.path.isdir(str(cloud_dir / 'random' / trial)):
+        with ZipFile(zip_dir, 'r') as dst:
+            dst.extractall(str(cloud_dir))
     log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, trial)
     prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial)
-    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
-    with ZipFile(zip_dir, 'w') as dst:
-        for img in img_list:
-            cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-            dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
-            os.remove(cloud_img)
+    for img in img_list:
+        cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+        os.remove(str(cloud_img))
+
+# Use if cloud_generator has overwrite=True and clouds are being made for the first time
+# trial_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+# for trial_num in trial_nums:
+#     trial = 'trial' + str(trial_num)
+#     print('RUNNING', trial, '################################################################')
+#     log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, trial)
+#     for img in img_list:
+#         cloud_generator(img, data_path, overwrite=True)
+#         prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial)
+#         zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+#         with ZipFile(zip_dir, 'w') as dst:
+#             for img in img_list:
+#                 cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+#                 dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
+#                 os.remove(cloud_img)
