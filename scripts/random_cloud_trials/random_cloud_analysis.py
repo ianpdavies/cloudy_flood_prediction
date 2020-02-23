@@ -123,7 +123,7 @@ df = pd.read_csv(exp_path / 'results' / 'trials_metrics.csv')
 # ======================================================================================================================
 # Boxplot of metrics with whiskers
 
-image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls))+1, len(trials))
+image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls)) + 1, len(trials))
 plot_path = exp_path / 'plots' / 'boxplot_whiskers'
 try:
     plot_path.mkdir(parents=True)
@@ -134,14 +134,14 @@ except FileExistsError:
 recalls = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['recall'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=recalls, palette='colorblind',
-            hue='cloud_cover', linewidth=1, fliersize=2.5)
+                 hue='cloud_cover', linewidth=1, fliersize=2.5)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='Recall')
 for i, artist in enumerate(ax.artists):
     col = artist.get_facecolor()
     artist.set_edgecolor(col)
-    for j in range(i*6,i*6+6):
+    for j in range(i * 6, i * 6 + 6):
         line = ax.lines[j]
         line.set_color(col)
         line.set_mfc(col)
@@ -152,14 +152,14 @@ plt.savefig(plot_path / 'recall.png', bbox_inches='tight')
 precisions = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['precision'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=precisions, palette='colorblind',
-            hue='cloud_cover', linewidth=1, fliersize=0.3)
+                 hue='cloud_cover', linewidth=1, fliersize=0.3)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='Precision')
 for i, artist in enumerate(ax.artists):
     col = artist.get_facecolor()
     artist.set_edgecolor(col)
-    for j in range(i*6, i*6+6):
+    for j in range(i * 6, i * 6 + 6):
         line = ax.lines[j]
         line.set_color(col)
         line.set_mfc(col)
@@ -170,14 +170,14 @@ plt.savefig(plot_path / 'precision.png', bbox_inches='tight')
 accuracies = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['accuracy'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=accuracies, palette='colorblind',
-            hue='cloud_cover', linewidth=1, fliersize=0.3)
+                 hue='cloud_cover', linewidth=1, fliersize=0.3)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='Accuracy')
 for i, artist in enumerate(ax.artists):
     col = artist.get_facecolor()
     artist.set_edgecolor(col)
-    for j in range(i*6,i*6+6):
+    for j in range(i * 6, i * 6 + 6):
         line = ax.lines[j]
         line.set_color(col)
         line.set_mfc(col)
@@ -188,14 +188,14 @@ plt.savefig(plot_path / 'accuracy.png', bbox_inches='tight')
 f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
-            hue='cloud_cover', linewidth=1, fliersize=0.3)
+                 hue='cloud_cover', linewidth=1, fliersize=0.3)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='F1 Score')
 for i, artist in enumerate(ax.artists):
     col = artist.get_facecolor()
     artist.set_edgecolor(col)
-    for j in range(i*6,i*6+6):
+    for j in range(i * 6, i * 6 + 6):
         line = ax.lines[j]
         line.set_color(col)
         line.set_mfc(col)
@@ -206,7 +206,7 @@ plt.close('all')
 # ======================================================================================================================
 # Boxplot of metrics with strip plot instead of whiskers
 
-image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls))+1, len(trials))
+image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls)) + 1, len(trials))
 plot_path = exp_path / 'plots' / 'boxplot_stripplot'
 try:
     plot_path.mkdir(parents=True)
@@ -217,19 +217,21 @@ except FileExistsError:
 recalls = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['recall'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=recalls, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
+                 hue='cloud_cover', linewidth=0, fliersize=0)
 sns.stripplot(x=image_numbers, y='value', data=recalls, palette='colorblind',
               hue='cloud_cover', jitter=False, size=3, dodge=True)
 handles, labels = ax.get_legend_handles_labels()
 plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
 ax.set(xlabel='Images', ylabel='Recall')
+# ax.legend(labels=pctl_labels, loc='lower left', bbox_to_anchor=(0, 1),
+#           ncol=5, borderaxespad=0, frameon=False, prop={'size': 7})
 plt.savefig(plot_path / 'recall.png', bbox_inches='tight')
 
 # Precision
 precisions = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['precision'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=precisions, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
+                 hue='cloud_cover', linewidth=0, fliersize=0)
 sns.stripplot(x=image_numbers, y='value', data=precisions, palette='colorblind',
               hue='cloud_cover', jitter=False, size=3, dodge=True)
 handles, labels = ax.get_legend_handles_labels()
@@ -241,7 +243,7 @@ plt.savefig(plot_path / 'precision.png', bbox_inches='tight')
 accuracies = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['accuracy'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=accuracies, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
+                 hue='cloud_cover', linewidth=0, fliersize=0)
 sns.stripplot(x=image_numbers, y='value', data=accuracies, palette='colorblind',
               hue='cloud_cover', jitter=False, size=3, dodge=True)
 handles, labels = ax.get_legend_handles_labels()
@@ -253,7 +255,7 @@ plt.savefig(plot_path / 'accuracy.png', bbox_inches='tight')
 f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
 plt.figure(figsize=(13, 6))
 ax = sns.boxplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
+                 hue='cloud_cover', linewidth=0, fliersize=0)
 sns.stripplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
               hue='cloud_cover', jitter=False, size=3, dodge=True)
 handles, labels = ax.get_legend_handles_labels()
@@ -265,30 +267,48 @@ plt.close('all')
 
 # ======================================================================================================================
 # Violin plots
-image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls))+1, len(trials))
+image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls)) + 1, len(trials))
 plot_path = exp_path / 'plots' / 'violinplot'
 try:
     plot_path.mkdir(parents=True)
 except FileExistsError:
     pass
 
+from matplotlib.patches import Patch
+
+pctl_labels = ['Cloud cover', '10%', '30%', '50%', '70%', '90%']
+dark2_colors = sns.color_palette("Dark2", 8)
+color_inds = [0, 1, 2, 5, 7]
+colors = []
+for i in color_inds:
+    colors.append(dark2_colors[i])
+
+current_palette = sns.color_palette(colors)
+
+legend_colors = colors.copy()
+legend_colors.insert(0, (1.0, 1.0, 1.0))
+
+legend_patches = [Patch(color=icolor, label=label)
+                  for icolor, label in zip(legend_colors, pctl_labels)]
+
 # Recall
 recalls = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['recall'])
 plt.figure(figsize=(13, 6))
-ax = sns.violinplot(x=image_numbers, y='value', data=recalls, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
-handles, labels = ax.get_legend_handles_labels()
-plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+ax = sns.violinplot(x=image_numbers, y='value', data=recalls, palette=current_palette,
+                    hue='cloud_cover', linewidth=0, fliersize=0)
+plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 1), borderaxespad=0.,
+           ncol=6, frameon=False)
 ax.set(xlabel='Images', ylabel='Recall')
+plt.tight_layout()
 plt.savefig(plot_path / 'recall.png', bbox_inches='tight')
 
 # Precision
 precisions = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['precision'])
 plt.figure(figsize=(13, 6))
 ax = sns.violinplot(x=image_numbers, y='value', data=precisions, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
-handles, labels = ax.get_legend_handles_labels()
-plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+                    hue='cloud_cover', linewidth=0, fliersize=0)
+plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 1), borderaxespad=0.,
+           ncol=6, frameon=False)
 ax.set(xlabel='Images', ylabel='Precision')
 plt.savefig(plot_path / 'precision.png', bbox_inches='tight')
 
@@ -296,9 +316,9 @@ plt.savefig(plot_path / 'precision.png', bbox_inches='tight')
 accuracies = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['accuracy'])
 plt.figure(figsize=(13, 6))
 ax = sns.violinplot(x=image_numbers, y='value', data=accuracies, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0)
-handles, labels = ax.get_legend_handles_labels()
-plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+                    hue='cloud_cover', linewidth=0, fliersize=0)
+plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 1), borderaxespad=0.,
+           ncol=6, frameon=False)
 ax.set(xlabel='Images', ylabel='Accuracy')
 plt.savefig(plot_path / 'accuracy.png', bbox_inches='tight')
 
@@ -306,13 +326,92 @@ plt.savefig(plot_path / 'accuracy.png', bbox_inches='tight')
 f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
 plt.figure(figsize=(13, 6))
 ax = sns.violinplot(x=image_numbers, y='value', data=f1s, palette='colorblind',
-            hue='cloud_cover', linewidth=0, fliersize=0, cut=0)
-handles, labels = ax.get_legend_handles_labels()
-plt.legend(handles[0:9], labels[0:9], bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+                    hue='cloud_cover', linewidth=0, fliersize=0, cut=0)
+plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 1), borderaxespad=0.,
+           ncol=6, frameon=False)
 ax.set(xlabel='Images', ylabel='F1 Score')
 plt.savefig(plot_path / 'f1.png', bbox_inches='tight')
 
 plt.close('all')
+
+
+# ======================================================================================================================
+# Violinplots in one big 4x1 matrix
+accuracies = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['accuracy'])
+f1s = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['f1'])
+recalls = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['recall'])
+precisions = pd.melt(df, id_vars=['image', 'cloud_cover'], value_vars=['precision'])
+
+fig = plt.figure(figsize=(8, 11))
+axes = [plt.subplot(4, 1, i + 1) for i in range(4)]
+sns.violinplot(x=image_numbers, y='value', data=accuracies, palette=current_palette,
+               hue='cloud_cover', linewidth=0, fliersize=0, ax=axes[0], zorder=2)
+sns.violinplot(x=image_numbers, y='value', data=f1s, palette=current_palette,
+               hue='cloud_cover', linewidth=0, fliersize=0, ax=axes[1], zorder=2)
+sns.violinplot(x=image_numbers, y='value', data=recalls, palette=current_palette,
+               hue='cloud_cover', linewidth=0, fliersize=0, ax=axes[2], zorder=2)
+sns.violinplot(x=image_numbers, y='value', data=precisions, palette=current_palette,
+               hue='cloud_cover', linewidth=0, fliersize=0, ax=axes[3], zorder=2)
+# plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 4.6), borderaxespad=0.,
+#            ncol=6, frameon=False)
+
+fancy_labels = ['Accuracy', 'F1', 'Recall', 'Precision']
+for i in range(3):
+    axes[i].get_legend().remove()
+    axes[i].set_xticks([])
+
+for i in range(4):
+    axes[i].set_ylabel(fancy_labels[i], fontsize=10)
+    axes[i].axhline(0.5, ls='--', zorder=1, color='grey', alpha=0.5)
+    # axes[i].set_ylim([-0.5, 1.5])
+    axes[i].set_ylim([0, 1])
+    # axes[i].set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    axes[i].set_yticks([0.2, 0.4, 0.6, 0.8])
+
+# axes[3].set_xticks([0, 30])
+# axes[3].set_xticklabels([1, 31])
+axes[3].set_xlabel('Images', fontsize=10)
+
+plt.tight_layout()
+plt.subplots_adjust(wspace=0, hspace=0.02, top=0.95)
+plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 4.1), borderaxespad=0.,
+           ncol=6, frameon=False)
+plt.savefig(plot_path / 'violinplots.png', bbox_inches='tight')
+
+# ======================================================================================================================
+# Violin plots but all pctls are combined
+dark2_colors = sns.color_palette("Dark2", 8)
+color_inds = [0, 2, 5, 7]
+colors = []
+for j in range(4):
+    for i in color_inds:
+        colors.append(dark2_colors[i])
+
+accuracies = pd.melt(df, id_vars=['image'], value_vars=['accuracy'])
+f1s = pd.melt(df, id_vars=['image'], value_vars=['f1'])
+recalls = pd.melt(df, id_vars=['image'], value_vars=['recall'])
+precisions = pd.melt(df, id_vars=['image'], value_vars=['precision'])
+
+fig = plt.figure(figsize=(8, 11))
+axes = [plt.subplot(4, 1, i + 1) for i in range(4)]
+sns.violinplot(x=image_numbers, y='value', data=accuracies, linewidth=0, fliersize=0, ax=axes[0], color=colors[0], zorder=2)
+sns.violinplot(x=image_numbers, y='value', data=f1s, linewidth=0, fliersize=0, ax=axes[1], color=colors[1], zorder=2)
+sns.violinplot(x=image_numbers, y='value', data=recalls, linewidth=0, fliersize=0, ax=axes[2], color=colors[2], zorder=2)
+sns.violinplot(x=image_numbers, y='value', data=precisions,  linewidth=0, fliersize=0, ax=axes[3], color=colors[3], zorder=2)
+
+fancy_labels = ['Accuracy', 'F1', 'Recall', 'Precision']
+for i in range(3):
+    axes[i].set_xticks([])
+
+for i in range(4):
+    axes[i].set_ylabel(fancy_labels[i], fontsize=10)
+    # axes[i].set_ylim([0, 1])
+
+axes[0].set_ylim([0, 1])
+axes[3].set_xlabel('Images', fontsize=10)
+
+plt.tight_layout()
+plt.savefig(plot_path / 'violinplots_noCC.png', bbox_inches='tight')
 
 # ======================================================================================================================
 # Mean of metric variances between trials
@@ -378,9 +477,11 @@ var_long = pd.melt(var_group, id_vars=['image', 'image_numbers'], value_vars=['a
 g = sns.FacetGrid(var_long, col='variable', hue='variable')
 g.map(plt.scatter, "image_numbers", "value", alpha=.8, zorder=2)
 
-def plot_mean(data,**kwargs):
+
+def plot_mean(data, **kwargs):
     m = data.mean()
     plt.axhline(m, **kwargs)
+
 
 g.map(plot_mean, 'value', ls=":", c=".5", zorder=0, alpha=.9)
 
@@ -394,11 +495,10 @@ g.fig.tight_layout(w_pad=1)
 
 plt.savefig(plot_path / 'mean_variance_separate.png', bbox_inches='tight')
 
-
 # ------------------------------------------------------------------------
 # Variances between cloud covers by individual metrics
 df = pd.read_csv(exp_path / 'results' / 'trials_metrics.csv')
-image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls))+1, len(trials))
+image_numbers = np.tile(np.repeat(range(len(img_list)), len(pctls)) + 1, len(trials))
 df = pd.concat([df, pd.DataFrame(image_numbers, columns=['image_numbers'])], axis=1)
 var_group = df.groupby(['image', 'image_numbers', 'cloud_cover']).var()
 var_group.reset_index(inplace=True)
@@ -408,9 +508,11 @@ var_long = pd.melt(var_group, id_vars=['image_numbers', 'cloud_cover'],
 g = sns.FacetGrid(var_long, col='variable', hue='variable')
 g.map(plt.scatter, "image_numbers", "value", alpha=.5)
 
-def plot_mean(data,**kwargs):
+
+def plot_mean(data, **kwargs):
     m = data.mean()
     plt.axhline(m, **kwargs)
+
 
 g.map(plot_mean, 'value', ls=":", c=".5", zorder=0, alpha=.9)
 
@@ -424,6 +526,126 @@ g.fig.tight_layout(w_pad=1)
 plt.savefig(plot_path / 'variance_separate.png', bbox_inches='tight')
 
 # ======================================================================================================================
+from numpy import genfromtxt
+
+feat_list = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+
+first = genfromtxt(exp_path / 'results' / 'means_test1.csv', delimiter=',')
+second = genfromtxt(exp_path / 'results' / 'means_test2.csv', delimiter=',')
+second = second[second.shape[0]-12800:]
+merged = np.concatenate((first, second), axis=0)
+with open(exp_path / 'results' / 'means_test.csv', 'w') as f:
+    np.savetxt(f, merged, delimiter=',')
+
+first = genfromtxt(exp_path / 'results' / 'variances_test1.csv', delimiter=',')
+second = genfromtxt(exp_path / 'results' / 'variances_test2.csv', delimiter=',')
+second = second[second.shape[0]-12800:]
+merged = np.concatenate((first, second), axis=0)
+with open(exp_path / 'results' / 'variances_test.csv', 'w') as f:
+    np.savetxt(f, merged, delimiter=',')
+
+first = genfromtxt(exp_path / 'results' / 'entropies_test1.csv', delimiter=',')
+second = genfromtxt(exp_path / 'results' / 'entropies_test2.csv', delimiter=',')
+second = second[second.shape[0]-12800:]
+merged = np.concatenate((first, second), axis=0)
+with open(exp_path / 'results' / 'entropies_test.csv', 'w') as f:
+    np.savetxt(f, merged, delimiter=',')
+
+count = 0
+feat_list_new = feat_list
+for img in img_list[15:]:
+    for trial in trials:
+        for pctl in pctls:
+            for i, feat in enumerate(feat_list_new):
+                count += 1
+print(count)
 
 
 
+means_train = genfromtxt(exp_path / 'results' / 'means_train.csv', delimiter=',')
+variances_train = genfromtxt(exp_path / 'results' / 'variances_train.csv', delimiter=',')
+entropies_train = genfromtxt(exp_path / 'results' / 'entropies_train.csv', delimiter=',')
+means_test = genfromtxt(exp_path / 'results' / 'means_test.csv', delimiter=',')
+variances_test = genfromtxt(exp_path / 'results' / 'variances_test.csv', delimiter=',')
+entropies_test = genfromtxt(exp_path / 'results' / 'entropies_test.csv', delimiter=',')
+
+# Make arrays
+data = pd.DataFrame({'image': np.repeat(img_list, len(pctls) * len(trials) * len(feat_list)),
+                     'cloud_cover': np.repeat(pctls, len(img_list) * len(trials) * len(feat_list)),
+                     'trial': np.tile(trials, len(pctls) * len(img_list) * len(feat_list)),
+                     'feature': np.tile(feat_list, len(pctls) * len(img_list) * len(trials)),
+                     'mean_train': means_train,
+                     'variance_train': variances_train,
+                     'entropy_train': entropies_train,
+                     'mean_test': means_test,
+                     'variance_test': variances_test,
+                     'entropy_test': entropies_test})
+
+# Scatterplots of trial metrics vs. mean/var differences between train/test
+# Different scatterplot for each feature
+trial_metrics = pd.read_csv(exp_path / 'results' / 'trials_metrics.csv')
+
+merge = pd.merge(data, trial_metrics, on=['image', 'trial', 'cloud_cover'])
+merge['mean_diff'] = merge.mean_train - merge.mean_test
+merge['variance_diff'] = merge.variance_train - merge.variance_test
+merge['entropy_diff'] = merge.entropy_train - merge.entropy_test
+merge['mean_diff2'] = np.sqrt(np.square(merge['mean_diff']))
+merge['variance_diff2'] = np.sqrt(np.square(merge['variance_diff']))
+merge['entropy_diff2'] = np.sqrt(np.square(merge['entropy_diff']))
+
+merge = merge[merge['feature'] != 'GSW_perm']
+merge = merge[merge['feature'] != 'flooded']
+merge_subset = merge[merge['cloud_cover'] == 50]
+
+g = sns.FacetGrid(merge_subset, col='feature', col_wrap=4, sharex=False, sharey=False)
+g.map(sns.scatterplot, 'mean_diff', 'recall')
+
+g = sns.FacetGrid(merge_subset, col='feature', col_wrap=4, sharex=False, sharey=False)
+g.map(sns.scatterplot, 'variance_diff', 'recall')
+
+g = sns.FacetGrid(merge_subset, col='feature', col_wrap=4, sharex=False, sharey=False)
+g.map(sns.scatterplot, 'entropy_diff', 'recall')
+
+g.savefig(exp_path / 'plots' / 'metrics_vars.png', bbox_inches='tight')
+
+# MAKE SUBPLOTS AND ADD REG LINE
+feat_list_fancy = ['Max SW extent', 'Dist from max SW', 'Elevation', 'Slope', 'HAND', 'SPI', 'TWI', 'Aspect',
+                   'Curve', 'Developed', 'Forested', 'Other LULC', 'Planted',   'Wetlands']
+
+feat_list_plot = ['GSW_maxExtent', 'GSW_distExtent', 'elevation', 'slope', 'hand', 'spi', 'twi',
+                  'aspect', 'curve', 'developed', 'forest', 'other_landcover', 'planted',  'wetlands']
+
+metric = 'precision'
+stats = ['mean_diff2', 'variance_diff2', 'entropy_diff2']
+for stat in stats:
+    fig = plt.figure(figsize=(7.5, 8))
+    axes = [plt.subplot(4, 4, i + 1) for i in range(14)]
+    for i, ax in enumerate(axes):
+        merge_subset_feat = merge_subset[merge_subset['feature'] == feat_list_plot[i]]
+        x = merge_subset_feat[metric]
+        y = merge_subset_feat[stat]
+        ax.scatter(y, x, alpha=0.3, s=13)
+        ax.set_title(feat_list_fancy[i], fontsize=10)
+        ax.get_yaxis().set_visible(False)
+        # sns.regplot(y, x, ax=ax)
+    for i in range(0, 14, 4):
+        axes[i].set_yticks([0, 0.5, 1.0])
+    plt.suptitle(stat)
+    axes[0].get_yaxis().set_visible(True)
+    axes[0].set_ylabel(metric.capitalize())
+    plt.subplots_adjust(wspace=0.2, hspace=0.4)
+
+# Not much of a difference - perhaps they should be standardized though?
+
+# Scatterplots of trial metric variances vs. mean/var differences between train/test
+# Variances are calculated for each img+pctl
+# Mean/var differences are squared and rooted then averaged for each img+pctl
+merge['mean_diff'] = np.sqrt(np.square(merge['mean_diff']))
+merge['variance_diff'] = np.sqrt(np.square(merge['variance_diff']))
+merge['entropy_diff'] = np.sqrt(np.square(merge['variance_diff']))
+
+merge.groupby(['image', 'cloud_cover'])
+
+trial_metrics.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
+trial_metrics.groupby(['image', 'cloud_cover']).var().reset_index()
