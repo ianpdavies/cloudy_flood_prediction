@@ -1,10 +1,12 @@
+# For each RCT, computes mean, variance, and entropy of test and train data separately
+
 import __init__
 import numpy as np
 import rasterio
 from zipfile import ZipFile
 import sys
 import os
-from scipy.special import softmax
+import scipy.special as sc
 from scipy.stats import entropy
 
 sys.path.append('../../')
@@ -35,6 +37,9 @@ try:
     exp_path.mkdir(parents=True)
 except FileExistsError:
     pass
+
+dtypes = ['float32', 'float32', 'float32', 'float32', 'int', 'float32', 'int', 'float32', 'int', 'int', 'float32',
+          'float32', 'float32', 'int', 'int', 'int']
 
 # ======================================================================================================================
 
@@ -94,15 +99,19 @@ def preprocessing_random_clouds(data_path, img, pctl, trial, test):
 clouds_dir = data_path / 'clouds'
 for trial in trials:
     trial_clouds_dir = clouds_dir / 'random' / trial
-    if os.path.isdir(trial_clouds_dir):
-        try:
-            trial_clouds_dir.mkdir(parents=True)
-        except FileExistsError:
-            pass
-    trial_clouds_zip = clouds_dir / 'random' / '{}'.format(trial + '.zip')
-    with ZipFile(trial_clouds_zip, 'r') as src:
-        src.extractall(trial_clouds_dir)
+    if not os.path.isdir(trial_clouds_dir):
+        trial_clouds_dir.mkdir(parents=True)
+        trial_clouds_zip = clouds_dir / 'random' / '{}'.format(trial + '.zip')
+        with ZipFile(trial_clouds_zip, 'r') as src:
+            src.extractall(trial_clouds_dir)
 
+def binary_variance(x):
+    p = np.sum(x) / x.shape[0]
+    bin_var = p*(1-p)
+    return bin_var
+
+def binary_entropy(x):
+    return -np.sum(sc.xlogy(x, x) + sc.xlog1py(1 - x, -x))/np.log(2)
 
 for img in img_list:
     print('Getting train means for', img)
@@ -115,20 +124,24 @@ for img in img_list:
             print(pctl)
             data_train, data_vector_train, data_ind_train = preprocessing_random_clouds(data_path, img, pctl, trial, test=False)
             perm_index = feat_list_new.index('GSW_perm')
-            p = softmax(data_vector_train, axis=1)
-            for feat in feat_list_new:
+            p = sc.softmax(data_vector_train, axis=1)
+            for i, feat in enumerate(feat_list_new):
                 index = feat_list_new.index(feat)
-                means_train.append(np.mean(data_vector_train[:, index]))
-                variances_train.append(np.var(data_vector_train[:, index]))
-                p_feat = p[:, index]
-                entropies_train.append(entropy(p_feat[p_feat != 0]))
+                x = data_vector_train[:, index]
+                px = p[:, index]
+                means_train.append(np.mean(x))
+                if dtypes[i] is 'int':
+                    variances_train.append(binary_variance(x))
+                    entropies_train.append(binary_entropy(px))
+                if dtypes[i] is 'float32':
+                    variances_train.append(np.var(x))
+                    entropies_train.append(entropy(px[px != 0]))
     with open(exp_path / 'means_train.csv', 'ab') as f:
         np.savetxt(f, np.array(means_train), delimiter=',')
     with open(exp_path / 'variances_train.csv', 'ab') as f:
         np.savetxt(f, np.array(variances_train), delimiter=',')
     with open(exp_path / 'entropies_train.csv', 'ab') as f:
         np.savetxt(f, np.array(entropies_train), delimiter=',')
-
 
 for img in img_list:
     print('Getting test means for', img)
@@ -141,13 +154,18 @@ for img in img_list:
             print(pctl)
             data_test, data_vector_test, data_ind_test = preprocessing_random_clouds(data_path, img, pctl, trial, test=True)
             perm_index = feat_list_new.index('GSW_perm')
-            p = softmax(data_vector_test, axis=1)
-            for feat in feat_list_new:
+            p = sc.softmax(data_vector_test, axis=1)
+            for i, feat in enumerate(feat_list_new):
                 index = feat_list_new.index(feat)
-                means_test.append(np.mean(data_vector_test[:, index]))
-                variances_test.append(np.var(data_vector_test[:, index]))
-                p_feat = p[:, index]
-                entropies_test.append(entropy(p_feat[p_feat != 0]))
+                x = data_vector_test[:, index]
+                px = p[:, index]
+                means_test.append(np.mean(x))
+                if dtypes[i] is 'int':
+                    variances_test.append(binary_variance(x))
+                    entropies_test.append(binary_entropy(px))
+                if dtypes[i] is 'float32':
+                    variances_test.append(np.var(x))
+                    entropies_test.append(entropy(px[px != 0]))
     with open(exp_path / 'means_test.csv', 'ab') as f:
         np.savetxt(f, np.array(means_test), delimiter=',')
     with open(exp_path / 'variances_test.csv', 'ab') as f:
@@ -310,7 +328,7 @@ for img in img_list:
             print(pctl)
             data_train, data_vector_train, data_ind_train = preprocessing_random_clouds_standard(data_path, img, pctl, trial, test=False)
             perm_index = feat_list_new.index('GSW_perm')
-            p = softmax(data_vector_train, axis=1)
+            p = sc.softmax(data_vector_train, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
                 means_train.append(np.mean(data_vector_train[:, index]))
@@ -336,7 +354,7 @@ for img in img_list:
             print(pctl)
             data_test, data_vector_test, data_ind_test = preprocessing_random_clouds_standard(data_path, img, pctl, trial, test=True)
             perm_index = feat_list_new.index('GSW_perm')
-            p = softmax(data_vector_test, axis=1)
+            p = sc.softmax(data_vector_test, axis=1)
             for feat in feat_list_new:
                 index = feat_list_new.index(feat)
                 means_test.append(np.mean(data_vector_test[:, index]))
