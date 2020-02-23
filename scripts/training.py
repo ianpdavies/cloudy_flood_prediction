@@ -189,6 +189,7 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
     # References
         Original paper: http://arxiv.org/abs/1608.03983
     """
+
     def __init__(self,
                  min_lr,
                  max_lr,
@@ -216,7 +217,8 @@ class SGDRScheduler(tf.keras.callbacks.Callback):
 
     def on_train_begin(self, logs={}):
         '''Initialize the learning rate to the minimum value at the start of training.'''
-        self.steps_per_epoch = self.params['steps'] if self.params['steps'] is not None else round(self.params['samples'] / self.params['batch_size'])
+        self.steps_per_epoch = self.params['steps'] if self.params['steps'] is not None else round(
+            self.params['samples'] / self.params['batch_size'])
         logs = logs or {}
         tf.keras.backend.set_value(self.model.optimizer.lr, self.max_lr)
 
@@ -287,7 +289,6 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     max_ = np.argmax(smoothed_diffs >= 0)  # where the (smoothed) loss restarts to increase
     max_ = max_ if max_ > 0 else smoothed_diffs.shape[0]  # because max_ == 0 if it never restarts to increase
 
-
     smoothed_losses_ = smoothed_losses[min_: max_]  # restrain the window to the min_, max_ interval
     # Take min and max loss in this restrained window
     try:
@@ -302,34 +303,35 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
         lr_arg_max += min_
         lrs = lrRangeFinder.lrs[lr_arg_min: lr_arg_max]
         lr_min, lr_max = min(lrs), max(lrs)
-    except ValueError:
-        lr_min, lr_max = 0.8, 1.5
 
+        plt.figure()
+        ax = plt.axes()
+        ax.plot(lrRangeFinder.lrs, smoothed_losses)
+        ax.set_title('Smoothed Model Losses Batch after Batch')
+        ax.set_ylabel('loss')
+        ax.set_xlabel('learning rate')
+        ax.set_ylim(0, 1.05 * np.max(smoothed_losses))
+        ax.set_xlim(0, max(lrRangeFinder.lrs))
+        ax.vlines(x=[lr_min, lr_max], ymin=[0, 0], ymax=[smoothed_losses[lr_arg_min], smoothed_losses[lr_arg_max]],
+                  color='r', linestyle='--', linewidth=.8)
+        ax.plot(lrs, smoothed_losses[lr_arg_min: lr_arg_max], linewidth=2)
+        x_arrow_arg = int((lr_arg_min + lr_arg_max) / 2)
+        x_arrow = lrRangeFinder.lrs[x_arrow_arg]
+        y_arrow = smoothed_losses[x_arrow_arg]
+        ax.annotate('best piece of slope', xy=(x_arrow, y_arrow), xytext=(lr_max, smoothed_losses[lr_arg_min]),
+                    arrowprops=dict(facecolor='black', shrink=0.05))
+        ax.annotate('', (lr_min, smoothed_losses[lr_arg_max] / 5), (lr_max, smoothed_losses[lr_arg_max] / 5),
+                    arrowprops={'arrowstyle': '<->'})
+        ax.text((lr_min + lr_max) / 2, 3 * smoothed_losses[lr_arg_max] / 5, 'lr range',
+                horizontalalignment='center', verticalalignment='center', weight='bold')
+        plt.savefig(lr_plots_path / '{}'.format(img + '_clouds_' + str(pctl) + '_lrRange.png'))
+        plt.close('all')
+    except ValueError:
+
+        lr_min, lr_max = 0.8, 1.5
 
     print('lr range: [{}, {}]'.format(lr_min, lr_max))
 
-    plt.figure()
-    ax = plt.axes()
-    ax.plot(lrRangeFinder.lrs, smoothed_losses)
-    ax.set_title('Smoothed Model Losses Batch after Batch')
-    ax.set_ylabel('loss')
-    ax.set_xlabel('learning rate')
-    ax.set_ylim(0, 1.05 * np.max(smoothed_losses))
-    ax.set_xlim(0, max(lrRangeFinder.lrs))
-    ax.vlines(x=[lr_min, lr_max], ymin=[0, 0], ymax=[smoothed_losses[lr_arg_min], smoothed_losses[lr_arg_max]],
-              color='r', linestyle='--', linewidth=.8)
-    ax.plot(lrs, smoothed_losses[lr_arg_min: lr_arg_max], linewidth=2)
-    x_arrow_arg = int((lr_arg_min + lr_arg_max) / 2)
-    x_arrow = lrRangeFinder.lrs[x_arrow_arg]
-    y_arrow = smoothed_losses[x_arrow_arg]
-    ax.annotate('best piece of slope', xy=(x_arrow, y_arrow), xytext=(lr_max, smoothed_losses[lr_arg_min]),
-                arrowprops=dict(facecolor='black', shrink=0.05))
-    ax.annotate('', (lr_min, smoothed_losses[lr_arg_max] / 5), (lr_max, smoothed_losses[lr_arg_max] / 5),
-                arrowprops={'arrowstyle': '<->'})
-    ax.text((lr_min + lr_max) / 2, 3 * smoothed_losses[lr_arg_max] / 5, 'lr range',
-            horizontalalignment='center', verticalalignment='center', weight='bold')
-    plt.savefig(lr_plots_path / '{}'.format(img + '_clouds_' + str(pctl) + '_lrRange.png'))
-    plt.close('all')
     return lr_min, lr_max, lrRangeFinder.lrs, lrRangeFinder.losses
 
 
@@ -355,12 +357,13 @@ def training3(img_list, pctls, model_func, feat_list_new, data_path, batch,
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, gaps=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
-            data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+            data_vector_train[
+                data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
             training_data, validation_data = train_val(data_vector_train, holdout=HOLDOUT)
             shape = data_vector_train.shape
-            X_train, y_train = training_data[:, 0:shape[1]-1], training_data[:, shape[1]-1]
-            X_val, y_val = validation_data[:, 0:shape[1]-1], validation_data[:, shape[1]-1]
+            X_train, y_train = training_data[:, 0:shape[1] - 1], training_data[:, shape[1] - 1]
+            X_val, y_val = validation_data[:, 0:shape[1] - 1], validation_data[:, shape[1] - 1]
             INPUT_DIMS = X_train.shape[1]
 
             model_path = data_path / batch / 'models' / img
@@ -426,7 +429,7 @@ def training3(img_list, pctls, model_func, feat_list_new, data_path, batch,
         lr_range_df = pd.DataFrame(lr_range, columns=['cloud_cover', 'lr_min', 'lr_max', 'lr_avg'])
         lr_range_df.to_csv((lr_vals_path / img).with_suffix('.csv'), index=False)
 
-        losses_path = lr_vals_path / img / '{}'.format('losses_'+str(pctl)+'.csv')
+        losses_path = lr_vals_path / img / '{}'.format('losses_' + str(pctl) + '.csv')
         try:
             losses_path.parent.mkdir(parents=True)
         except FileExistsError:
@@ -434,6 +437,7 @@ def training3(img_list, pctls, model_func, feat_list_new, data_path, batch,
         lr_losses = np.column_stack([lr, losses])
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
+
 
 # ======================================================================================================================
 def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **model_params):
@@ -456,7 +460,8 @@ def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **mo
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new, test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_train[
@@ -502,11 +507,12 @@ def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **mo
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.0001, patience=10),
-                         tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
-                                                            save_best_only=True),
-                         CSVLogger(metrics_path / 'training_log.log'),
-                         scheduler]
+            callbacks = [
+                tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.0001, patience=10),
+                tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
+                                                   save_best_only=True),
+                CSVLogger(metrics_path / 'training_log.log'),
+                scheduler]
 
             model = get_model(INPUT_DIMS)
 
@@ -538,9 +544,12 @@ def training4(img_list, pctls, model_func, feat_list_new, data_path, batch, **mo
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
 
+
 # ======================================================================================================================
 
 from CPR.utils import preprocessing2
+
+
 def training5(img_list, pctls, model_func, feat_list_new, data_path, batch,
               DROPOUT_RATE=0, **model_params):
     '''
@@ -562,7 +571,8 @@ def training5(img_list, pctls, model_func, feat_list_new, data_path, batch,
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing2(data_path, img, pctl, feat_list_new, gaps=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing2(data_path, img, pctl,
+                                                                                      feat_list_new, gaps=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_train[
@@ -644,6 +654,7 @@ def training5(img_list, pctls, model_func, feat_list_new, data_path, batch,
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
 
+
 # ======================================================================================================================
 from tensorflow.keras.utils import to_categorical
 
@@ -668,7 +679,8 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, gaps=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new, gaps=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_train[
@@ -691,10 +703,12 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
 
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='softmax_output_categorical_accuracy', min_delta=0.005, patience=5),
-                         tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
-                                                            save_best_only=True),
-                         CSVLogger(metrics_path / 'training_log.log')]
+            callbacks = [
+                tf.keras.callbacks.EarlyStopping(monitor='softmax_output_categorical_accuracy', min_delta=0.005,
+                                                 patience=5),
+                tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
+                                                   save_best_only=True),
+                CSVLogger(metrics_path / 'training_log.log')]
 
             start_time = time.time()
             model = get_model(model_params['epochs'], X_train, y_train, X_train.shape, T, D=2,
@@ -708,6 +722,7 @@ def training6(img_list, pctls, model_func, feat_list_new, data_path, batch, T,
         times = np.column_stack([pctls, times])
         times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
+
 
 # ======================================================================================================================
 from models import get_aleatoric_uncertainty_model, get_epistemic_uncertainty_model
@@ -758,6 +773,7 @@ def training_bnn(img_list, pctls, feat_list_new, data_path, batch, **model_param
         times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
+
 # ======================================================================================================================
 def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, batch, dropout_rate, **model_params):
     get_model = model_func
@@ -773,7 +789,8 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new, test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_train[
@@ -819,11 +836,12 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             scheduler = SGDRScheduler(min_lr=lr_min, max_lr=lr_max, lr_decay=0.9, cycle_length=3, mult_factor=1.5)
 
-            callbacks = [tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.001, patience=10),
-                         tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
-                                                            save_best_only=True),
-                         CSVLogger(metrics_path / 'training_log.log'),
-                         scheduler]
+            callbacks = [
+                tf.keras.callbacks.EarlyStopping(monitor='sparse_categorical_accuracy', min_delta=0.001, patience=10),
+                tf.keras.callbacks.ModelCheckpoint(filepath=str(model_path), monitor='loss',
+                                                   save_best_only=True),
+                CSVLogger(metrics_path / 'training_log.log'),
+                scheduler]
 
             model = get_model(input_dims, dropout_rate)
 
