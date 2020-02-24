@@ -280,8 +280,8 @@ class VizFuncs:
                 pass
 
             # Reshape predicted values back into image band
-            with rasterio.open(stack_path, 'r') as ds:
-                shape = ds.read(1).shape  # Shape of full original image
+            # with rasterio.open(stack_path, 'r') as ds:
+            #     shape = ds.read(1).shape  # Shape of full original image
 
             # Get RGB image
             rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
@@ -302,6 +302,8 @@ class VizFuncs:
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
                                                                                       self.feat_list_new, test=True)
 
+                shape = data_test.shape[:2]
+
                 # Add predicted values to cloud-covered pixel positions
                 prediction_img = np.zeros(shape)
                 prediction_img[:] = np.nan
@@ -313,9 +315,8 @@ class VizFuncs:
                 flood_index = feat_keep.index('flooded')
                 data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
                 data_shape = data_vector_test.shape
-                with rasterio.open(stack_path, 'r') as ds:
-                    perm_feat = ds.read(perm_index + 1)
-                    prediction_img[((prediction_img == 1) & (perm_feat == 1))] = 0
+                perm_feat = data_test[:, :, perm_index]
+                prediction_img[((prediction_img == 1) & (perm_feat == 1))] = 0
 
                 # Add actual flood values to cloud-covered pixel positions
                 flooded_img = np.zeros(shape)
