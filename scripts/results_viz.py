@@ -83,6 +83,52 @@ class VizFuncs:
 
             plt.close('all')
 
+    def roc_curves(self):
+        """
+        Creates ROC/AUC curves for each CC in one plot per image
+        """
+        plt.ioff()
+        for i, img in enumerate(self.img_list):
+            print('Making metric plots for {}'.format(img))
+            metrics_path = data_path / self.batch / 'metrics' / 'testing' / img
+            plot_path = data_path / self.batch / 'plots' / img
+
+            try:
+                plot_path.mkdir(parents=True)
+            except FileExistsError:
+                pass
+
+            pctl_labels = ['Cloud cover', '10%', '30%', '50%', '70%', '90%']
+            dark2_colors = sns.color_palette("Dark2", 8)
+            color_inds = [0, 1, 2, 5, 7]
+            colors = []
+            for i in color_inds:
+                colors.append(dark2_colors[i])
+
+            legend_colors = colors.copy()
+            legend_colors.insert(0, (1.0, 1.0, 1.0))
+
+            legend_patches = [Patch(color=icolor, label=label)
+                              for icolor, label in zip(legend_colors, pctl_labels)]
+
+            fig, ax = plt.subplots(figsize=(5, 3))
+            for j, pctl in enumerate(self.pctls):
+                metrics = pd.read_csv(metrics_path / '{}'.format('roc_curve_' + str(pctl) + '.csv'))
+
+                ax.plot(metrics['fpr'], metrics['tpr'], label=str(pctl), linewidth=2, color=colors[j])
+
+            ax.set_xlabel('False Positive Rate')
+            ax.set_ylabel('True Positive Rate')
+            plt.legend(handles=legend_patches, labels=pctl_labels, loc='lower left', bbox_to_anchor=(-.04, 1),
+                       borderaxespad=0., labelspacing=0.0, handlelength=0.8, columnspacing=0.6,
+                       ncol=6, frameon=False)
+            plt.tight_layout()
+
+            plt.savefig(plot_path / 'roc_curves.png', dpi=300)
+
+            plt.close('all')
+
+
     def time_plot(self):
         """
         Creates plot of training time vs. cloud cover
@@ -265,8 +311,7 @@ class VizFuncs:
                 # Remove perm water from predictions and actual
                 perm_index = feat_keep.index('GSW_perm')
                 flood_index = feat_keep.index('flooded')
-                data_vector_test[
-                    data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+                data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
                 data_shape = data_vector_test.shape
                 with rasterio.open(stack_path, 'r') as ds:
                     perm_feat = ds.read(perm_index + 1)
@@ -698,7 +743,8 @@ class VizFuncs:
                 # cbar_labels[-1] = cbar_labels[-1] + '+'
                 # cbar.ax.set_yticklabels(cbar_labels)
                 plt.tight_layout()
-                plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+                plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi,
+                            pad_inches=0.0)
 
                 plt.close('all')
 
@@ -756,7 +802,8 @@ class VizFuncs:
                 im_ratio = unc_image.shape[0] / unc_image.shape[1]
                 fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
                 plt.tight_layout()
-                plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
+                plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi,
+                            pad_inches=0.0)
 
                 # Aleatoric
                 aleatoric_image = np.zeros(shape)
@@ -793,7 +840,7 @@ class VizFuncs:
                 plt.savefig(plot_path / '{}'.format('map_epistemic_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
                 plt.close('all')
 
-    def fpfn_map(self):
+    def fpfn_map(self, probs):
         data_path = self.data_path
         plt.ioff()
         my_dpi = 300
@@ -820,7 +867,10 @@ class VizFuncs:
                 print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
                 with h5py.File(preds_bin_file, 'r') as f:
                     predictions = f[str(pctl)]
-                    predictions = np.argmax(np.array(predictions), axis=1)  # Copy h5 dataset to array
+                    if probs:
+                        predictions = np.argmax(np.array(predictions), axis=1)  # Copy h5 dataset to array
+                    if not probs:
+                        predictions = np.array(predictions)
 
                 prediction_img = np.zeros(shape)
                 prediction_img[:] = np.nan
