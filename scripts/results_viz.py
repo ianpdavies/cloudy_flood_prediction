@@ -894,8 +894,25 @@ class VizFuncs:
 
                 true_false = fp + (fn * 2) + (tp * 3)
                 true_false[perm_water] = -1
-                colors = ['darkgray', 'saddlebrown', 'limegreen', 'red', 'blue']
-                class_labels = ['Permanent Water', 'True Negatives', 'False Floods', 'Missed Floods', 'True Floods']
+
+                colors = []
+                class_labels = []
+                if np.sum(perm_water) != 0:
+                    colors.append('darkgrey')
+                    class_labels.append('Permanent Water')
+                if np.sum(tn) != 0:
+                    colors.append('saddlebrown')
+                    class_labels.append('True Negatives')
+                if np.sum(fp) != 0:
+                    colors.append('limegreen')
+                    class_labels.append('False Floods')
+                if np.sum(fn) != 0:
+                    colors.append('red')
+                    class_labels.append('Missed Floods')
+                if np.sum(tp) != 0:
+                    colors.append('blue')
+                    class_labels.append('True Floods')
+
                 legend_patches = [Patch(color=icolor, label=label)
                                   for icolor, label in zip(colors, class_labels)]
                 cmap = ListedColormap(colors)
