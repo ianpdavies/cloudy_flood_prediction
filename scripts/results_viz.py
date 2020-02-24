@@ -575,7 +575,7 @@ class VizFuncs:
         metrics_fig.savefig(plot_path / 'mean_metrics.png', dpi=300)
 
         # Scatter of cloud_cover vs. metric for each metric, with all image metrics represented as a point
-        colors = sns.color_palette("colorblind", 4)
+        colors = sns.color_palette("colorblind", 5)
         for j, val in enumerate(df_concat.columns[1:]):
             name = val + 's.png'
             all_metric = df_concat.plot.scatter(x='cloud_cover', y=val, ylim=(0, 1), color=colors[j], alpha=0.3)
