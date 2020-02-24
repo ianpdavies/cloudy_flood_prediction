@@ -167,7 +167,7 @@ class VizFuncs:
         plt.ioff()
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
-            print('Creating FN/FP map for {}'.format(img))
+            print('Creating CIR image for {}'.format(img))
             band_combo_dir = data_path / 'band_combos'
             stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
             cir_file = band_combo_dir / '{}'.format(img + '_cir_img' + '.png')
@@ -268,7 +268,7 @@ class VizFuncs:
         plt.ioff()
         data_path = self.data_path
         for i, img in enumerate(self.img_list):
-            print('Creating FN/FP map for {}'.format(img))
+            print('Creating false map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
             band_combo_dir = data_path / 'band_combos'
             bin_file = data_path / self.batch / 'predictions' / img / 'predictions.h5'
