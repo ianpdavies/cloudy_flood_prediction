@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from CPR.utils import preprocessing, tif_stacker
 from PIL import Image, ImageEnhance
 import h5py
+from results_viz import VizFuncs as Viz
 
 sys.path.append('../')
 from CPR.configs import data_path
@@ -146,9 +147,9 @@ def prediction_perm(img_list, pctls, feat_list_new, data_path, batch, perm=None,
                 perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
                 perm_mask = perm_mask[~np.isnan(perm_mask)]
                 preds[perm_mask.astype('bool')] = np.nan
-                preds = preds[~np.isnan(preds).any(axis=1)]
+                preds = preds[~np.isnan(preds)]
                 y_test[perm_mask.astype('bool')] = np.nan
-                y_test = y_test[~np.isnan(y_test).any(axis=1)]
+                y_test = y_test[~np.isnan(y_test)]
             if metric_perm is 0:
                 perm_mask = data_test[:, :, perm_index]
                 perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
@@ -545,11 +546,10 @@ viz_params = {'img_list': img_list,
               'data_path': data_path,
               'batch': batch,
               'feat_list_new': feat_list_new}
-log_reg_training_perm(img_list, pctls, feat_list_new, data_path, batch, perm=None)
+# log_reg_training_perm(img_list, pctls, feat_list_new, data_path, batch, perm=None)
 prediction_perm(img_list, pctls, feat_list_new, data_path, batch, perm=None, metric_perm='NaN')
 viz = VizFuncsPerm(viz_params)
 viz.metric_plots()
-viz.cir_image()
 viz.time_plot()
 viz.false_map(perm='NaN')
 viz.metric_plots_multi()
@@ -599,3 +599,31 @@ viz.cir_image()
 viz.time_plot()
 viz.false_map(perm='NaN')
 viz.metric_plots_multi()
+
+# Train: all water
+# Predict: only flood
+# Metrics: only flood
+batch = 'LR_perm_6'
+print('NOW CREATING BATCH', batch)
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+
+viz_params = {'img_list': img_list,
+              'pctls': pctls,
+              'data_path': data_path,
+              'batch': batch,
+              'feat_list_new': feat_list_new}
+
+log_reg_training_perm(img_list, pctls, feat_list_new, data_path, batch, perm=None)
+prediction_perm(img_list, pctls, feat_list_new, data_path, batch, perm=0, metric_perm=0)
+viz = Viz(viz_params)
+viz.metric_plots()
+viz.metric_plots_multi()
+viz.time_plot()
+viz.false_map(probs=False, save=False)
+viz.false_map_borders()
+viz.false_map_borders_cir()
+viz.fpfn_map()
+viz.uncertainty_map_LR()
