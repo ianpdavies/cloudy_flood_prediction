@@ -159,10 +159,10 @@ img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
 metric_names = ['accuracy', 'f1', 'recall', 'precision']
 metric_names_fancy = ['Accuracy', 'F1', 'Recall', 'Precision']
-# batches = ['LR_allwater', 'RF', 'NN_allwater']
-batches = ['LR', 'RF', 'NN']
-# plot_name = 'median_highlights_allwater.png'
-plot_name = 'median_highlights.png'
+batches = ['LR_allwater', 'RF_allwater', 'NN_allwater']
+# batches = ['LR', 'RF', 'NN']
+plot_name = 'median_highlights_allwater.png'
+# plot_name = 'median_highlights.png'
 batches_fancy = ['Logistic Regression', 'Random Forest', 'Neural Network']
 
 dark2_colors = sns.color_palette("Dark2", 8)
@@ -172,7 +172,7 @@ for j in range(4):
     for i in color_inds:
         colors.append(dark2_colors[i])
 
-fig = plt.figure(figsize=(7.5, 9))
+fig = plt.figure(figsize=(7, 7))
 axes = [plt.subplot(4, 3, i + 1) for i in range(12)]
 
 j = 0
@@ -199,7 +199,6 @@ for i, ax in enumerate(axes):
     ax.get_yaxis().set_visible(False)
     ax.set_xlabel('')
     ax.set_xticks([])
-    plt.subplots_adjust(wspace=0.05, hspace=0.2)
 
 j = 0
 for i in range(0, 12, 3):
@@ -223,14 +222,15 @@ for i, ax in enumerate(axes):
     ax.text(0.855, 0.1, str(medians[i]), horizontalalignment='center',
             verticalalignment='center', transform=ax.transAxes, fontsize=9)
 
-
+plt.tight_layout()
+plt.subplots_adjust(wspace=0.05, hspace=0.2)
 plt.savefig(figure_path / '{}'.format(plot_name), dpi=300)
 
 # ======================================================================================================================
 # Mean performance metrics of LR, RF, and NN in 4x3 matrix
-plot_name = 'mean_highlights.png'
-# plot_name = 'mean_highlights_allwater.png'
-fig = plt.figure(figsize=(7.5, 9))
+# plot_name = 'mean_highlights.png'
+plot_name = 'mean_highlights_allwater.png'
+fig = plt.figure(figsize=(7, 7))
 axes = [plt.subplot(4, 3, i + 1) for i in range(12)]
 
 j = 0
@@ -259,7 +259,6 @@ for i, ax in enumerate(axes):
     ax.get_yaxis().set_visible(False)
     ax.set_xlabel('')
     ax.set_xticks([])
-    plt.subplots_adjust(wspace=0.05, hspace=0.2)
 
 j = 0
 for i in range(0, 12, 3):
@@ -283,8 +282,11 @@ for i, ax in enumerate(axes):
     ax.text(0.855, 0.1, str(means[i]), horizontalalignment='center',
             verticalalignment='center', transform=ax.transAxes, fontsize=9)
 
+plt.subplots_adjust(wspace=0.05, hspace=0.2)
+plt.tight_layout()
 plt.savefig(figure_path / '{}'.format(plot_name), dpi=300)
 
+plt.close('all)')
 # ======================================================================================================================
 # Plotting BNN and LR uncertainty histograms side by side
 
@@ -327,3 +329,7 @@ axes[0].set_ylabel('Prediction Type / Total')
 plt.tight_layout()
 plt.subplots_adjust(wspace=0.05)
 plt.savefig(figure_path / 'uncertainty_histograms.png', dpi=300)
+
+
+# ======================================================================================================================
+
