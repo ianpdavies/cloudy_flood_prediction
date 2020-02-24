@@ -7,7 +7,7 @@ import os
 import time
 from sklearn.linear_model import LogisticRegression
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 import pandas as pd
 from results_viz import VizFuncs
@@ -97,7 +97,7 @@ def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
 def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
     for j, img in enumerate(img_list):
         times = []
-        accuracy, precision, recall, f1 = [], [], [], []
+        accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         uncertainties_path = data_path / batch / 'uncertainties' / img
@@ -173,12 +173,13 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
             precision.append(precision_score(y_test, preds))
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
+            roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
             del preds, probs, pred_probs, upper, lower, X_test, y_test, \
                 trained_model, data_test, data_vector_test, data_ind_test
 
-        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
-                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, roc_auc]),
+                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),

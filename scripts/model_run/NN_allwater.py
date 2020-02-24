@@ -63,7 +63,7 @@ os.environ["KMP_AFFINITY"]= "granularity=fine,verbose,compact,1,0"
 
 # ======================================================================================================================
 from tensorflow.keras.callbacks import CSVLogger
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
 from training import LrRangeFinder, SGDRScheduler, lr_plots
 from CPR.utils import tif_stacker, preprocessing, cloud_generator, timer
 import numpy as np
@@ -173,7 +173,7 @@ def NN_training(img_list, pctls, model_func, feat_list_new, data_path, batch, **
 def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, **model_params):
     for j, img in enumerate(img_list):
         times = []
-        accuracy, precision, recall, f1 = [], [], [], []
+        accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing' / img
@@ -197,8 +197,8 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, **model_para
             start_time = time.time()
             model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model = tf.keras.models.load_model(model_path)
-            preds = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
-            preds = np.argmax(preds, axis=1)  # Display most probable value
+            pred_probs = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
+            preds = np.argmax(pred_probs, axis=1)  # Display most probable value
 
             try:
                 preds_path.mkdir(parents=True)
@@ -213,22 +213,23 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, **model_para
 
             times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
 
+            print('Evaluating predictions')
             perm_mask = data_test[:, :, perm_index]
             perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
             perm_mask = perm_mask[~np.isnan(perm_mask)]
             preds[perm_mask.astype('bool')] = 0
             y_test[perm_mask.astype('bool')] = 0
 
-            print('Evaluating predictions')
             accuracy.append(accuracy_score(y_test, preds))
             precision.append(precision_score(y_test, preds))
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
+            roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
-            del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
+            del preds, pred_probs, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
 
-        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
-                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, roc_auc]),
+                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
@@ -237,14 +238,14 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, **model_para
 
 
 # ======================================================================================================================
-NN_training(img_list[img_list.index('4101_LC08_027038_20131103_1'):], pctls, model_func, feat_list_new, data_path, batch, **model_params)
+NN_training(img_list, pctls, model_func, feat_list_new, data_path, batch, **model_params)
 NN_prediction(img_list, pctls, feat_list_new, data_path, batch, **model_params)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.metric_plots_multi()
 viz.median_highlight()
 viz.time_plot()
-viz.false_map(probs=False, save=False)
+viz.false_map(probs=True, save=False)
 viz.false_map_borders()
 
 
