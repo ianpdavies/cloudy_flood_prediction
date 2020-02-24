@@ -1,4 +1,4 @@
-# Random Forest using hyperparameters tuned for only the 10% cloud cover image
+# Random Forest using hyperparameters tuned for only one image at 50% CC
 
 import __init__
 import tensorflow as tf
@@ -36,7 +36,7 @@ except FileExistsError:
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
 img_list.remove('4115_LC08_021033_20131227_test')
-img_list = ['4115_LC08_021033_20131227_test']
+
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
@@ -55,7 +55,7 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
     for j, img in enumerate(img_list):
         print(img + ': stacking tif, generating clouds')
         times = []
-        tuning_times = []
+        # tuning_times = []
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
         cloud_generator(img, data_path, overwrite=False)
 
@@ -77,43 +77,46 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
             metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
-            try:
-                metrics_path.mkdir(parents=True)
+            if not model_path.exists():
                 model_path.mkdir(parents=True)
-            except FileExistsError:
-                pass
+            if not metrics_path.exists():
+                metrics_path.mkdir(parents=True)
 
-            # param_path = data_path / batch / 'models' / '4514_LC08_027033_20170826_1' / '{}'.format(
-            #     '4514_LC08_027033_20170826_1_clouds_50params.pkl')
+            param_path = data_path / batch / 'models' / '4514_LC08_027033_20170826_1' / '{}'.format(
+                '4514_LC08_027033_20170826_1_clouds_50params.pkl')
 
-            param_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_10_params.pkl')
+            model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
 
-            if pctl is 10:
-                model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
+            # param_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_10_params.pkl')
 
-                # Hyperparameter optimization
-                print('Hyperparameter search')
-                base_rf = RandomForestClassifier(random_state=0, n_estimators=100, max_leaf_nodes=10)
+            # if pctl is 10:
+            # model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
 
-                space = [skopt.space.Integer(2, 1000, name="max_leaf_nodes"),
-                         skopt.space.Integer(2, 200, name="n_estimators"),
-                         skopt.space.Integer(2, 3000, name="max_depth")]
+            # # Hyperparameter optimization
+            # print('Hyperparameter search')
+            # base_rf = RandomForestClassifier(random_state=0, n_estimators=100, max_leaf_nodes=10)
 
-                @use_named_args(space)
-                def objective(**params):
-                    base_rf.set_params(**params)
-                    return -np.mean(cross_val_score(base_rf, X_train, y_train, cv=5, n_jobs=n_jobs, scoring="f1"))
+            # space = [skopt.space.Integer(2, 1000, name="max_leaf_nodes"),
+            # skopt.space.Integer(2, 200, name="n_estimators"),
+            # skopt.space.Integer(2, 3000, name="max_depth")]
 
-                start_time = time.time()
-                res_rf = forest_minimize(objective, space, base_estimator='RF', n_calls=11,
-                                         random_state=0, verbose=True, n_jobs=n_jobs)
-                end_time = time.time()
-                tuning_times.append(timer(start_time, end_time, False))
-                print(type(res_rf))
-                skopt.utils.dump(res_rf, param_path, store_objective=False)
+            # @use_named_args(space)
+            # def objective(**params):
+            # base_rf.set_params(**params)
+            # return -np.mean(cross_val_score(base_rf, X_train, y_train, cv=5, n_jobs=n_jobs, scoring="f1"))
 
-            if pctl is not 10:
-                res_rf = skopt.utils.load(param_path)
+            # start_time = time.time()
+            # res_rf = forest_minimize(objective, space, base_estimator='RF', n_calls=30,
+            # random_state=0, verbose=True, n_jobs=n_jobs)
+            # end_time = time.time()
+            # tuning_times.append(timer(start_time, end_time, False))
+            # print(type(res_rf))
+            # skopt.utils.dump(res_rf, param_path, store_objective=False)
+
+            # if pctl is not 10:
+            # res_rf = skopt.utils.load(param_path)
+
+            res_rf = skopt.utils.load(param_path)
 
             # Training
             print('Training with optimized hyperparameters')
@@ -131,7 +134,7 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
         metrics_path = metrics_path.parent
         times = [float(i) for i in times]
         times = np.column_stack([pctls, times])
-        pd.DataFrame(tuning_times, columns=['tuning_time']).to_csv(metrics_path / 'tuning_time.csv', index=False)
+        # pd.DataFrame(tuning_times, columns=['tuning_time']).to_csv(metrics_path / 'tuning_time.csv', index=False)
         times_df = pd.DataFrame(times, columns=['cloud_cover', 'training_time'])
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
