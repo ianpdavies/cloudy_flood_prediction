@@ -13,7 +13,7 @@ from zipfile import ZipFile
 
 img_list = os.listdir(data_path / 'images')
 removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1'}
 img_list = [x for x in img_list if x not in removed]
 
 
@@ -68,10 +68,10 @@ img_list = [x for x in img_list if x not in removed]
 # =====================================================================
 # Replacing files in existing zip folders with newly downloaded files (in zip folders)
 
-remove_these = ['GSW_distExtent', 'GSW_maxExtent', 'GSW_perm', 'twi', 'spi']
+remove_these = ['GSW_distExtent', 'GSW_perm']
 for img in img_list:
     downloads = Path('C:/Users/ipdavies/Downloads')
-    image_dir1 = Path('C:/Users/ipdavies/CPR/data/images')
+    image_dir1 = Path('D:/Workspace/ipdavies/CPR/data/images')
     image_dir1 = image_dir1 / img
     image_dst = image_dir1 / img
     try:
@@ -113,6 +113,10 @@ for img in img_list:
     # Remove unzipped folder with files
     shutil.rmtree(str(image_dst))
 
-
+# =====================================================================
+for img in img_list:
+    image_dir = Path('D:/Workspace/ipdavies/CPR/data/images')
+    stack_dir = image_dir / img / 'stack'
+    shutil.rmtree(str(stack_dir))
 
 
