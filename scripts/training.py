@@ -874,4 +874,3 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
         lr_losses = np.column_stack([lr, losses])
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
-s
