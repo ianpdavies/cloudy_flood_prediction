@@ -13,7 +13,9 @@ pctls = [10, 30, 50, 70, 90]
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
@@ -28,6 +30,7 @@ viz_params = {'img_list': img_list,
 # viz = VizFuncs(viz_params)
 # viz.cir_image(overwrite=True)
 # viz.rgb_image(percent=1.25, overwrite=True)
+
 
 def linear_stretch(input, percent):
     p_low, p_high = np.percentile(input[~np.isnan(input)], (percent, 100 - percent))
@@ -225,9 +228,10 @@ rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
 rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4337_LC08_026038_20160325_1'
-rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=3.5, std_high=3.5, save=False)
+rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=4, std_high=4, save=False)
 rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.1, gain=1)
-rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=6.5)
+rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.55, gain=6.5)
+plt.imshow(rgb_enhanced)
 rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
 rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
@@ -240,6 +244,20 @@ rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 
 
 plt.close('all')
 
+batch=None
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
+                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
+                 'flooded']
+
+img_list = ['4337_LC08_026038_20160325_1']
+
+viz_params = {'img_list': img_list,
+              'pctls': pctls,
+              'data_path': data_path,
+              'batch': batch,
+              'feat_list_new': feat_list_new}
+viz = VizFuncs(viz_params)
+viz.cir_image(overwrite=True)
 
 # Doesn't work very well for CIR images - water and dry earth are both turqoise.
 def hist_equalize_cir(img, view_hist=False, view_img=False, std_low=1.75, std_high=1.75, save=False):

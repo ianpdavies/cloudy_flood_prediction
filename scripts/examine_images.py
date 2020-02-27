@@ -14,47 +14,17 @@ from matplotlib import gridspec
 sys.path.append('../')
 from CPR.configs import data_path
 
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+feat_list_new = ['GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
-feat_list_fancy = ['Max SW extent', 'Dist from max SW', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
+feat_list_fancy = ['Dist from Perm', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
                  'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Permanent water', 'Flooded']
 
 
-# img_list = os.listdir(data_path / 'images')
-# img_list.remove('4115_LC08_021033_20131227_test')
-
-img_list = ['4050_LC08_023036_20130429_1',
-            '4050_LC08_023036_20130429_2',
-            '4061_LC08_025031_20130529_1',
-            '4080_LC08_028033_20130806_1',
-            '4080_LC08_028034_20130806_1',
-            '4089_LC08_034032_20130917_1',
-            '4101_LC08_027038_20131103_1',
-            '4101_LC08_027038_20131103_2',
-            '4101_LC08_027039_20131103_1',
-            '4115_LC08_021033_20131227_1',
-            '4115_LC08_021033_20131227_2',
-            '4337_LC08_026038_20160325_1',
-            '4444_LC08_043034_20170303_1',
-            '4444_LC08_043035_20170303_1',
-            '4444_LC08_044032_20170222_1',
-            '4444_LC08_044033_20170222_1',
-            '4444_LC08_044033_20170222_2',
-            '4444_LC08_044033_20170222_3',
-            '4444_LC08_044033_20170222_4',
-            '4444_LC08_044034_20170222_1',
-            '4444_LC08_045032_20170301_1',
-            '4468_LC08_022035_20170503_1',
-            '4468_LC08_024036_20170501_1',
-            '4468_LC08_024036_20170501_2',
-            '4469_LC08_015035_20170502_1',
-            '4469_LC08_015036_20170502_1',
-            '4477_LC08_022033_20170519_1',
-            '4514_LC08_027033_20170826_1',
-            '4516_LC08_017038_20170921_1',
-            '4594_LC08_022034_20180404_1',
-            '4594_LC08_022035_20180404_1']
+img_list = os.listdir(data_path / 'images')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 pctls = [10, 30, 50, 70, 90]
 myDpi = 300
@@ -86,12 +56,29 @@ rgb_img = Image.open(rgb_file)
 
 plt.imshow(rgb_img)
 
+with rasterio.open(stack_path, 'r') as src:
+    flood = src.read(16)
+    flood[flood == -999999] = np.nan
+    flood[flood == 0] = np.nan
+
+plt.imshow(flood, cmap='autumn')
+
+with rasterio.open(stack_path, 'r') as src:
+    perm = src.read(15)
+    perm[perm == -999999] = np.nan
+    perm[perm == 0] = np.nan
+
+plt.imshow(perm, cmap='autumn')
+
+
+# Overlay flooding
+
 # ======================================================================================================================
 # View all features in bounding box
-y_top = 980
-y_bottom = 1400
-x_left = 750
-x_right = 1250
+y_top = 950
+x_left = 1250
+y_bottom =
+x_right = 900
 
 # Read only a portion of the image
 window = Window.from_slices((y_top, y_bottom), (x_left, x_right))
@@ -103,17 +90,19 @@ with rasterio.open(stack_path, 'r') as src:
     w = src.read(window=window)
     w[w == -999999] = np.nan
     w[np.isneginf(w)] = np.nan
+    w[15, ((w[14,:,:]==1) & (w[15,:,:] ==1))] = 0
+    w = w[1:, :, :]
 
 
 titles = feat_list_fancy
 plt.figure(figsize=(6, 4))
-axes = [plt.subplot(4, 4, i + 1) for i in range(16)]
+axes = [plt.subplot(4, 4, i + 1) for i in range(15)]
 for i, ax in enumerate(axes):
     ax.imshow(w[i])
     ax.set_title(titles[i], fontdict={'fontsize': 8, 'fontname': 'Helvetica'})
     ax.axis('off')
 # plt.tight_layout()
-plt.subplots_adjust(wspace=-.7, hspace=0.1)
+plt.subplots_adjust(wspace=0.1, hspace=0.1)
 
 
 with rasterio.open(stack_path, 'r') as ds:
@@ -135,9 +124,11 @@ plt.tight_layout()
 # Find images that performed worst/best
 
 
-batches = ['LR_allwater', 'RF', 'NN_allwater']
+batches = ['LR_allwater', 'RF_allwater', 'NN_allwater']
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 metrics = ['accuracy', 'f1', 'recall', 'precision']
 metrics_fancy = ['Accuracy', 'F1', 'Recall', 'Precision']

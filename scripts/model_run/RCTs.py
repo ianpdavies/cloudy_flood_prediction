@@ -5,9 +5,10 @@ import pathlib
 import joblib
 from zipfile import ZipFile
 from CPR.utils import preprocessing, tif_stacker, cloud_generator, timer
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.linear_model import LogisticRegression
 import time
+from results_viz import VizFuncs
 import h5py
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ print('Python Version:', sys.version)
 # ==================================================================================
 # Parameters
 pctls = [10, 30, 50, 70, 90]
-batch = 'RCTs'
+batch = 'RCTs_noGSW'
 try:
     (data_path / batch).mkdir()
 except FileExistsError:
@@ -30,16 +31,12 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
-img_list = ['4469_LC08_015035_20170502_1',
-            '4469_LC08_015036_20170502_1',
-            '4477_LC08_022033_20170519_1',
-            '4514_LC08_027033_20170826_1',
-            '4516_LC08_017038_20170921_1',
-            '4594_LC08_022034_20180404_1',
-            '4594_LC08_022035_20180404_1']
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
+
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 
@@ -51,7 +48,7 @@ def log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, tria
         print(img + ': stacking tif, generating clouds')
         times = []
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
-        # cloud_generator(img, data_path, overwrite=True)  # Made all of them ahead of time to analyze dissimilarity concurrently
+        cloud_generator(img, data_path, overwrite=False)  # Made all of them ahead of time to analyze dissimilarity concurrently
 
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
@@ -62,9 +59,8 @@ def log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, tria
                                                                                      test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
-            data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
-
-            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
+            # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
+            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
 
@@ -97,7 +93,7 @@ def log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, tria
 def prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial):
     for j, img in enumerate(img_list):
         times = []
-        accuracy, precision, recall, f1 = [], [], [], []
+        accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
         preds_path = data_path / batch / trial / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / trial / 'metrics' / 'testing' / img
@@ -114,8 +110,7 @@ def prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial):
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
-
-            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
@@ -150,11 +145,12 @@ def prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial):
             precision.append(precision_score(y_test, preds))
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
+            roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
             del preds, pred_probs, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
 
-        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
-                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, roc_auc]),
+                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
@@ -171,30 +167,34 @@ try:
 except FileExistsError:
     pass
 
-# Move existing cloud files so they don't get overwritten on accident
-zip_dir = str(cloud_dir / 'random' / 'saved.zip')
-try:
-    with ZipFile(zip_dir, 'w') as dst:
-        for img in img_list:
-            cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-            dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
-            os.remove(cloud_img)
-except FileNotFoundError:
-    pass
+# # Move existing cloud files so they don't get overwritten on accident
+# zip_dir = str(cloud_dir / 'random' / 'saved.zip')
+# try:
+    # with ZipFile(zip_dir, 'w') as dst:
+        # for img in img_list:
+            # cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+            # dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
+            # os.remove(cloud_img)
+# except FileNotFoundError:
+    # pass
 
-trial_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+trial_nums = [1, 2, 3, 4, 5]
 for trial_num in trial_nums:
     trial = 'trial' + str(trial_num)
     print('RUNNING', trial, '################################################################')
-    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
-    if not os.path.isdir(str(cloud_dir / 'random' / trial)):
-        with ZipFile(zip_dir, 'r') as dst:
-            dst.extractall(str(cloud_dir))
+    # zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+    # if not os.path.isdir(str(cloud_dir / 'random' / trial)):
+        # with ZipFile(zip_dir, 'r') as dst:
+            # dst.extractall(str(cloud_dir))
     log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, trial)
     prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial)
+    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
     for img in img_list:
-        cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-        os.remove(str(cloud_img))
+        with ZipFile(zip_dir, 'w') as dst:
+            cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+            dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
+            os.remove(cloud_img)
+
 
 # Use if cloud_generator has overwrite=True and clouds are being made for the first time
 # trial_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -211,3 +211,38 @@ for trial_num in trial_nums:
 #                 cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
 #                 dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
 #                 os.remove(cloud_img)
+
+
+# Plotting some of the images with the highest variability across trials
+# img_list = ['4477_LC08_022033_20170519_1',
+            # '4337_LC08_026038_20160325_1',
+            # '4594_LC08_022034_20180404_1',
+            # '4469_LC08_015036_20170502_1',
+            # '4468_LC08_022035_20170503_1',
+            # '4101_LC08_027039_20131103_1']
+
+# viz_params = {'img_list': img_list,
+              # 'pctls': pctls,
+              # 'data_path': data_path,
+              # 'batch': batch,
+              # 'feat_list_new': feat_list_new}
+
+# trial_nums = [1, 2, 3, 4]
+# for trial_num in trial_nums:
+    # trial = 'trial' + str(trial_num)
+    # print('RUNNING', trial, '################################################################')
+    # zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+    # if not os.path.isdir(str(cloud_dir / 'random' / trial)):
+        # with ZipFile(zip_dir, 'r') as dst:
+            # dst.extractall(str(cloud_dir))
+    # viz = VizFuncs(viz_params)
+    # viz.metric_plots()
+    # viz.false_map(probs=True, save=False)
+    # viz.false_map_borders()
+    # viz.fpfn_map()
+    # for img in img_list:
+        # cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+        # os.remove(str(cloud_img))
+
+import dissimilarity
+import random_cloud_analysis

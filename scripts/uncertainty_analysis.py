@@ -49,10 +49,12 @@ pctls = [10, 30, 50, 70, 90]
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation',
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
                  'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
                  'flooded']
 
@@ -178,14 +180,15 @@ def stack_all_uncertainties(model, batch, data_path, img_list):
                 epistemic_image_mask = epistemic_image.reshape([epistemic_image.shape[0] * epistemic_image.shape[1], ])
                 epistemic_image_mask = epistemic_image_mask[~np.isnan(predictions_mask)]
 
+                aleatoric_all.append(aleatoric_image_mask)
+                epistemic_all.append(epistemic_image_mask)
+
             predictions_all.append(predictions)
             uncertainty_all.append(unc_image_mask)
             tp_all.append(tp)
             tn_all.append(tn)
             fp_all.append(fp)
             fn_all.append(fn)
-            aleatoric_all.append(aleatoric_image_mask)
-            epistemic_all.append(epistemic_image_mask)
 
     # data_vector_all = np.concatenate(data_vector_all, axis=0)  # Won't work because some features are missing
     predictions_all = np.concatenate(predictions_all, axis=0)
@@ -216,12 +219,12 @@ def stack_all_uncertainties(model, batch, data_path, img_list):
 
 # ======================================================================================================================
 # # Logistic Regression
-# batch = 'LR'
-# try:
-#     (data_path / batch).mkdir()
-# except FileExistsError:
-#     pass
-#
+batch = 'LR_allwater'
+try:
+    (data_path / batch).mkdir()
+except FileExistsError:
+    pass
+
 # stack_all_uncertainties(model='LR', batch=batch, data_path=data_path, img_list=img_list)
 
 # # Bayesian Neural Network
@@ -239,7 +242,7 @@ def stack_all_uncertainties(model, batch, data_path, img_list):
 # batch = 'BNN_kwon'
 
 model = 'LR'
-batch = 'LR'
+batch = 'LR_allwater'
 
 output_bin_file = data_path / batch / 'metrics' / 'uncertainty_fpfn.h5'
 plot_path = data_path / batch / 'plots'
@@ -310,9 +313,9 @@ ax.xaxis.offsetText.set_fontsize(SMALL_SIZE)
 
 plt.savefig(plot_path / plotname, dpi=myDpi)
 
-plt.close('all')
+# plt.close('all')
 
-df_group.to_csv(data_path / batch / 'metrics' / 'uncertainty_binned.csv')
+df_group.to_csv(data_path / batch / 'metrics' / 'uncertainty_binned_allwater.csv')
 
 # ========================
 
@@ -423,7 +426,6 @@ if model is 'BNN':
     plt.close('all')
     df_group.to_csv(data_path / batch / 'metrics' / 'epistemic_binned.csv')
 
-
 # ======================================================================================================================
 # # Reshape into 1D arrays
 # var_img_1d = var_img.reshape([var_img.shape[0] * var_img.shape[1], ])
@@ -487,3 +489,4 @@ if model is 'BNN':
 # sns.set_style({'xtick.bottom': True}, {'ytick.left': True})
 
 # ======================================================================================================================
+# Display histograms separately

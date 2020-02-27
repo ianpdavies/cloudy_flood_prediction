@@ -265,7 +265,10 @@ def lr_plots(lrRangeFinder, lr_plots_path, img, pctl):
     plt.savefig(lr_plots_path / '{}'.format(img + '_clouds_' + str(pctl) + '_smooth.png'))
 
     # LR vs. loss (smooth)
-    smoothed_losses = smooth(lrRangeFinder.losses, len(lrRangeFinder.lrs))
+    try:  # This was just a hack to get BNN kwon to work -- lrRangeFinder.losses was 0
+        smoothed_losses = smooth(lrRangeFinder.losses, len(lrRangeFinder.lrs))
+    except ValueError:
+        return 0.8, 1.5, 0, 0
     plt.figure()
     plt.plot(lrRangeFinder.lrs, smoothed_losses)
     plt.title('Smoothed Model Losses Batch after Batch')
@@ -793,9 +796,8 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
                                                                                      feat_list_new, test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
-            data_vector_train[
-                data_vector_train[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
-            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
+            # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
+            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
             input_dims = X_train.shape[1]
@@ -872,3 +874,4 @@ def training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, bat
         lr_losses = np.column_stack([lr, losses])
         lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
         lr_losses.to_csv(losses_path, index=False)
+s

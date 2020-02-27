@@ -755,7 +755,7 @@ class VizFuncs:
         my_dpi = 300
 
         # Get predictions and variances
-        for i, img in enumerate(self.img_list):
+        for img in self.img_list:
             print('Creating uncertainty map for {}'.format(img))
             plot_path = data_path / self.batch / 'plots' / img
             aleatoric_bin_file = data_path / self.batch / 'uncertainties' / img / 'aleatoric_uncertainties.h5'
@@ -781,9 +781,7 @@ class VizFuncs:
                     epistemic = np.array(epistemic)
 
                 uncertainties = aleatoric + epistemic
-
-                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                      self.feat_list_new, test=True)
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, self.feat_list_new, test=True)
 
                 perm_index = feat_keep.index('GSW_perm')
                 perm = data_test[:, :, perm_index]
@@ -797,11 +795,11 @@ class VizFuncs:
                 unc_image[perm == 1] = 0
 
                 fig, ax = plt.subplots()
-                img = ax.imshow(unc_image, cmap='plasma')
+                my_img = ax.imshow(unc_image, cmap='plasma')
                 ax.get_xaxis().set_visible(False)
                 ax.get_yaxis().set_visible(False)
                 im_ratio = unc_image.shape[0] / unc_image.shape[1]
-                fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                fig.colorbar(my_img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
                 plt.tight_layout()
                 plt.savefig(plot_path / '{}'.format('map_uncertainty_' + str(pctl) + '.png'), dpi=my_dpi,
                             pad_inches=0.0)
@@ -815,11 +813,11 @@ class VizFuncs:
                 aleatoric_image[perm == 1] = 0
 
                 fig, ax = plt.subplots()
-                img = ax.imshow(aleatoric_image, cmap='plasma')
+                my_img = ax.imshow(aleatoric_image, cmap='plasma')
                 ax.get_xaxis().set_visible(False)
                 ax.get_yaxis().set_visible(False)
                 im_ratio = aleatoric_image.shape[0] / aleatoric_image.shape[1]
-                fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                fig.colorbar(my_img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
                 plt.tight_layout()
                 plt.savefig(plot_path / '{}'.format('map_aleatoric_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
 
@@ -832,11 +830,11 @@ class VizFuncs:
                 epistemic_image[perm == 1] = 0
 
                 fig, ax = plt.subplots()
-                img = ax.imshow(epistemic_image, cmap='plasma')
+                my_img = ax.imshow(epistemic_image, cmap='plasma')
                 ax.get_xaxis().set_visible(False)
                 ax.get_yaxis().set_visible(False)
                 im_ratio = epistemic_image.shape[0] / epistemic_image.shape[1]
-                fig.colorbar(img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
+                fig.colorbar(my_img, ax=ax, fraction=0.02 * im_ratio, pad=0.02 * im_ratio)
                 plt.tight_layout()
                 plt.savefig(plot_path / '{}'.format('map_epistemic_' + str(pctl) + '.png'), dpi=my_dpi, pad_inches=0.0)
                 plt.close('all')

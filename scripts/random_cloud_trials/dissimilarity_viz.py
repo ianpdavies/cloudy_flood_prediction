@@ -17,17 +17,19 @@ print('Python Version:', sys.version)
 
 # ======================================================================================================================
 # Performance metrics vs. image metadata (dry/flood pixels, image size)
-pctls = [10, 20, 50, 70, 90]
+pctls = [10, 30, 50, 70, 90]
 
 # To get list of all folders (images) in directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 feat_list = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 batch = 'RCTs'
-trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5']
+trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5', 'trial6', 'trial7', 'trial8', 'trial9', 'trial10']
 res_path = data_path / batch / 'results'
 plot_path = data_path / batch / 'plots'
 try:

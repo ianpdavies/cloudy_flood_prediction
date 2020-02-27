@@ -23,7 +23,7 @@ from CPR.configs import data_path
 # Parameters
 pctls = [10, 30, 50, 70, 90]
 
-batch = 'LR_allwater'
+batch = 'LR_noGSW'
 
 try:
     (data_path / batch).mkdir()
@@ -37,9 +37,8 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
-                 'flooded']
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
@@ -119,7 +118,7 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
-            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
@@ -198,6 +197,7 @@ viz.metric_plots_multi()
 viz.time_plot()
 viz.false_map(probs=True, save=False)
 viz.false_map_borders()
-viz.false_map_borders_cir()
-viz.fpfn_map()
+viz.fpfn_map(probs=True)
 viz.uncertainty_map_LR()
+
+import uncertainty_analysis
