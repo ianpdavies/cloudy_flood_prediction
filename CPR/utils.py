@@ -104,6 +104,7 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
 
     with rasterio.open(stack_path, 'w', **meta) as dst:
         for id, layer in enumerate(file_list, start=0):
+            print(layer)
             with rasterio.open(layer) as src1:
                 dst.write_band(id + 1, src1.read(1).astype('float32'))
 

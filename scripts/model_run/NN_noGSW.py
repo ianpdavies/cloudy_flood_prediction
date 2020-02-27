@@ -16,7 +16,7 @@ print('Python Version:', sys.version)
 # ==================================================================================
 # Parameters
 
-batch = 'NN_allwater'
+batch = 'NN_noGSW'
 pctls = [10, 30, 50, 70, 90]
 BATCH_SIZE = 8192
 EPOCHS = 100
@@ -33,7 +33,7 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 model_params = {'batch_size': BATCH_SIZE,
@@ -48,20 +48,20 @@ viz_params = {'img_list': img_list,
               'feat_list_new': feat_list_new}
 
 
-NUM_PARALLEL_EXEC_UNITS = 4
-config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads = NUM_PARALLEL_EXEC_UNITS,
-         inter_op_parallelism_threads = 2,
-         allow_soft_placement = True,
-         device_count = {'CPU': NUM_PARALLEL_EXEC_UNITS })
+# NUM_PARALLEL_EXEC_UNITS = 4
+# config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads = NUM_PARALLEL_EXEC_UNITS,
+         # inter_op_parallelism_threads = 2,
+         # allow_soft_placement = True,
+         # device_count = {'CPU': NUM_PARALLEL_EXEC_UNITS })
 
-session = tf.compat.v1.Session(config=config)
+# session = tf.compat.v1.Session(config=config)
 
-tf.compat.v1.keras.backend.set_session(session)
+# tf.compat.v1.keras.backend.set_session(session)
 
-os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
-os.environ["KMP_BLOCKTIME"] = "30"
-os.environ["KMP_SETTINGS"] = "1"
-os.environ["KMP_AFFINITY"]= "granularity=fine,verbose,compact,1,0"
+# os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
+# os.environ["KMP_BLOCKTIME"] = "30"
+# os.environ["KMP_SETTINGS"] = "1"
+# os.environ["KMP_AFFINITY"]= "granularity=fine,verbose,compact,1,0"
 
 # ======================================================================================================================
 from tensorflow.keras.callbacks import CSVLogger
@@ -247,12 +247,7 @@ viz.metric_plots()
 viz.metric_plots_multi()
 viz.median_highlight()
 viz.time_plot()
-viz.false_map(probs=True, save=False)
+viz.false_map(probs=False, save=False)
 viz.false_map_borders()
-
-
-
-
-
 
 

@@ -112,14 +112,107 @@ Models to run:
 -Line 211 in results_viz where I mask out perm water in predictions img - need to see if that new operation is needed 
 elsewhere
 - Feature engineering?
- 
+
+- Should probably remove 4516 because it's coastal floading
+Y.Gal's concrete dropout has this at the end of aleatoric uncertainty .. -0.5 * loss  # return ELBO up to const.
+What does that mean? Is that necessary to get good uncertainty?
+
+https://www.inovex.de/blog/uncertainty-quantification-deep-learning/
+
 Custom loss function for NN? Macro F1 that uses probs instead of 0/1 so the loss function is differentiable
 https://www.kaggle.com/rejpalcz/best-loss-function-for-f1-score-metric
-
+should maybe  change perm water mask from permanent to permanent+new_permanent (transitions layer) or maybe the seasonal layer
 CNN?
+
+use autoencoder for dimensionality reduction?
+relu vs sigmoid vs leaky relu vs ELU?
+redo buffer - forgot to actually sample dry pixels that weren't in the buffer!
+
 https://bamos.github.io/2016/08/09/deep-completion/
 
 Found updated DFO database file but no polygon extent, only lat/long. Can add buffer around it to get images in similar way.
+
+what about a CNN used for fixing missing band, but instead of spectral band the band is actually flood
+https://www.spiedigitallibrary.org/conference-proceedings-of-spie/11139/111390E/Reconstruct-missing-pixels-of-Landsat-land-surface-temperature-product-using/10.1117/12.2529462.full?SSO=1
+
+
+### Image examination
+   - Low recall/F1
+     - 4080_LC08_028034_20130806_1:
+        - Very few preds
+        - Weaker flood corrs (esp. max extent) vs. average (0.53)
+        - Along north river, most TPs are from max extent
+            - Max extent should be in the river, but isn't
+            y_top = 400
+            x_left = 1380
+            y_bottom = 1100
+            x_right = 2100
+     - 4080_LC08_028033_20130806_1
+        - Very few preds
+        - Unc map has weird spackling near FNs
+        - Weaker max extent corr (0.31)
+     - 4594_LC08_022035_20180404_1
+        - Very few preds
+        - Lots of real clouds
+     - 4444_LC08_044034_20170222_1 --> REMOVE
+        - Cloud shadows account for some of the FNs, might be throwing off training
+        - Max extent well correlated with flooding (0.42)
+     - 4444_LC08_043034_20170303_1
+        - Very few preds
+        - Max extent well correlated with flooding (0.6)
+        - Reservoir is FN - should remove
+        - Weird patches of large squares (TP) around river (FN)
+            - These are from TWI and SPI ?
+     - 4101_LC08_027039_20131103_1
+        - Pretty sparse flooding far away from rivers - is it even flooding?
+     - 4444_LC08_043035_20170303_1
+     - 4444_LC08_044034_20170222_1
+     - 4468_LC08_022035_20170503_1
+     - 4514_LC08_027033_20170826_1
+     - 4594_LC08_022035_20180404_1
+   - High performing
+     - '4101_LC08_027038_20131103_1',
+     - '4101_LC08_027038_20131103_2',
+     - '4101_LC08_027039_20131103_1',
+     - '4115_LC08_021033_20131227_1',
+     - '4115_LC08_021033_20131227_2'
+   - Good batch comparison images (high LR, middle NN, low RF)
+     - 4444_LC08_044033_20170222_4
+        - Good one to use, 30% bottom middle farmland
+     - 4468_LC08_024036_20170501_2
+        - 70%, top left, farmland and around river bend
+     - 4115_LC08_021033_20131227_1
+        - 90%, top right
+     - 4444_LC08_045032_20170301_1
+        - 90%, bottom center
+   - Greatest variance in RCTs
+     - 4101_LC08_027038_20131103_2
+        - There isn't really any flooding. Consider REMOVING
+     - 4477_LC08_022033_20170519_1
+        - 
+     - 4337_LC08_026038_20160325_1
+     - 4594_LC08_022034_20180404_1
+     - 4469_LC08_015036_20170502_1
+     - 4468_LC08_022035_20170503_1
+        - Very few preds. Feature data just didn't track well with flood
+            y_top = 1050
+            x_left = 280
+            y_bottom = 1500
+            x_right = 670
+        - Even if feature data does track well, the model may not have had enough positive examples to 
+        learn this pattern if clouds covered most of them
+            y_top = 1400
+            x_left = 850
+            y_bottom = 1730
+            x_right = 1300
+     - 4444_LC08_044033_20170222_4
+        - Trials 2/3 differ greatly. 90% cloud cover area in the bottom is good to compare in 4 different trials
+
+### Removed or changed images list
+- 4444_LC08_044034_20170222_1 (removed for FPs)
+- 4337_LC08_026038_20160325_1 (changed because perm mask didn't have reservoir in it)
+- 4101_LC08_027038_20131103_2 (removed, no flooding)
+- 4594_LC08_022035_20180404_1 (not much flooding, tons of clouds and some FPs)
 
 ------
  

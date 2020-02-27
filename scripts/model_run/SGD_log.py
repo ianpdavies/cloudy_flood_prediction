@@ -4,7 +4,7 @@ import __init__
 import tensorflow as tf
 import os
 import time
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
 import joblib
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, preprocessing_gen_model, timer
@@ -28,7 +28,7 @@ import seaborn as sns
 # Parameters
 pctls = [10, 30, 50, 70, 90]
 
-batch = 'LR_gen'
+batch = 'SGD_gen'
 
 print('NOW CREATING BATCH', batch)
 try:
@@ -63,7 +63,7 @@ viz_params = {'img_list': img_list_test,
 # ======================================================================================================================
 
 
-def log_reg_gen_training(img_list_train, feat_list_new, data_path, batch):
+def sgd_gen_training(img_list_train, feat_list_new, data_path, batch):
     times = []
 
     print('Preprocessing')
@@ -93,11 +93,11 @@ def log_reg_gen_training(img_list_train, feat_list_new, data_path, batch):
 
     print('Training')
     start_time = time.time()
-    logreg = LogisticRegression(n_jobs=-1, solver='sag')
-    logreg.fit(X_train, y_train)
+    sgd = SGDClassifier(loss='log', n_jobs=-1)
+    sgd.fit(X_train, y_train)
     end_time = time.time()
     times.append(timer(start_time, end_time, False))
-    joblib.dump(logreg, model_path)
+    joblib.dump(sgd, model_path)
 
     metrics_path = metrics_path.parent
     times = [float(i) for i in times]
@@ -105,7 +105,7 @@ def log_reg_gen_training(img_list_train, feat_list_new, data_path, batch):
     times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
 
-def log_reg_gen_prediction(img_list, pctls, feat_list_new, data_path, batch):
+def sgd_gen_prediction(img_list, pctls, feat_list_new, data_path, batch):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
@@ -123,19 +123,34 @@ def log_reg_gen_prediction(img_list, pctls, feat_list_new, data_path, batch):
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
+            print('Preprocessing', img, pctl, '% cloud cover')
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                     feat_list_new, test=False)
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
+            gsw_index = feat_keep.index('GSW_maxExtent')
+            data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
+            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
+            data_vector_train = np.delete(data_vector_train, gsw_index, axis=1)
+            data_shape = data_vector_train.shape
+            X_train, y_train = data_vector_train[:, 0:data_shape[1] - 1], data_vector_train[:, data_shape[1] - 1]
+
+            print('Re-training for {} at {}% cloud cover'.format(img, pctl))
+            start_time = time.time()
+            model_path = data_path / batch / 'models' / 'gen_model.sav'
+            trained_model = joblib.load(model_path)
+            trained_model = trained_model.partial_fit(X_train, y_train)
+
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
                                                                                   test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
+            gsw_index = feat_keep.index('GSW_maxExtent')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
-            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
+            data_vector_test = np.delete(data_vector_test, gsw_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
-
-            print('Predicting for {} at {}% cloud cover'.format(img, pctl))
-            start_time = time.time()
-            model_path = data_path / batch / 'models' / 'gen_model.sav'
-            trained_model = joblib.load(model_path)
             pred_probs = trained_model.predict_proba(X_test)
             preds = np.argmax(pred_probs, axis=1)
 
@@ -199,8 +214,8 @@ def log_reg_gen_prediction(img_list, pctls, feat_list_new, data_path, batch):
 
 
 # ======================================================================================================================
-# log_reg_gen_training(img_list_train, feat_list_new, data_path, batch)
-# log_reg_gen_prediction(img_list_test, pctls, feat_list_new, data_path, batch)
+# sgd_gen_prediction(img_list[0], feat_list_new, data_path, batch)
+sgd_gen_training([img_list[1]], feat_list_new, data_path, batch)
 # viz = VizFuncs(viz_params)
 # viz.metric_plots()
 # viz.metric_plots_multi()
@@ -211,16 +226,7 @@ def log_reg_gen_prediction(img_list, pctls, feat_list_new, data_path, batch):
 # viz.uncertainty_map_LR()
 
 
-
-
-
-
-
-
-
-
-
-for j, img in enumerate(img_list):
+for j, img in enumerate([img_list[1]]):
     times = []
     accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
     preds_path = data_path / batch / 'predictions' / img
@@ -235,15 +241,17 @@ for j, img in enumerate(img_list):
     except FileExistsError:
         print('Metrics directory already exists')
 
-    for i, pctl in enumerate(pctls):
-        batch = 'LR_gen_model'
+    for i, pctl in enumerate([30]):
         print('Preprocessing', img, pctl, '% cloud cover')
-        data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=False)
+        print('Preprocessing', img, pctl, '% cloud cover')
+        data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
+                                                                                 feat_list_new, test=False)
         perm_index = feat_keep.index('GSW_perm')
         flood_index = feat_keep.index('flooded')
         gsw_index = feat_keep.index('GSW_maxExtent')
         data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
-        data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove GSW_perm column
+        data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
+        data_vector_train = np.delete(data_vector_train, gsw_index, axis=1)
         data_shape = data_vector_train.shape
         X_train, y_train = data_vector_train[:, 0:data_shape[1] - 1], data_vector_train[:, data_shape[1] - 1]
 
@@ -251,15 +259,16 @@ for j, img in enumerate(img_list):
         start_time = time.time()
         model_path = data_path / batch / 'models' / 'gen_model.sav'
         trained_model = joblib.load(model_path)
-        trained_model = trained_model.fit(X_train, y_train, warm_start=True)
+        trained_model = trained_model.partial_fit(X_train, y_train)
 
-
-        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+                                                                              test=True)
         perm_index = feat_keep.index('GSW_perm')
         flood_index = feat_keep.index('flooded')
         gsw_index = feat_keep.index('GSW_maxExtent')
         data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
-        data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+        data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
+        data_vector_test = np.delete(data_vector_test, gsw_index, axis=1)
         data_shape = data_vector_test.shape
         X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
         pred_probs = trained_model.predict_proba(X_test)
@@ -306,11 +315,11 @@ for j, img in enumerate(img_list):
         preds[perm_mask.astype('bool')] = 0
         y_test[perm_mask.astype('bool')] = 0
 
-        accuracy = accuracy_score(y_test, preds)
-        precision = precision_score(y_test, preds)
-        recall = recall_score(y_test, preds)
-        f1 = f1_score(y_test, preds)
-        auc = roc_auc_score(y_test, pred_probs[:, 1])
+        accuracy.append(accuracy_score(y_test, preds))
+        precision.append(precision_score(y_test, preds))
+        recall.append(recall_score(y_test, preds))
+        f1.append(f1_score(y_test, preds))
+        roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
         del preds, probs, pred_probs, upper, lower, X_test, y_test, \
             trained_model, data_test, data_vector_test, data_ind_test

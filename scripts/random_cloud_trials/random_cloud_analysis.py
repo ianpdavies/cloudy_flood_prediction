@@ -19,7 +19,9 @@ print('Python Version:', sys.version)
 pctls = [10, 30, 50, 70, 90]
 
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 batch = 'RCTs'
 trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5', 'trial6', 'trial7', 'trial8', 'trial9', 'trial10']
@@ -30,6 +32,7 @@ try:
 except FileExistsError:
     pass
 
+myDpi = 300
 # ======================================================================================================================
 # Create dataframe of all trial metrics
 #
@@ -531,37 +534,6 @@ from numpy import genfromtxt
 feat_list = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
-first = genfromtxt(exp_path / 'results' / 'means_test1.csv', delimiter=',')
-second = genfromtxt(exp_path / 'results' / 'means_test2.csv', delimiter=',')
-second = second[second.shape[0]-12800:]
-merged = np.concatenate((first, second), axis=0)
-with open(exp_path / 'results' / 'means_test.csv', 'w') as f:
-    np.savetxt(f, merged, delimiter=',')
-
-first = genfromtxt(exp_path / 'results' / 'variances_test1.csv', delimiter=',')
-second = genfromtxt(exp_path / 'results' / 'variances_test2.csv', delimiter=',')
-second = second[second.shape[0]-12800:]
-merged = np.concatenate((first, second), axis=0)
-with open(exp_path / 'results' / 'variances_test.csv', 'w') as f:
-    np.savetxt(f, merged, delimiter=',')
-
-first = genfromtxt(exp_path / 'results' / 'entropies_test1.csv', delimiter=',')
-second = genfromtxt(exp_path / 'results' / 'entropies_test2.csv', delimiter=',')
-second = second[second.shape[0]-12800:]
-merged = np.concatenate((first, second), axis=0)
-with open(exp_path / 'results' / 'entropies_test.csv', 'w') as f:
-    np.savetxt(f, merged, delimiter=',')
-
-count = 0
-feat_list_new = feat_list
-for img in img_list[15:]:
-    for trial in trials:
-        for pctl in pctls:
-            for i, feat in enumerate(feat_list_new):
-                count += 1
-print(count)
-
-
 
 means_train = genfromtxt(exp_path / 'results' / 'means_train.csv', delimiter=',')
 variances_train = genfromtxt(exp_path / 'results' / 'variances_train.csv', delimiter=',')
@@ -572,8 +544,8 @@ entropies_test = genfromtxt(exp_path / 'results' / 'entropies_test.csv', delimit
 
 # Make arrays
 data = pd.DataFrame({'image': np.repeat(img_list, len(pctls) * len(trials) * len(feat_list)),
-                     'cloud_cover': np.repeat(pctls, len(img_list) * len(trials) * len(feat_list)),
-                     'trial': np.tile(trials, len(pctls) * len(img_list) * len(feat_list)),
+                     'cloud_cover': np.tile(np.repeat(pctls, len(feat_list)), len(trials) * len(img_list)),
+                     'trial': np.tile(np.repeat(trials, len(pctls) * len(feat_list)), len(img_list)),
                      'feature': np.tile(feat_list, len(pctls) * len(img_list) * len(trials)),
                      'mean_train': means_train,
                      'variance_train': variances_train,
@@ -581,6 +553,7 @@ data = pd.DataFrame({'image': np.repeat(img_list, len(pctls) * len(trials) * len
                      'mean_test': means_test,
                      'variance_test': variances_test,
                      'entropy_test': entropies_test})
+
 
 # Scatterplots of trial metrics vs. mean/var differences between train/test
 # Different scatterplot for each feature
@@ -596,13 +569,24 @@ merge['entropy_diff2'] = np.sqrt(np.square(merge['entropy_diff']))
 
 merge = merge[merge['feature'] != 'GSW_perm']
 merge = merge[merge['feature'] != 'flooded']
-merge_subset = merge[merge['cloud_cover'] == 50]
+
+# merge_subset = merge[merge['cloud_cover'] == 70]
+merge_subset = merge
+merge_subset = merge_subset[merge_subset['image'] == '4444_LC08_044033_20170222_4']
+# merge_subset = merge_subset[(merge_subset['trial'] == 'trial2') | (merge_subset['trial'] == 'trial3')]
+merge_subset = merge_subset[(merge_subset['trial'] == 'trial2')]
+plt.scatter(merge_subset['variance_diff2'], merge_subset['f1'], color='red')
+
+merge_subset = merge
+merge_subset = merge_subset[merge_subset['image'] == '4444_LC08_044033_20170222_4']
+merge_subset = merge_subset[(merge_subset['trial'] == 'trial3')]
+plt.scatter(merge_subset['variance_diff2'], merge_subset['f1'], color='blue')
 
 g = sns.FacetGrid(merge_subset, col='feature', col_wrap=4, sharex=False, sharey=False)
-g.map(sns.scatterplot, 'mean_diff', 'recall')
+g.map(sns.scatterplot, 'mean_diff', 'f1')
 
 g = sns.FacetGrid(merge_subset, col='feature', col_wrap=4, sharex=False, sharey=False)
-g.map(sns.scatterplot, 'variance_diff', 'recall')
+g.map(sns.scatterplot, 'variance_diff2', 'f1')
 
 g = sns.FacetGrid(merge_subset, col='feature', col_wrap=4, sharex=False, sharey=False)
 g.map(sns.scatterplot, 'entropy_diff', 'recall')
@@ -616,9 +600,11 @@ feat_list_fancy = ['Max SW extent', 'Dist from max SW', 'Elevation', 'Slope', 'H
 feat_list_plot = ['GSW_maxExtent', 'GSW_distExtent', 'elevation', 'slope', 'hand', 'spi', 'twi',
                   'aspect', 'curve', 'developed', 'forest', 'other_landcover', 'planted',  'wetlands']
 
-metric = 'precision'
+merge_subset = merge
+metric = 'f1'
 stats = ['mean_diff2', 'variance_diff2', 'entropy_diff2']
-for stat in stats:
+fancy_stats = [r'$|\bar x_{train} - \bar x_{test}|$', r'$|\ Var(X_{train}) - Var(X_{test}) |$', r'|$\ H(X_{train}) - H(X_{test})|$']
+for j, stat in enumerate(stats):
     fig = plt.figure(figsize=(7.5, 8))
     axes = [plt.subplot(4, 4, i + 1) for i in range(14)]
     for i, ax in enumerate(axes):
@@ -631,7 +617,91 @@ for stat in stats:
         # sns.regplot(y, x, ax=ax)
     for i in range(0, 14, 4):
         axes[i].set_yticks([0, 0.5, 1.0])
-    plt.suptitle(stat)
+    plt.suptitle(fancy_stats[j])
+    axes[0].get_yaxis().set_visible(True)
+    axes[0].set_ylabel(metric.capitalize())
+    plt.subplots_adjust(wspace=0.2, hspace=0.4)
+    plt.savefig(exp_path / 'plots' / '{}'.format(stat + '_' + metric + '.png', dpi=myDpi))
+
+metric = 'precision'
+stats = ['mean_diff2', 'variance_diff2', 'entropy_diff2']
+fancy_stats = [r'$|\bar x_{train} - \bar x_{test}|$', r'$|\ Var(X_{train}) - Var(X_{test}) |$', r'|$\ H(X_{train}) - H(X_{test})|$']
+for j, stat in enumerate(stats):
+    fig = plt.figure(figsize=(7.5, 8))
+    axes = [plt.subplot(4, 4, i + 1) for i in range(14)]
+    for i, ax in enumerate(axes):
+        merge_subset_feat = merge_subset[merge_subset['feature'] == feat_list_plot[i]]
+        x = merge_subset_feat[metric]
+        y = merge_subset_feat[stat]
+        ax.scatter(y, x, alpha=0.3, s=13)
+        ax.set_title(feat_list_fancy[i], fontsize=10)
+        ax.get_yaxis().set_visible(False)
+        # sns.regplot(y, x, ax=ax)
+    for i in range(0, 14, 4):
+        axes[i].set_yticks([0, 0.5, 1.0])
+    plt.suptitle(fancy_stats[j])
+    axes[0].get_yaxis().set_visible(True)
+    axes[0].set_ylabel(metric.capitalize())
+    plt.subplots_adjust(wspace=0.2, hspace=0.4)
+    plt.savefig(exp_path / 'plots' / '{}'.format(stat + '_' + metric + '.png', dpi=myDpi))
+
+metric = 'recall'
+stats = ['mean_diff2', 'variance_diff2', 'entropy_diff2']
+fancy_stats = [r'$|\bar x_{train} - \bar x_{test}|$', r'$|\ Var(X_{train}) - Var(X_{test}) |$', r'|$\ H(X_{train}) - H(X_{test})|$']
+for j, stat in enumerate(stats):
+    fig = plt.figure(figsize=(7.5, 8))
+    axes = [plt.subplot(4, 4, i + 1) for i in range(14)]
+    for i, ax in enumerate(axes):
+        merge_subset_feat = merge_subset[merge_subset['feature'] == feat_list_plot[i]]
+        x = merge_subset_feat[metric]
+        y = merge_subset_feat[stat]
+        ax.scatter(y, x, alpha=0.3, s=13)
+        ax.set_title(feat_list_fancy[i], fontsize=10)
+        ax.get_yaxis().set_visible(False)
+        # sns.regplot(y, x, ax=ax)
+    for i in range(0, 14, 4):
+        axes[i].set_yticks([0, 0.5, 1.0])
+    plt.suptitle(fancy_stats[j])
+    axes[0].get_yaxis().set_visible(True)
+    axes[0].set_ylabel(metric.capitalize())
+    plt.subplots_adjust(wspace=0.2, hspace=0.4)
+    plt.savefig(exp_path / 'plots' / '{}'.format(stat + '_' + metric + '.png', dpi=myDpi))
+
+plt.close('all')
+
+# ======================================================================================================================
+# Comparing images
+
+merge_subset = merge
+merge_subset = merge_subset[merge_subset['image'] == '4444_LC08_044033_20170222_4']
+merge_subset = merge_subset[(merge_subset['cloud_cover'] == 70) | (merge_subset['cloud_cover'] == 70)]
+# merge_subset = merge_subset[(merge_subset['trial'] == 'trial2') | (merge_subset['trial'] == 'trial3')]
+merge_subset = merge_subset[(merge_subset['trial'] == 'trial2')]
+
+merge_subset1 = merge
+merge_subset1 = merge_subset1[merge_subset1['image'] == '4444_LC08_044033_20170222_4']
+merge_subset1 = merge_subset1[(merge_subset1['cloud_cover'] == 70) | (merge_subset1['cloud_cover'] == 70)]
+merge_subset1 = merge_subset1[(merge_subset1['trial'] == 'trial3')]
+
+metric = 'f1'
+stats = ['mean_diff2', 'variance_diff2', 'entropy_diff2']
+for j, stat in enumerate(stats):
+    fig = plt.figure(figsize=(7.5, 8))
+    axes = [plt.subplot(4, 4, i + 1) for i in range(14)]
+    for i, ax in enumerate(axes):
+        merge_subset_feat = merge_subset[merge_subset['feature'] == feat_list_plot[i]]
+        x = merge_subset[metric]
+        y = merge_subset[stat]
+        ax.scatter(y, x, alpha=0.3, s=13, color='blue')
+
+        x = merge_subset1[metric]
+        y = merge_subset1[stat]
+        ax.scatter(y, x, alpha=0.3, s=13, color='red')
+        ax.set_title(feat_list_fancy[i], fontsize=10)
+        ax.get_yaxis().set_visible(False)
+        # sns.regplot(y, x, ax=ax)
+    for i in range(0, 14, 4):
+        axes[i].set_yticks([0, 0.5, 1.0])
     axes[0].get_yaxis().set_visible(True)
     axes[0].set_ylabel(metric.capitalize())
     plt.subplots_adjust(wspace=0.2, hspace=0.4)
@@ -649,3 +719,64 @@ merge.groupby(['image', 'cloud_cover'])
 
 trial_metrics.groupby(['image', 'cloud_cover']).var().groupby('image').mean()
 trial_metrics.groupby(['image', 'cloud_cover']).var().reset_index()
+
+
+# ======================================================================================================================
+# Flood counts vs. metrics
+trial_metrics = pd.read_csv(exp_path / 'results' / 'trials_metrics.csv')
+counts_train = pd.read_csv(exp_path / 'results' / 'flood_count_train.csv',
+                           names=['water_train', 'flood_train', 'total_train'])
+counts_test = pd.read_csv(exp_path / 'results' / 'flood_count_test.csv',
+                          names=['water_test', 'flood_test', 'total_test'])
+
+df = pd.concat((counts_train, counts_test, trial_metrics), axis=1)
+
+# Flood pixels / total pixels
+df['flood_ratio_train'] = df['flood_train'] / df['total_train']
+df['flood_ratio_test'] = df['flood_test'] / df['total_test']
+df['flood_ratio_train_all'] = df['flood_train'] / (df['total_train'] + df['total_test'])
+df['flood_ratio_test_all'] = df['flood_test'] / (df['total_train'] + df['total_test'])
+
+# Water pixels / total pixels
+df['water_ratio_train'] = df['water_train'] / df['total_train']
+df['water_ratio_test'] = df['water_test'] / df['total_test']
+df['water_ratio_train_all'] = df['water_train'] / (df['total_train'] + df['total_test'])
+df['water_ratio_test_all'] = df['water_test'] / (df['total_train'] + df['total_test'])
+
+# Flood pixels / total flood pixels
+df['flood_ratio_train2'] = df['flood_train'] / (df['flood_train'] + df['flood_test'])
+df['flood_ratio_test2'] = df['flood_test'] / (df['flood_train'] + df['flood_test'])
+
+# Water pixels / total water pixels
+df['water_ratio_train2'] = df['water_train'] / (df['water_train'] + df['water_test'])
+df['water_ratio_test2'] = df['water_test'] / (df['water_train'] + df['water_test'])
+
+
+fig = plt.figure(figsize=(6, 6))
+axes = [plt.subplot(2, 2, i + 1) for i in range(4)]
+metrics = ['accuracy', 'f1', 'recall', 'precision']
+for i, ax in enumerate(axes):
+    ax.scatter(df['flood_ratio_train_all'], df[metrics[i]], s=3, alpha=0.3)
+    ax.set_title(metrics[i])
+
+fig = plt.figure(figsize=(6, 6))
+axes = [plt.subplot(2, 2, i + 1) for i in range(4)]
+metrics = ['accuracy', 'f1', 'recall', 'precision']
+for i, ax in enumerate(axes):
+    ax.scatter(df['water_ratio_train_all'], df[metrics[i]], s=3, alpha=0.3)
+    ax.set_title(metrics[i])
+
+fig = plt.figure(figsize=(6, 6))
+axes = [plt.subplot(2, 2, i + 1) for i in range(4)]
+metrics = ['accuracy', 'f1', 'recall', 'precision']
+for i, ax in enumerate(axes):
+    # ax.scatter(df[df[metrics[i]] > 0.7]['flood_ratio_train2'], df[df[metrics[i]] > 0.7][metrics[i]], s=3, alpha=0.3)
+    ax.scatter(df[df[metrics[i]] < 0.3]['flood_ratio_train2'], df[df[metrics[i]] < 0.3][metrics[i]], s=3, alpha=0.3)
+    ax.set_title(metrics[i])
+
+fig = plt.figure(figsize=(6, 6))
+axes = [plt.subplot(2, 2, i + 1) for i in range(4)]
+metrics = ['accuracy', 'f1', 'recall', 'precision']
+for i, ax in enumerate(axes):
+    ax.scatter(df['water_ratio_train2'], df[metrics[i]], s=3, alpha=0.3)
+    ax.set_title(metrics[i])

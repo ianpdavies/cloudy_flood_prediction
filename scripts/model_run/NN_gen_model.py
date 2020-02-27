@@ -36,7 +36,9 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 random.seed(32)
 random.shuffle(img_list)
@@ -274,9 +276,10 @@ def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, 
     data_vector_train = preprocessing_gen_model(data_path, img_list_train)
     perm_index = feat_list_new.index('GSW_perm')
     flood_index = feat_list_new.index('flooded')
-    print(data_vector_train.shape)
-    data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
+    gsw_index = feat_list_new.index('GSW_maxExtent')
+    # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
     data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
+    data_vector_train = np.delete(data_vector_train, gsw_index, axis=1)
     shape = data_vector_train.shape
     X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
     INPUT_DIMS = X_train.shape[1]
@@ -351,10 +354,10 @@ def training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, 
     lr_losses = pd.DataFrame(lr_losses, columns=['lr', 'losses'])
     lr_losses.to_csv(losses_path, index=False)
 
+from tensorflow.keras.models import Model
 
 def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **model_params):
     model_path = data_path / batch / 'models' / 'gen_model.h5'
-    trained_model = tf.keras.models.load_model(model_path)
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -368,12 +371,34 @@ def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **mod
             print('Metrics directory already exists')
 
         for i, pctl in enumerate(pctls):
+            pretrained_model = tf.keras.models.load_model(model_path)
+            for i in range(6):
+                pretrained_model.layers[i].trainable = False
+            pretrained_model.layers[6].trainable = True
+            ll = pretrained_model.layers[6].output
+            ll = tf.keras.layers.Dense(6)(ll)
+            ll = tf.keras.layers.Dense(6)(ll)
+            new_model = Model(pretrained_model.input, outputs=ll)
+
+            print('Training')
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=False)
+            perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
+            gsw_index = feat_keep.index('GSW_maxExtent')
+            data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove GSW_perm column
+            data_vector_train = np.delete(data_vector_train, gsw_index, axis=1)
+            data_shape = data_vector_train.shape
+            X_train, y_train = data_vector_train[:, 0:data_shape[1]-1], data_vector_train[:, data_shape[1]-1]
+            trained_model = new_model.fit(X_train, y_train)
+
             print('Preprocessing', img, pctl, '% cloud cover')
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
+            gsw_index = feat_list_new.index('GSW_maxExtent')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            data_vector_test = np.delete(data_vector_test, gsw_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
 
@@ -412,12 +437,118 @@ def prediction_gen_model(img_list, pctls, feat_list_new, data_path, batch, **mod
         times_df.to_csv(metrics_path / 'testing_times.csv', index=False)
 
 # ======================================================================================================================
-training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, batch, **model_params)
+# training_NN_gen_model(img_list_train, feat_list_new, model_func, data_path, batch, **model_params)
 prediction_gen_model(img_list_test, pctls, feat_list_new, data_path, batch, **model_params)
-viz = VizFuncs(viz_params)
-viz.metric_plots()
-viz.cir_image()
-viz.false_map(probs=False, save=False)
-viz.false_map_borders()
-viz.metric_plots_multi()
-viz.median_highlight()
+# viz = VizFuncs(viz_params)
+# viz.metric_plots()
+# viz.cir_image()
+# viz.false_map(probs=False, save=False)
+# viz.false_map_borders()
+# viz.metric_plots_multi()
+# viz.median_highlight()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+model_path = data_path / batch / 'models' / 'gen_model.h5'
+for j, img in enumerate(img_list):
+    times = []
+    accuracy, precision, recall, f1 = [], [], [], []
+    preds_path = data_path / batch / 'predictions' / img
+    bin_file = preds_path / 'predictions.h5'
+    metrics_path = data_path / batch / 'metrics' / 'testing' / img
+
+    try:
+        metrics_path.mkdir(parents=True)
+    except FileExistsError:
+        print('Metrics directory already exists')
+
+    pctl=50
+    for i, pctl in enumerate(pctls):
+        batch = 'NN_gen_model'
+        pretrained_model = tf.keras.models.load_model(model_path)
+        for i in range(3):
+            pretrained_model.layers[i].trainable = False
+        for i in range(3, 6):
+            pretrained_model.layers[i].trainable = True
+        ll = pretrained_model.layers[6].output
+        ll = tf.keras.layers.Dense(6, name='Dense3')(ll)
+        ll = tf.keras.layers.Dense(units=2, activation='softmax')(ll)
+        new_model = Model(pretrained_model.input, outputs=ll)
+        new_model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                      # optimizer='adam',
+                      loss='sparse_categorical_crossentropy',
+                      metrics=['sparse_categorical_accuracy'])
+
+        print('Training')
+        data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=False)
+        perm_index = feat_keep.index('GSW_perm')
+        flood_index = feat_keep.index('flooded')
+        gsw_index = feat_keep.index('GSW_maxExtent')
+        data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove GSW_perm column
+        data_vector_train = np.delete(data_vector_train, gsw_index, axis=1)
+        data_shape = data_vector_train.shape
+        X_train, y_train = data_vector_train[:, 0:data_shape[1]-1], data_vector_train[:, data_shape[1]-1]
+        trained_model = new_model.fit(X_train, y_train, **model_params)
+
+        print('Preprocessing', img, pctl, '% cloud cover')
+        data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+        perm_index = feat_keep.index('GSW_perm')
+        flood_index = feat_keep.index('flooded')
+        gsw_index = feat_list_new.index('GSW_maxExtent')
+        data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
+        data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+        data_vector_test = np.delete(data_vector_test, gsw_index, axis=1)
+        data_shape = data_vector_test.shape
+        X_test, y_test = data_vector_test[:, 0:data_shape[1]-1], data_vector_test[:, data_shape[1]-1]
+
+        print('Predicting for {} at {}% cloud cover'.format(img, pctl))
+        start_time = time.time()
+        preds = new_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
+        preds = np.argmax(preds, axis=1)  # Display most probable value
+
+        # try:
+        #     preds_path.mkdir(parents=True)
+        # except FileExistsError:
+        #     pass
+        #
+        # with h5py.File(bin_file, 'a') as f:
+        #     if str(pctl) in f:
+        #         print('Deleting earlier mean predictions')
+        #         del f[str(pctl)]
+        #     f.create_dataset(str(pctl), data=preds)
+        #
+        # times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
+
+        print('Evaluating predictions')
+        perm_mask = data_test[:, :, perm_index]
+        perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
+        perm_mask = perm_mask[~np.isnan(perm_mask)]
+        preds[perm_mask.astype('bool')] = 0
+        y_test[perm_mask.astype('bool')] = 0
+
+        print('Evaluating predictions')
+        accuracy.append(accuracy_score(y_test, preds))
+        precision.append(precision_score(y_test, preds))
+        recall.append(recall_score(y_test, preds))
+        f1.append(f1_score(y_test, preds))
+
+        del preds, X_test, y_test, data_test, data_vector_test, data_ind_test
+
+    metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
+                           columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+    metrics.to_csv(metrics_path / 'metrics.csv', index=False)
+    times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
+    times_df = pd.DataFrame(np.column_stack([pctls, times]),
+                            columns=['cloud_cover', 'testing_time'])
+    times_df.to_csv(metrics_path / 'testing_times.csv', index=False)

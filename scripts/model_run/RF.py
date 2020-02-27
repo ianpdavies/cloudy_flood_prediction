@@ -1,4 +1,4 @@
-# Random Forest
+# Random Forest using hyperparameters that were tuned on one image
 
 import __init__
 import tensorflow as tf
@@ -35,7 +35,9 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
@@ -46,6 +48,7 @@ viz_params = {'img_list': img_list,
               'data_path': data_path,
               'batch': batch,
               'feat_list_new': feat_list_new}
+
 
 # ======================================================================================================================
 
@@ -82,7 +85,8 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
             except FileExistsError:
                 pass
 
-            param_path = data_path / batch / 'models' /  '4514_LC08_027033_20170826_1' / '{}'.format('4514_LC08_027033_20170826_1_clouds_50params.pkl')
+            param_path = data_path / batch / 'models' / '4514_LC08_027033_20170826_1' / '{}'.format(
+                '4514_LC08_027033_20170826_1_clouds_50params.pkl')
             model_path = model_path / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
 
             # # Hyperparameter optimization
@@ -186,13 +190,14 @@ def prediction_rf(img_list, pctls, feat_list_new, data_path, batch):
 
 
 # ======================================================================================================================
-rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs=None)
-prediction_rf(img_list, pctls, feat_list_new, data_path, batch)
+# rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs=None)
+# prediction_rf(img_list, pctls, feat_list_new, data_path, batch)
 viz = VizFuncs(viz_params)
-viz.metric_plots()
+# viz.metric_plots()
 viz.cir_image()
-viz.time_plot()
-viz.false_map(probs=True, save=False)
-viz.false_map_borders()
-viz.metric_plots_multi()
-viz.median_highlight()
+viz.rgb_image(percent=1.25, overwrite=True)
+# viz.time_plot()
+# viz.false_map(probs=True, save=False)
+# viz.false_map_borders()
+# viz.metric_plots_multi()
+# viz.median_highlight()

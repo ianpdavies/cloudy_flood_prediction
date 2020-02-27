@@ -35,7 +35,9 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-img_list.remove('4115_LC08_021033_20131227_test')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
 feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
@@ -68,8 +70,10 @@ def rf_training(img_list, pctls, feat_list_new, data_path, batch, n_jobs):
                                                                                      test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
+            gsw_index = feat_keep.index('GSW_maxExtent')
             # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
+            data_vector_train = np.delete(data_vector_train, gsw_index, axis=1)
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
 
@@ -158,7 +162,9 @@ def prediction_rf(img_list, pctls, feat_list_new, data_path, batch):
                                                                                   test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
+            gsw_index = feat_keep.index('GSW_maxExtent')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
+            data_vector_test[data_vector_test[:, gsw_index] == 1, flood_index] = 0
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
@@ -216,3 +222,10 @@ viz.time_plot()
 viz.false_map(probs=True, save=False)
 viz.false_map_borders()
 viz.fpfn_map()
+
+import matplotlib.pyplot as plt
+import rasterio
+with rasterio.open('C:/Users/ipdavies/Downloads/4594_LC08_022034_20180404_1.tif') as src:
+    f = src.read()
+    f[f==-999999] = np.nan
+    plt.imshow(f[0, :, :])
