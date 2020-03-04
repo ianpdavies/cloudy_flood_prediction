@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import os
 import shutil
+
 sys.path.append('../')
 from CPR.configs import data_path
 
@@ -15,7 +16,6 @@ img_list = os.listdir(data_path / 'images')
 removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1'}
 img_list = [x for x in img_list if x not in removed]
-
 
 # for img in img_list:
 #     downloads = data_path.parents[1] / 'Downloads'
@@ -68,8 +68,9 @@ img_list = [x for x in img_list if x not in removed]
 # =====================================================================
 # Replacing files in existing zip folders with newly downloaded files (in zip folders)
 
-remove_these = ['GSW_distExtent', 'GSW_perm']
+remove_these = ['developed', 'forest', 'other_landcover', 'planted', 'wetlands']
 for img in img_list:
+    print(img)
     downloads = Path('C:/Users/ipdavies/Downloads')
     image_dir1 = Path('D:/Workspace/ipdavies/CPR/data/images')
     image_dir1 = image_dir1 / img
@@ -95,7 +96,7 @@ for img in img_list:
     image_dir2 = downloads / img
     zip_dir2 = str(downloads / '{}'.format(img + '.zip'))
     try:
-        image_dir2.mkdir()
+        image_dir2.mkdir(parents=True)
     except FileExistsError:
         pass
     with ZipFile(zip_dir2, 'r') as dst:
@@ -112,11 +113,5 @@ for img in img_list:
 
     # Remove unzipped folder with files
     shutil.rmtree(str(image_dst))
-
-# =====================================================================
-for img in img_list:
-    image_dir = Path('D:/Workspace/ipdavies/CPR/data/images')
-    stack_dir = image_dir / img / 'stack'
-    shutil.rmtree(str(stack_dir))
 
 
