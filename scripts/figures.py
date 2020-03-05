@@ -31,6 +31,7 @@ try:
     figure_path.mkdir(parents=True)
 except FileExistsError:
     pass
+
 # ======================================================================================================================
 # Displaying all feature layers of an image
 # Need to figure out how to reproject them to make them not tilted. Below is a solution where I just clip them instead,
@@ -49,10 +50,10 @@ with rasterio.open(stack_path, 'r') as src:
     w = src.read(window=window)
     w[w == -999999] = np.nan
     w[np.isneginf(w)] = np.nan
-    w[15, ((w[14,:,:]==1) & (w[15,:,:] ==1))] = 0
+    w[15, ((w[14, :, :] == 1) & (w[15, :, :] == 1))] = 0
     w = w[1:, :, :]
 
-feat_list_fancy = ['Dist from Perm', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
+feat_list_fancy = ['Dist from Seasonal', 'Aspect', 'Curve', 'Developed', 'Elevation', 'Forested',
                    'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Permanent water', 'Flooded']
 
 titles = feat_list_fancy
@@ -154,7 +155,7 @@ plt.tight_layout()
 
 plt.savefig(figure_path / 'corr_matrix_allwater_annot.png', dpi=300)
 # ======================================================================================================================
-# Median performance metrics of LR, RF, and NN in 4x3 matrix
+# Median performance metrics of LR, RF, and NN in 5x3 matrix
 
 data_path = data_path
 figure_path = data_path / 'figures'
@@ -167,26 +168,24 @@ img_list = os.listdir(data_path / 'images')
 removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
 img_list = [x for x in img_list if x not in removed]
-metric_names = ['accuracy', 'f1', 'recall', 'precision']
-metric_names_fancy = ['Accuracy', 'F1', 'Recall', 'Precision']
-batches = ['LR_allwater', 'RF_allwater', 'NN_allwater']
-# batches = ['LR', 'RF', 'NN']
-plot_name = 'median_highlights_allwater.png'
-# plot_name = 'median_highlights.png'
+metric_names = ['accuracy', 'f1', 'recall', 'precision', 'auc']
+metric_names_fancy = ['Accuracy', 'F1', 'Recall', 'Precision', 'AUC']
+batches = ['LR_noGSW', 'RF_noGSW', 'NN_noGSW']
+plot_name = 'median_highlights_noGSW.png'
 batches_fancy = ['Logistic Regression', 'Random Forest', 'Neural Network']
 
 dark2_colors = sns.color_palette("Dark2", 8)
-color_inds = [0, 2, 5, 7]
+color_inds = [0, 2, 5, 7, 1]
 colors = []
-for j in range(4):
+for j in range(5):
     for i in color_inds:
         colors.append(dark2_colors[i])
 
-fig = plt.figure(figsize=(7, 7))
-axes = [plt.subplot(4, 3, i + 1) for i in range(12)]
+fig = plt.figure(figsize=(6.5, 6))
+axes = [plt.subplot(5, 3, i + 1) for i in range(15)]
 
 j = 0
-batches = np.tile(batches, 4)
+batches = np.tile(batches, 5)
 metric_names = np.tile(metric_names, 3)
 metric_names_fancy = np.tile(metric_names_fancy, 3)
 medians = []
@@ -194,7 +193,7 @@ for i, ax in enumerate(axes):
     batch = batches[i]
     metrics_path = data_path / batch / 'metrics' / 'testing'
     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
-    if i in [0, 3, 6, 9]:
+    if i in [0, 3, 6, 9, 12]:
         metric = metric_names[j]
         j += 1
     for file in file_list:
@@ -211,40 +210,40 @@ for i, ax in enumerate(axes):
     ax.set_xticks([])
 
 j = 0
-for i in range(0, 12, 3):
-    axes[i].set_ylabel(metric_names_fancy[j], fontsize=10)
+for i in range(0, 15, 3):
+    axes[i].set_ylabel(metric_names_fancy[j], fontsize=9)
     axes[i].get_yaxis().set_visible(True)
-    axes[i].yaxis.set_tick_params(labelsize=9)
-    axes[i].set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    axes[i].yaxis.set_tick_params(labelsize=8)
+    axes[i].set_ylim(0, 1)
+    axes[i].set_yticks([0.25, 0.5, 0.75])
     j += 1
 
 for i in range(3):
-    axes[i].set_title(batches_fancy[i], fontsize=10)
+    axes[i].set_title(batches_fancy[i], fontsize=9)
 
-axes[9].set_xlabel('Cloud Cover')
+axes[12].set_xlabel('Cloud Cover')
 plt.gcf().subplots_adjust(bottom=0.2)
 axes[9].set_xticks([10, 30, 50, 70, 90])
-axes[9].xaxis.set_tick_params(labelsize=9)
+axes[9].xaxis.set_tick_params(labelsize=7)
 plt.ylabel(metric.capitalize())
 
 medians = np.round(medians, 3)
 for i, ax in enumerate(axes):
     ax.text(0.855, 0.1, str(medians[i]), horizontalalignment='center',
-            verticalalignment='center', transform=ax.transAxes, fontsize=9)
+            verticalalignment='center', transform=ax.transAxes, fontsize=8)
 
 plt.tight_layout()
 plt.subplots_adjust(wspace=0.05, hspace=0.2)
 plt.savefig(figure_path / '{}'.format(plot_name), dpi=300)
 
 # ======================================================================================================================
-# Mean performance metrics of LR, RF, and NN in 4x3 matrix
-# plot_name = 'mean_highlights.png'
-plot_name = 'mean_highlights_allwater.png'
-fig = plt.figure(figsize=(7, 7))
-axes = [plt.subplot(4, 3, i + 1) for i in range(12)]
+# Mean performance metrics of LR, RF, and NN in 5x3 matrix
+plot_name = 'mean_highlights_noGSW.png'
+fig = plt.figure(figsize=(6.5, 6))
+axes = [plt.subplot(5, 3, i + 1) for i in range(15)]
 
 j = 0
-batches = np.tile(batches, 4)
+batches = np.tile(batches, 5)
 metric_names = np.tile(metric_names, 3)
 metric_names_fancy = np.tile(metric_names_fancy, 3)
 means = []
@@ -252,7 +251,7 @@ for i, ax in enumerate(axes):
     batch = batches[i]
     metrics_path = data_path / batch / 'metrics' / 'testing'
     file_list = [metrics_path / img / 'metrics.csv' for img in img_list]
-    if i in [0, 3, 6, 9]:
+    if i in [0, 3, 6, 9, 12]:
         metric = metric_names[j]
         j += 1
     for file in file_list:
@@ -271,29 +270,30 @@ for i, ax in enumerate(axes):
     ax.set_xticks([])
 
 j = 0
-for i in range(0, 12, 3):
-    axes[i].set_ylabel(metric_names_fancy[j], fontsize=10)
+for i in range(0, 15, 3):
+    axes[i].set_ylabel(metric_names_fancy[j], fontsize=9)
     axes[i].get_yaxis().set_visible(True)
-    axes[i].yaxis.set_tick_params(labelsize=9)
-    axes[i].set_yticks([0.0, 0.25, 0.5, 0.75, 1.0])
+    axes[i].yaxis.set_tick_params(labelsize=8)
+    axes[i].set_ylim(0, 1)
+    axes[i].set_yticks([0.25, 0.5, 0.75])
     j += 1
 
 for i in range(3):
-    axes[i].set_title(batches_fancy[i], fontsize=10)
+    axes[i].set_title(batches_fancy[i], fontsize=9)
 
-axes[9].set_xlabel('Cloud Cover')
+axes[12].set_xlabel('Cloud Cover')
 plt.gcf().subplots_adjust(bottom=0.2)
-axes[9].set_xticks([10, 30, 50, 70, 90])
-axes[9].xaxis.set_tick_params(labelsize=9)
+axes[12].set_xticks([10, 30, 50, 70, 90])
+axes[9].xaxis.set_tick_params(labelsize=8)
 plt.ylabel(metric.capitalize())
 
 means = np.round(means, 3)
 for i, ax in enumerate(axes):
     ax.text(0.855, 0.1, str(means[i]), horizontalalignment='center',
-            verticalalignment='center', transform=ax.transAxes, fontsize=9)
+            verticalalignment='center', transform=ax.transAxes, fontsize=8)
 
-plt.subplots_adjust(wspace=0.05, hspace=0.2)
 plt.tight_layout()
+plt.subplots_adjust(wspace=0.05, hspace=0.2)
 plt.savefig(figure_path / '{}'.format(plot_name), dpi=300)
 
 plt.close('all)')
@@ -312,8 +312,8 @@ legend_patches = [Patch(color=icolor, label=label)
                   for icolor, label in zip(colors, class_labels)]
 
 # Load uncertainties
-bnn_uncertainty = pd.read_csv(data_path / 'BNN_kwon' / 'metrics' / 'uncertainty_binned.csv')
-lr_uncertainty = pd.read_csv(data_path / 'LR' / 'metrics' / 'uncertainty_binned.csv')
+bnn_uncertainty = pd.read_csv(data_path / 'BNN_kwon_noGSW' / 'metrics' / 'uncertainty_binned_noGSW.csv')
+lr_uncertainty = pd.read_csv(data_path / 'LR_noGSW' / 'metrics' / 'uncertainty_binned_noGSW.csv')
 fig = plt.figure(figsize=(8, 4))
 axes = [plt.subplot(1, 2, i + 1) for i in range(2)]
 binned_dfs = [bnn_uncertainty, lr_uncertainty]
@@ -456,7 +456,6 @@ axes[0].legend(labels=class_labels, handles=legend_patches, loc='lower left', bb
 
 plt.subplots_adjust(wspace=0.05)
 
-
 # All together
 y_tops = np.repeat([1700, 750, 970, 2850], 3)
 x_lefts = np.repeat([1570, 650, 3100, 1630], 3)
@@ -492,7 +491,7 @@ axes[0].legend(labels=class_labels, handles=legend_patches, loc='lower left', bb
 # plt.gcf().subplots_adjust(bottom=0.2)
 
 plt.tight_layout()
-plt.subplots_adjust(wspace=0.03, hspace=0.1) # top=0.98, bottom=0.15)
+plt.subplots_adjust(wspace=0.03, hspace=0.1)  # top=0.98, bottom=0.15)
 plt.savefig(figure_path / '{}'.format('comparison_maps.png'), dpi=300)
 
 # plt.close('all)')
@@ -601,7 +600,7 @@ axins = inset_axes(ax2,
                    )
 fig.colorbar(sm, cax=axins)
 plt.tight_layout()
-plt.subplots_adjust(wspace=0.03, hspace=0.1) # top=0.98, bottom=0.15)
+plt.subplots_adjust(wspace=0.03, hspace=0.1)  # top=0.98, bottom=0.15)
 plt.savefig(figure_path / '{}'.format('comparison_maps.png'), dpi=300)
 
 # plt.close('all)')
@@ -619,3 +618,65 @@ file_list = [metrics_path / img / 'metrics.csv' for img in img_list[10:]]
 df_concat = pd.concat(pd.read_csv(file) for file in file_list)
 mean_metrics = df_concat.mean().reset_index()
 print(mean_metrics)
+
+# ======================================================================================================================
+# Create KDEs for presentation
+
+# Normal distrib kde
+from scipy.stats import norm
+
+mu = 998.8
+sigma = 73.10
+x1 = 900
+x2 = 1100
+
+z1 = (x1 - mu) / sigma
+z2 = (x2 - mu) / sigma
+
+x = np.arange(z1, z2, 0.001)  # range of x in spec
+x_all = np.arange(-10, 10, 0.001)  # entire range of x, both in and out of spec
+# mean = 0, stddev = 1, since Z-transform was calculated
+y = norm.pdf(x, 0, 1)
+y2 = norm.pdf(x_all, 0, 1)
+
+fig, ax = plt.subplots(figsize=(9, 6))
+ax.plot(x_all, y2)
+
+ax.set_xlim([-4, 4])
+ax.set_yticklabels([])
+ax.set_xticklabels([])
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+[s.set_visible(False) for s in ax.spines.values()]
+[t.set_visible(False) for t in ax.get_xticklines()]
+[t.set_visible(False) for t in ax.get_yticklines()]
+ax.fill_between(x_all, y2, 0, alpha=0.3)
+plt.savefig(figure_path / 'normal_curve.png', bbox_inches='tight')
+
+fig, ax = plt.subplots(figsize=(9, 6))
+ax.plot(x_all, y2)
+ax.set_xlim([-4, 4])
+ax.set_yticklabels([])
+ax.set_xticklabels([])
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['left'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+[s.set_visible(False) for s in ax.spines.values()]
+[t.set_visible(False) for t in ax.get_xticklines()]
+[t.set_visible(False) for t in ax.get_yticklines()]
+# px = np.arange(-1.5, -1, 0.01)
+px = np.arange(-0.15, 0.15, 0.01)
+ax.fill_between(x_all, y2, 0, alpha=0.3)
+ax.fill_between(px, norm.pdf(px), 0, alpha=0.55, color='red')
+plt.savefig(figure_path / 'normal_curve_subset.png', bbox_inches='tight')
+
+
+import rasterio
+with rasterio.open('C:/Users/ipdavies/Downloads/4594_LC08_022034_20180404_1 (3)/4594_LC08_022034_20180404_1.twi.tif', 'r') as f:
+    data = f.read()
+    data[data==-999999] = np.nan
+    plt.imshow(data[0])
+    print(data.shape)

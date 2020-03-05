@@ -12,7 +12,7 @@ from tensorflow import keras
 # ==================================================================================
 
 
-def prediction(img_list, pctls, feat_list_new, data_path, batch, **model_params):
+def prediction(img_list, pctls, feat_list_all, data_path, batch, **model_params):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -27,7 +27,7 @@ def prediction(img_list, pctls, feat_list_new, data_path, batch, **model_params)
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_all, test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
@@ -175,7 +175,7 @@ def prediction_bnn(img_list, pctls, feat_list_new, data_path, batch, MC_passes):
 
 
 
-def prediction_bnn_kwon(img_list, pctls, feat_list_new, data_path, batch, MC_passes, **model_params):
+def prediction_bnn_kwon(img_list, pctls, feat_list_all, data_path, batch, MC_passes, **model_params):
     for j, img in enumerate(img_list):
         times = []
         accuracy, precision, recall, f1 = [], [], [], []
@@ -194,7 +194,7 @@ def prediction_bnn_kwon(img_list, pctls, feat_list_new, data_path, batch, MC_pas
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_all, test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water

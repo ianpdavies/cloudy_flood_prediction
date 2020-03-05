@@ -167,82 +167,48 @@ try:
 except FileExistsError:
     pass
 
-# # Move existing cloud files so they don't get overwritten on accident
-# zip_dir = str(cloud_dir / 'random' / 'saved.zip')
-# try:
-    # with ZipFile(zip_dir, 'w') as dst:
-        # for img in img_list:
-            # cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-            # dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
-            # os.remove(cloud_img)
-# except FileNotFoundError:
-    # pass
+# Create cloud covers for trials
+# trial_nums = [1, 2, 3, 4, 5]
+# for trial_num in trial_nums:
+#     print('Making clouds')
+#     trial = 'trial' + str(trial_num)
+#     for img in img_list:
+#         cloud_generator(img, data_path, overwrite=False)
+#     # Zip up cloud images to archive and delete from cloud directory
+#     zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+#     for img in img_list:
+#         with ZipFile(zip_dir, 'w') as dst:
+#             cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+#             dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
+#             os.remove(cloud_img)
 
+import shutil
+# Create cloud covers for trials
+trial_nums = [1, 2, 3, 4, 5]
+for trial_num in trial_nums:
+    print('Making clouds')
+    trial = 'trial' + str(trial_num)
+    for img in img_list:
+        cloud_generator(img, data_path, overwrite=False)
+    # Zip up cloud images to archive and delete from cloud directory
+    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+    for img in img_list:
+        cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+        cloud_dst = cloud_dir / 'random' / trial / '{}'.format(img + '_clouds.npy')
+        shutil.move(cloud_img)
+
+# Run random cloud trials - CLOUDS MUST ALREADY BE IN ZIP ARCHIVES
 trial_nums = [1, 2, 3, 4, 5]
 for trial_num in trial_nums:
     trial = 'trial' + str(trial_num)
     print('RUNNING', trial, '################################################################')
-    # zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
-    # if not os.path.isdir(str(cloud_dir / 'random' / trial)):
-        # with ZipFile(zip_dir, 'r') as dst:
-            # dst.extractall(str(cloud_dir))
+    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
+    if not os.path.isdir(str(cloud_dir / 'random' / trial)):
+        with ZipFile(zip_dir, 'r') as dst:
+            dst.extractall(str(cloud_dir))
     log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, trial)
     prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial)
-    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
     for img in img_list:
-        with ZipFile(zip_dir, 'w') as dst:
-            cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-            dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
-            os.remove(cloud_img)
+        cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
+        os.remove(cloud_img)
 
-
-# Use if cloud_generator has overwrite=True and clouds are being made for the first time
-# trial_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-# for trial_num in trial_nums:
-#     trial = 'trial' + str(trial_num)
-#     print('RUNNING', trial, '################################################################')
-#     log_reg_training_RCTs(img_list, pctls, feat_list_new, data_path, batch, trial)
-#     for img in img_list:
-#         cloud_generator(img, data_path, overwrite=True)
-#         prediction_RCTS(img_list, pctls, feat_list_new, data_path, batch, trial)
-#         zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
-#         with ZipFile(zip_dir, 'w') as dst:
-#             for img in img_list:
-#                 cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-#                 dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
-#                 os.remove(cloud_img)
-
-
-# Plotting some of the images with the highest variability across trials
-# img_list = ['4477_LC08_022033_20170519_1',
-            # '4337_LC08_026038_20160325_1',
-            # '4594_LC08_022034_20180404_1',
-            # '4469_LC08_015036_20170502_1',
-            # '4468_LC08_022035_20170503_1',
-            # '4101_LC08_027039_20131103_1']
-
-# viz_params = {'img_list': img_list,
-              # 'pctls': pctls,
-              # 'data_path': data_path,
-              # 'batch': batch,
-              # 'feat_list_new': feat_list_new}
-
-# trial_nums = [1, 2, 3, 4]
-# for trial_num in trial_nums:
-    # trial = 'trial' + str(trial_num)
-    # print('RUNNING', trial, '################################################################')
-    # zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
-    # if not os.path.isdir(str(cloud_dir / 'random' / trial)):
-        # with ZipFile(zip_dir, 'r') as dst:
-            # dst.extractall(str(cloud_dir))
-    # viz = VizFuncs(viz_params)
-    # viz.metric_plots()
-    # viz.false_map(probs=True, save=False)
-    # viz.false_map_borders()
-    # viz.fpfn_map()
-    # for img in img_list:
-        # cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-        # os.remove(str(cloud_img))
-
-import dissimilarity
-import random_cloud_analysis

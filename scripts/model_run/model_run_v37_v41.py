@@ -41,9 +41,8 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
-                 'flooded']
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
 
 
 # ======================================================================================================================

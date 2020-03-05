@@ -54,9 +54,15 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
-                 'flooded']
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
+                 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
+                 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
+                 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
+                 'coastal_sed_coarse', 'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
+                 'twi', 'sti', 'GSW_perm', 'flooded']
 
 myDpi = 300
 
@@ -65,7 +71,7 @@ myDpi = 300
 # Get all uncertainties (10-90%) for each image, stack into HDF5 file
 
 
-def stack_all_uncertainties(model, batch, data_path, img_list):
+def stack_all_uncertainties(model, batch, data_path, img_list, feat_list_all):
     uncertainty_all = []
     predictions_all = []
     tp_all = []
@@ -94,7 +100,7 @@ def stack_all_uncertainties(model, batch, data_path, img_list):
         for pctl in pctls:
             print(pctl)
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                  feat_list_new, test=True)
+                                                                                  feat_list_all, test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             floods = data_test[:, :, flood_index]
@@ -219,7 +225,7 @@ def stack_all_uncertainties(model, batch, data_path, img_list):
 
 # ======================================================================================================================
 # # Logistic Regression
-batch = 'LR_allwater'
+batch = 'LR'
 try:
     (data_path / batch).mkdir()
 except FileExistsError:
@@ -227,12 +233,12 @@ except FileExistsError:
 
 # stack_all_uncertainties(model='LR', batch=batch, data_path=data_path, img_list=img_list)
 
-# # Bayesian Neural Network
+# Bayesian Neural Network
 # batch = 'BNN_kwon'
 # try:
-# (data_path / batch).mkdir()
+#     (data_path / batch).mkdir()
 # except FileExistsError:
-# pass
+#     pass
 
 # stack_all_uncertainties(model='BNN', batch=batch, data_path=data_path, img_list=img_list)
 
@@ -242,7 +248,7 @@ except FileExistsError:
 # batch = 'BNN_kwon'
 
 model = 'LR'
-batch = 'LR_allwater'
+batch = 'LR'
 
 output_bin_file = data_path / batch / 'metrics' / 'uncertainty_fpfn.h5'
 plot_path = data_path / batch / 'plots'
@@ -251,7 +257,6 @@ with h5py.File(output_bin_file, 'r') as f:
     df = f['uncertainty_fpfn']
     df = np.array(df)
 
-# feat_list_var = feat_list_new + ['predictions', 'uncertainty', 'tp', 'fp', 'fn']
 if model is 'LR':
     feat_list_var = ['predictions', 'uncertainty', 'tp', 'tn', 'fp', 'fn']
     xlabel = 'Predictive Interval'
@@ -490,3 +495,39 @@ if model is 'BNN':
 
 # ======================================================================================================================
 # Display histograms separately
+set1_colors = sns.color_palette("Set1", 8)
+color_inds = [1, 2, 0]
+colors = []
+for j in range(3):
+    for i in color_inds:
+        colors.append(set1_colors[i])
+
+class_labels = ['True Positive', 'False Positive', 'False Negative']
+legend_patches = [Patch(color=icolor, label=label)
+                  for icolor, label in zip(colors, class_labels)]
+
+# Load uncertainties
+# uncertainty = pd.read_csv(data_path / 'BNN_kwon_noGSW' / 'metrics' / 'uncertainty_binned_noGSW.csv')
+uncertainty = pd.read_csv(data_path / 'LR_noGSW' / 'metrics' / 'uncertainty_binned_noGSW.csv')
+fig = plt.figure(figsize=(4, 4))
+ax = plt.subplot()
+w = np.min(np.diff(uncertainty['bins_float'])) / 3
+ax.bar(uncertainty['bins_float'] - w, uncertainty['tp'], width=w, color=colors[0], align='center')
+ax.bar(uncertainty['bins_float'], uncertainty['fp'], width=w, color=colors[1], align='center')
+ax.bar(uncertainty['bins_float'] + w, uncertainty['fn'], width=w, color=colors[2], align='center')
+plt.ticklabel_format(style='sci', axis='x', scilimits=(0, 0), useMathText=True, useOffset=True)
+ax.spines["right"].set_visible(False)
+ax.spines["top"].set_visible(False)
+ax.autoscale(tight=True)
+ax.yaxis.offsetText.set_fontsize(SMALL_SIZE)
+ax.xaxis.offsetText.set_fontsize(SMALL_SIZE)
+
+ax.legend(labels=class_labels, handles=legend_patches, loc='lower left', bbox_to_anchor=(0.1, 1),
+               ncol=5, borderaxespad=0, frameon=False, prop={'size': 7})
+# axes[0].set_xlabel('Aleatoric + Epistemic Uncertainty')
+# axes[1].set_xlabel('Confidence Interval')
+# axes[1].get_yaxis().set_visible(False)
+# axes[0].set_ylabel('Prediction Type / Total')
+# plt.tight_layout()
+plt.subplots_adjust(wspace=0.05)
+# plt.savefig(figure_path / 'uncertainty_histograms.png', dpi=300)

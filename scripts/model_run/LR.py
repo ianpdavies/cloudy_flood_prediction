@@ -1,11 +1,13 @@
 # Logistic regression
+# But trained on all water, tested on perm=0, preds=0 for metrics
+# Based on batch LR_perm_3 in LR_perm script
 
 import __init__
 import os
 import time
 from sklearn.linear_model import LogisticRegression
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 import pandas as pd
 from results_viz import VizFuncs
@@ -33,11 +35,18 @@ img_list = os.listdir(data_path / 'images')
 removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
 img_list = [x for x in img_list if x not in removed]
+img_list = [img_list[0]]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
-                 'flooded']
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
+                 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
+                 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
+                 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
+                 'coastal_sed_coarse', 'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
+                 'twi', 'sti', 'GSW_perm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
@@ -48,7 +57,7 @@ viz_params = {'img_list': img_list,
 # ======================================================================================================================
 
 
-def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
+def log_reg_training(img_list, pctls, feat_list_new, feat_list_all, data_path, batch):
     for j, img in enumerate(img_list):
         print(img + ': stacking tif, generating clouds')
         times = []
@@ -59,9 +68,11 @@ def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                     feat_list_new,
+                                                                                     feat_list_all,
                                                                                      test=False)
             perm_index = feat_keep.index('GSW_perm')
+            flood_index = feat_keep.index('flooded')
+            # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
@@ -92,10 +103,10 @@ def log_reg_training(img_list, pctls, feat_list_new, data_path, batch):
         times_df.to_csv(metrics_path / 'training_times.csv', index=False)
 
 
-def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
+def log_reg_prediction(img_list, pctls, feat_list_all, data_path, batch):
     for j, img in enumerate(img_list):
         times = []
-        accuracy, precision, recall, f1 = [], [], [], []
+        accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         uncertainties_path = data_path / batch / 'uncertainties' / img
@@ -110,12 +121,12 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new,
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_all,
                                                                                   test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
-            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove GSW_perm column
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
             data_shape = data_vector_test.shape
             X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
 
@@ -171,12 +182,13 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
             precision.append(precision_score(y_test, preds))
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
+            roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
             del preds, probs, pred_probs, upper, lower, X_test, y_test, \
                 trained_model, data_test, data_vector_test, data_ind_test
 
-        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
-                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, roc_auc]),
+                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
@@ -185,14 +197,15 @@ def log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch):
 
 
 # ======================================================================================================================
-log_reg_training(img_list, pctls, feat_list_new, data_path, batch)
-log_reg_prediction(img_list, pctls, feat_list_new, data_path, batch)
+log_reg_training(img_list, pctls, feat_list_new, feat_list_all, data_path, batch)
+log_reg_prediction(img_list, pctls, feat_list_all, data_path, batch)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.metric_plots_multi()
 viz.time_plot()
 viz.false_map(probs=True, save=False)
 viz.false_map_borders()
-viz.false_map_borders_cir()
-viz.fpfn_map()
+viz.fpfn_map(probs=True)
 viz.uncertainty_map_LR()
+
+import uncertainty_analysis

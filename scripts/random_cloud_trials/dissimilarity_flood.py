@@ -25,11 +25,11 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
 img_list = [x for x in img_list if x not in removed]
 
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation', 'forest',
                  'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
 
 batch = 'RCTs'
-trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5', 'trial6', 'trial7', 'trial8', 'trial9', 'trial10']
+trials = ['trial1', 'trial2', 'trial3', 'trial4', 'trial5']
 exp_path = data_path / batch / 'results'
 try:
     (data_path / batch).mkdir(parents=True)
@@ -40,7 +40,7 @@ try:
 except FileExistsError:
     pass
 
-dtypes = ['float32', 'float32', 'float32', 'float32', 'int', 'float32', 'int', 'float32', 'int', 'int', 'float32',
+dtypes = ['float32', 'float32', 'float32', 'int', 'float32', 'int', 'float32', 'int', 'int', 'float32',
           'float32', 'float32', 'int', 'int', 'int']
 
 # ======================================================================================================================
@@ -222,3 +222,27 @@ for img in img_list:
         np.savetxt(f, np.array(variances_test_flood), delimiter=',')
     with open(exp_path / 'entropies_test.csv', 'ab') as f:
         np.savetxt(f, np.array(entropies_test_flood), delimiter=',')
+
+
+# ======================================================================================================================
+flood_count = []
+total_count = []
+
+perm_index = feat_list_new.index('GSW_perm')
+flood_index = feat_list_new.index('flooded')
+
+for img in img_list:
+    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+    with rasterio.open(str(stack_path), 'r') as ds:
+        flood = ds.read(flood_index+1)
+        flood[flood == -999999] = np.nan
+        flood[np.isneginf(flood)] = np.nan
+        perm = ds.read(perm_index+1)
+        perm[perm == -999999] = np.nan
+        perm[np.isneginf(perm)] = np.nan
+        flood[((flood == 1) & (perm == 1))] = 0
+        flood_count.append(np.nansum(flood))
+        flood = (flood * 0) + 1
+        total_count = np.nansum(flood)
+
+np.sum(flood_count) / np.sum(total_count)

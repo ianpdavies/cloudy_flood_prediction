@@ -729,7 +729,12 @@ counts_train = pd.read_csv(exp_path / 'results' / 'flood_count_train.csv',
 counts_test = pd.read_csv(exp_path / 'results' / 'flood_count_test.csv',
                           names=['water_test', 'flood_test', 'total_test'])
 
+old_feats = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
+                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+feat_list = len(np.tile(old_feats, 10 * 5))
 df = pd.concat((counts_train, counts_test, trial_metrics), axis=1)
+
+trial_metrics[]
 
 # Flood pixels / total pixels
 df['flood_ratio_train'] = df['flood_train'] / df['total_train']

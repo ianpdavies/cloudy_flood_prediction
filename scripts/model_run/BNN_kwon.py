@@ -35,8 +35,15 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
-                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
+                 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
+                 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
+                 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
+                 'coastal_sed_coarse', 'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
+                 'twi', 'sti', 'GSW_perm', 'flooded']
 
 model_params = {'epochs': epochs,
                 'batch_size': batch_size}
@@ -47,21 +54,10 @@ viz_params = {'img_list': img_list,
               'batch': batch,
               'feat_list_new': feat_list_new}
 
-NUM_PARALLEL_EXEC_UNITS = 8
-config = tf.compat.v1.ConfigProto(intra_op_parallelism_threads=NUM_PARALLEL_EXEC_UNITS, inter_op_parallelism_threads=4,
-                                  allow_soft_placement=True, device_count={'CPU': NUM_PARALLEL_EXEC_UNITS})
-session = tf.compat.v1.Session(config=config)
-tf.compat.v1.keras.backend.set_session(session)
-os.environ["KMP_BLOCKTIME"] = "30"
-os.environ["KMP_SETTINGS"] = "1"
-os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
-os.environ['MKL_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
-os.environ['GOTO_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
-os.environ['OMP_NUM_THREADS'] = str(NUM_PARALLEL_EXEC_UNITS)
 
 # ======================================================================================================================
-training_bnn_kwon(img_list, pctls, model_func, feat_list_new, data_path, batch, dropout_rate, **model_params)
-prediction_bnn_kwon(img_list, pctls, feat_list_new, data_path, batch, MC_passes, **model_params)
+training_bnn_kwon(img_list, pctls, model_func, feat_list_new, feat_list_all, data_path, batch, dropout_rate, **model_params)
+prediction_bnn_kwon(img_list, pctls, feat_list_all, data_path, batch, MC_passes, **model_params)
 viz = VizFuncs(viz_params)
 viz.metric_plots()
 viz.metric_plots_multi()
@@ -70,3 +66,4 @@ viz.false_map(probs=False, save=False)
 viz.false_map_borders()
 viz.fpfn_map()
 viz.uncertainty_map_NN()
+

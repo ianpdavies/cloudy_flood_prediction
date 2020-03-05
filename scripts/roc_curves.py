@@ -27,9 +27,15 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
-                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
-                 'flooded']
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
+                 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
+                 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
+                 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
+                 'coastal_sed_coarse', 'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
+                 'twi', 'sti', 'GSW_perm', 'flooded']
 
 # ======================================================================================================================
 # Create and save ROC data
