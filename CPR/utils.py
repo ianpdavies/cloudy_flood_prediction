@@ -207,7 +207,6 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
     # Put all layers into a list
     layers = []
     for file in file_list:
-        print(file)
         with rasterio.open(file, 'r') as ds:
             layers.append(ds.read())
 
@@ -250,7 +249,7 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
 # ======================================================================================================================
 
 
-def preprocessing(data_path, img, pctl, feat_list_new, test):
+def preprocessing(data_path, img, pctl, feat_list_all, test):
     """
     Masks stacked image with cloudmask by converting cloudy values to NaN
 
@@ -284,7 +283,6 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
     clouds_dir = data_path / 'clouds'
 
     # Check for any features that have all zeros/same value and remove. For both train and test sets.
-    # Get local image
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
@@ -318,27 +316,26 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
         test_std = data_vector[:, 0:data_vector.shape[1] - 2].std(0)
 
     # Now adjust feat_list_new to account for a possible removed feature because of std=0
-    feat_keep = feat_list_new.copy()
+    feat_keep = feat_list_all.copy()
     with rasterio.open(str(stack_path), 'r') as ds:
         data = ds.read()
         data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
 
+    remove_inds = []
     if 0 in train_std.tolist():
-        print('Removing', feat_keep[train_std.tolist().index(0)], 'because std=0 in training data')
-        zero_feat = train_std.tolist().index(0)
-        data = np.delete(data, zero_feat, axis=2)
-        feat_keep.pop(zero_feat)
+        zero_inds = np.where(train_std == 0)[0].tolist()
+        for ind in zero_inds:
+            remove_inds.append(ind)
 
-    # Now checking stds of test data if not already removed because of train data
     if 0 in test_std.tolist():
-        zero_feat_ind = test_std.tolist().index(0)
-        zero_feat = feat_list_new[zero_feat_ind]
-        try:
-            zero_feat_ind = feat_keep.index(zero_feat)
-            feat_keep.pop(feat_list_new.index(zero_feat))
-            data = np.delete(data, zero_feat_ind, axis=2)
-        except ValueError:
-            pass
+        zero_inds = np.where(test_std == 0)[0].tolist()
+        for ind in zero_inds:
+            remove_inds.append(ind)
+
+    remove_inds = np.unique(remove_inds).tolist()
+    remove_feats = [feat_list_all[ind] for ind in remove_inds]
+    data = np.delete(data, remove_inds, axis=2)
+    feat_keep = [x for x in feat_list_all if x not in remove_feats]
 
     # Convert -999999 and -Inf to Nans
     data[data == -999999] = np.nan
