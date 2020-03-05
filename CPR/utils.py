@@ -2,9 +2,132 @@ from pathlib import Path
 import zipfile
 import pandas as pd
 import time
-from sklearn.preprocessing import StandardScaler
+import random
+import rasterio
+from noise import snoise3
+import numpy as np
+from math import sqrt
 
 # ======================================================================================================================
+def lithology_dummy(data_path, img):
+    img_path = data_path / 'images' / img
+    img_file = img_path / img
+
+    lith_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '.lith.tif'
+
+    with rasterio.open(lith_file, 'r') as src:
+        lith = src.read().squeeze()
+        lith[lith == -999999] = np.nan
+        lith[np.isneginf(lith)] = np.nan
+
+    carbonate = np.zeros(lith.shape)
+    noncarbonate = np.zeros(lith.shape)
+    akl_intrusive = np.zeros(lith.shape)
+    silicic_resid = np.zeros(lith.shape)
+    extrusive_volcanic = np.zeros(lith.shape)
+    colluvial_sed = np.zeros(lith.shape)
+    glacial_till_clay = np.zeros(lith.shape)
+    glacial_till_loam = np.zeros(lith.shape)
+    glacial_till_coarse = np.zeros(lith.shape)
+    glacial_lake_sed_fine = np.zeros(lith.shape)
+    glacial_outwash_coarse = np.zeros(lith.shape)
+    hydric = np.zeros(lith.shape)
+    eolian_sed_coarse = np.zeros(lith.shape)
+    eolian_sed_fine = np.zeros(lith.shape)
+    saline_lake_sed = np.zeros(lith.shape)
+    alluv_coastal_sed_fine = np.zeros(lith.shape)
+    coastal_sed_coarse = np.zeros(lith.shape)
+
+    lith_feat_list = ['carbonate', 'noncarbonate', 'akl_intrusive', 'silicic_resid', 'silicic_resid',
+                      'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay', 'glacial_till_loam',
+                      'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse', 'hydric',
+                      'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
+                      'coastal_sed_coarse']
+
+    carbonate[np.where(lith == 1)] = 1
+    noncarbonate[np.where(lith == 3)] = 1
+    akl_intrusive[np.where(lith == 4)] = 1
+    silicic_resid[np.where(lith == 5)] = 1
+    extrusive_volcanic[np.where(lith == 7)] = 1
+    colluvial_sed[np.where(lith == 8)] = 1
+    glacial_till_clay[np.where(lith == 9)] = 1
+    glacial_till_loam[np.where(lith == 10)] = 1
+    glacial_till_coarse[np.where(lith == 11)] = 1
+    glacial_lake_sed_fine[np.where(lith == 13)] = 1
+    glacial_outwash_coarse[np.where(lith == 14)] = 1
+    hydric[np.where(lith == 15)] = 1
+    eolian_sed_coarse[np.where(lith == 16)] = 1
+    eolian_sed_fine[np.where(lith == 17)] = 1
+    saline_lake_sed[np.where(lith == 18)] = 1
+    alluv_coastal_sed_fine[np.where(lith == 19)] = 1
+    coastal_sed_coarse[np.where(lith == 20)] = 1
+
+    lith_list_all = [carbonate, noncarbonate, akl_intrusive, silicic_resid, silicic_resid,
+                        extrusive_volcanic, colluvial_sed, glacial_till_clay, glacial_till_loam,
+                        glacial_till_coarse, glacial_lake_sed_fine, glacial_outwash_coarse, hydric,
+                        eolian_sed_coarse, eolian_sed_fine, saline_lake_sed, alluv_coastal_sed_fine,
+                        coastal_sed_coarse]
+
+    # # This removes features that aren't here, but would require some tweaking of feat_list_new in other scripts
+    # # Can do that later, for now preprocessing will remove feats if they have all zeroes
+    # lith_list = []
+    # lith_not_present = []
+    # for i, lith_class in enumerate(lith_list_all):
+    #     if np.nansum(lith_class) > 0.0:
+    #         lith_list.append(lith_class)
+    #     else:
+    #         lith_not_present.append(lith_feat_list[i])
+    #
+    # lith_feat_list = [x for x in lith_feat_list if x not in lith_not_present]
+    #
+    # del lith_list_all
+    lith_list = lith_list_all
+
+    # Add NaNs, convert to -999999
+    nan_mask = lith.copy()
+    nan_mask = (nan_mask * 0) + 1
+
+    for lith_class in lith_list:
+        lith_class = np.multiply(lith_class, nan_mask)
+        lith_class[np.isnan(lith_class)] = -999999
+
+    return lith_list, lith_feat_list
+
+
+def landcover_dummy(data_path, img):
+    img_path = data_path / 'images' / img
+    img_file = img_path / img
+
+    lulc_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '.landcover.tif'
+
+    with rasterio.open(lulc_file, 'r') as src:
+        lulc = src.read()
+        lulc[lulc == -999999] = np.nan
+        lulc[np.isneginf(lulc)] = np.nan
+
+    developed = np.zeros(lulc.shape)
+    forest = np.zeros(lulc.shape)
+    planted = np.zeros(lulc.shape)
+    wetlands = np.zeros(lulc.shape)
+    openspace = np.zeros(lulc.shape)
+
+    developed[np.where(np.logical_or.reduce((lulc == 22, lulc == 23, lulc == 24)))] = 1
+    forest[np.where(np.logical_or.reduce((lulc == 41, lulc == 42, lulc == 43)))] = 1
+    planted[np.where(np.logical_or.reduce((lulc == 81, lulc == 82)))] = 1
+    wetlands[np.where(np.logical_or.reduce((lulc == 90, lulc == 95)))] = 1
+    openspace[np.where(np.logical_or.reduce((lulc == 21, lulc == 31, lulc == 71)))] = 1
+
+    # Add NaNs, convert to -999999
+    nan_mask = lulc.copy()
+    nan_mask = (nan_mask * 0) + 1
+    lulc_list = [developed, forest, planted, wetlands, openspace]
+    lulc_feat_list = ['developed', 'forest', 'planted', 'wetlands', 'openspace']
+
+    for lulc_class in lulc_list:
+        lulc_class = np.multiply(lulc_class, nan_mask)
+        lulc_class[np.isnan(lulc_class)] = -999999
+
+    return lulc_list, lulc_feat_list
 
 
 def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
@@ -81,6 +204,31 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
     # The take this re-ordered row as a list - the new file_list
     file_list = list(file_arr.iloc[0, :])
 
+    # Put all layers into a list
+    layers = []
+    for file in file_list:
+        print(file)
+        with rasterio.open(file, 'r') as ds:
+            layers.append(ds.read())
+
+    # Get LULC layers
+    lulc_list, lulc_feat_list = landcover_dummy(data_path, img)
+
+    # Get lithology layers
+    lith_list, lith_feat_list = lithology_dummy(data_path, img)
+
+    # Combine
+    layers = lulc_list + lith_list + layers
+    layers = [layer.squeeze() for layer in layers]
+
+    feat_list = lulc_feat_list + lith_feat_list + feat_list_new
+
+    # Make new directory for stacked tif if it doesn't already exist
+    try:
+        (img_path / 'stack').mkdir()
+    except FileExistsError:
+        print('Stack directory already exists')
+
     # Read metadata of first file.
     # This needs to be a band in float32 dtype, because it sets the metadata for the entire stack
     # and we are converting the other bands to float64
@@ -90,24 +238,14 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
     #         print(meta)
 
     # Update meta to reflect the number of layers
-    meta.update(count=len(file_list))
-
-    # Read each layer, convert to float, and write it to stack
-    # There's also a gdal way to do this, but unsure how to convert to float:
-    # https://gis.stackexchange.com/questions/223910/using-rasterio-or-gdal-to-stack-multiple-bands-without-using-subprocess-commands
-
-    # Make new directory for stacked tif if it doesn't already exist
-    try:
-        (img_path / 'stack').mkdir()
-    except FileExistsError:
-        print('Stack directory already exists')
+    meta.update(count=len(feat_list))
 
     with rasterio.open(stack_path, 'w', **meta) as dst:
-        for id, layer in enumerate(file_list, start=0):
-            with rasterio.open(layer) as src1:
-                dst.write_band(id + 1, src1.read(1).astype('float32'))
+        for ind, layer in enumerate(layers):
+            dst.write_band(ind + 1, layer.astype('float32'))
 
     return feat_list_files
+
 
 # ======================================================================================================================
 
@@ -244,105 +382,6 @@ def preprocessing(data_path, img, pctl, feat_list_new, test):
 # ======================================================================================================================
 
 
-def preprocessing2(data_path, img, pctl, feat_list_new, test, normalize=True):
-    """
-    Removes ALL pixels that are over permanent water
-
-    Masks stacked image with cloudmask by converting cloudy values to NaN
-
-    Parameters
-    ----------
-    data_path : str
-        Path to image folder
-    img : str
-        Name of image file (without file extension)
-    pctl : list of int
-        List of integers of cloud cover percentages to mask image with (10, 20, 30, etc.)
-    test : bool
-        Preprocessing cloud gaps or clouds? Determines how to mask out image
-    normalize : bool
-        Whether to normalize data or not. Default is true.
-
-    Returns
-    ----------
-    data : array
-        3D array identical to input stacked image but with cloudy pixels removed
-    data_vector : array
-        2D array of data, standardized, with NaNs removed
-    data_ind : tuple
-        Tuple of row/col indices in 'data' where cloudy pixels/cloud gaps were masked. Used for reconstructing the image later.
-    """
-
-    img_path = data_path / 'images' / img
-    stack_path = img_path / 'stack' / 'stack.tif'
-
-    # load cloudmasks
-    cloudmask_dir = data_path / 'clouds'
-
-    cloudmask = np.load(cloudmask_dir / '{0}'.format(img+'_clouds.npy'))
-
-    # Check for any features that have all zeros/same value and remove. This only matters with the training data
-    cloudmask = cloudmask > np.percentile(cloudmask, pctl)
-    # Get local image
-    with rasterio.open(str(stack_path), 'r') as ds:
-        data = ds.read()
-        data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
-        data[cloudmask] = -999999
-        data[data == -999999] = np.nan
-        data[np.isneginf(data)] = np.nan
-        data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
-        data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-        data_std = data_vector[:, 0:data_vector.shape[1] - 1].std(0)
-
-    # Just adding this next line in to correctly remove the deleted feat from feat_list_new during training
-    # Should remove once I've decided whether to train with or without perm water
-    feat_keep = [a for a in range(data.shape[2])]
-    with rasterio.open(str(stack_path), 'r') as ds:
-        data = ds.read()
-        data = data.transpose((1, -1, 0))  # Not sure why the rasterio.read output is originally (D, W, H)
-
-    if 0 in data_std.tolist():
-        zero_feat = data_std.tolist().index(0)
-        data = np.delete(data, zero_feat, axis=2)
-        feat_keep.pop(zero_feat)
-
-    cloudmask = np.load(cloudmask_dir / '{0}'.format(img + '_clouds.npy'))
-    if test:
-        cloudmask = cloudmask < np.percentile(cloudmask, pctl)  # Data, data_vector, etc = pctl
-    if not test:
-        cloudmask = cloudmask > np.percentile(cloudmask, pctl)  # Data, data_vector, etc = 1 - pctl
-
-    perm_index = feat_list_new.index('GSW_perm')
-
-    # Convert -999999 and -Inf to Nans
-    data[cloudmask] = -999999
-    data[data[:, :, perm_index] == 1] = -999999
-    data[data == -999999] = np.nan
-    data[np.isneginf(data)] = np.nan
-
-    # Get indices of non-nan values. These are the indices of the original image array
-    data_ind = np.where(~np.isnan(data[:, :, 1]))
-
-    # Reshape into a 2D array, where rows = pixels and cols = features
-    data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
-    shape = data_vector.shape
-
-    # Remove NaNs
-    data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-
-    data_mean = data_vector[:, 0:shape[1] - 1].mean(0)
-    data_std = data_vector[:, 0:shape[1] - 1].std(0)
-
-    # Normalize data - only the non-binary variables
-    if normalize:
-        data_vector[:, 0:shape[1]-1] = (data_vector[:, 0:shape[1]-1] - data_mean) / data_std
-
-    return data, data_vector, data_ind, feat_keep
-
-
-# ======================================================================================================================
-
-
 def preprocessing_gen_model(data_path, img_list_train):
     data_vector_list = []
     for img in img_list_train:
@@ -394,25 +433,18 @@ def train_val(data_vector, holdout):
     training_size : int
         Number of observations in training data
         
-    """    
+    """
     HOLDOUT_FRACTION = holdout
 
     # Hold out a fraction of the labeled data for validation.
     training_size = int(data_vector.shape[0] * (1 - HOLDOUT_FRACTION))
-    training_data = data_vector[0:training_size,:]
-    validation_data = data_vector[training_size:-1,:]
-    
+    training_data = data_vector[0:training_size, :]
+    validation_data = data_vector[training_size:-1, :]
+
     return [training_data, validation_data]
 
-# ======================================================================================================================
 
-import random
-import rasterio
-import os
-from noise import snoise3
-import numpy as np
-from math import sqrt
-from pathlib import Path
+# ======================================================================================================================
 
 
 def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
@@ -449,7 +481,7 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
     # Create cloudmask with 90% cloud cover
     cloudmask_20 = myClouds < np.percentile(clouds, 90)
     """
-    
+
     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
     file_name = img + '_clouds.npy'
     cloud_dir = data_path / 'clouds'
@@ -466,7 +498,7 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
             print('Cloud image already exists for ' + img)
             return
         else:
-            print('No cloud image for '+img+', creating one')
+            print('No cloud image for ' + img + ', creating one')
 
     # Make directory for clouds if none exists
     if cloud_dir.is_dir() == False:
@@ -482,12 +514,12 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
 
     # Create empty array of zeros to generate clouds on
     clouds = np.zeros(shape)
-    freq = np.ceil(sqrt(np.sum(shape)/2)) * octaves  # Frequency calculated based on shape of image
+    freq = np.ceil(sqrt(np.sum(shape) / 2)) * octaves  # Frequency calculated based on shape of image
 
     # Generate 2D (technically 3D, but uses a scalar for z) simplex noise
     for y in range(shape[1]):
         for x in range(shape[0]):
-              clouds[x,y] = snoise3(x/freq, y/freq, seed, octaves)
+            clouds[x, y] = snoise3(x / freq, y / freq, seed, octaves)
 
     # Save cloud file as 
     np.save(cloud_file, clouds)
@@ -499,7 +531,7 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
 # ======================================================================================================================
 
 
-def timer(start,end, formatted = True):
+def timer(start, end, formatted=True):
     """
     Returns formatted elapsed time of time.time() calls.
 
@@ -522,16 +554,15 @@ def timer(start,end, formatted = True):
     end = time.time()
     timer(start, end, formatted = True)
     """
-    if formatted == True: # Returns full formated time in hours, minutes, seconds
-        hours, rem = divmod(end-start, 3600)
+    if formatted == True:  # Returns full formated time in hours, minutes, seconds
+        hours, rem = divmod(end - start, 3600)
         minutes, seconds = divmod(rem, 60)
-        return str("{:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
-    else: # Returns minutes + fraction of minute
+        return str("{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+    else:  # Returns minutes + fraction of minute
         minutes, seconds = divmod(time.time() - start, 60)
-        seconds = seconds/60
+        seconds = seconds / 60
         minutes = minutes + seconds
         return str(minutes)
-
 
 # Add TFW to stack directory and create geotiff with nodata tags
 # import zipfile
