@@ -42,6 +42,7 @@ class VizFuncs:
         self.uncertainty = False
         self.batch = None
         self.feat_list_new = None
+        self.feat_list_all = None
         for k, v in atts.items():
             setattr(self, k, v)
 
@@ -127,7 +128,6 @@ class VizFuncs:
             plt.savefig(plot_path / 'roc_curves.png', dpi=300)
 
             plt.close('all')
-
 
     def time_plot(self):
         """
@@ -300,7 +300,7 @@ class VizFuncs:
                         predictions = np.array(predictions)  # Copy h5 dataset to array
 
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                      self.feat_list_new, test=True)
+                                                                                      self.feat_list_all, test=True)
 
                 shape = data_test.shape[:2]
 
@@ -371,8 +371,8 @@ class VizFuncs:
                 data[np.isneginf(data)] = np.nan
 
             # Get flood image, remove perm water --------------------------------------
-            flood_index = self.feat_list_new.index('flooded')
-            perm_index = self.feat_list_new.index('GSW_perm')
+            flood_index = data.shape[2] - 1
+            perm_index = data.shape[2] - 2
             perm_img = data[:, :, perm_index]
             true_flood = data[:, :, flood_index]
             true_flood[((true_flood == 1) & (perm_img == 1))] = 0
@@ -454,8 +454,8 @@ class VizFuncs:
                 data[np.isneginf(data)] = np.nan
 
             # Get flooded image (remove perm water)
-            flood_index = self.feat_list_new.index('flooded')
-            perm_index = self.feat_list_new.index('GSW_perm')
+            flood_index = data.shape[2] - 1
+            perm_index = data.shape[2] - 2
             indices = np.where((data[:, :, flood_index] == 1) & (data[:, :, perm_index] == 1))
             rows, cols = zip(indices)
             true_flood = data[:, :, flood_index]
@@ -717,7 +717,7 @@ class VizFuncs:
                     upper = np.array(upper)  # Copy h5 dataset to array
 
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                      self.feat_list_new,
+                                                                                      self.feat_list_all,
                                                                                       test=True)
 
                 uncertainties = upper - lower
@@ -781,7 +781,7 @@ class VizFuncs:
                     epistemic = np.array(epistemic)
 
                 uncertainties = aleatoric + epistemic
-                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, self.feat_list_new, test=True)
+                data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, self.feat_list_all, test=True)
 
                 perm_index = feat_keep.index('GSW_perm')
                 perm = data_test[:, :, perm_index]
@@ -861,7 +861,7 @@ class VizFuncs:
 
             for pctl in self.pctls:
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                      self.feat_list_new, test=True)
+                                                                                      self.feat_list_all, test=True)
 
                 print('Fetching flood predictions for', str(pctl) + '{}'.format('%'))
                 with h5py.File(preds_bin_file, 'r') as f:
