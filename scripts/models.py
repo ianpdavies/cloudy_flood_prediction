@@ -114,6 +114,25 @@ def get_nn_bn2(INPUT_DIMS):
 
 # ======================================================================================================================
 # NN with batch normalization, now with two dense layers
+from loss_functions import macro_double_soft_f1
+def get_nn_bn2_f1(INPUT_DIMS):
+    tf.keras.backend.clear_session()
+    model = tf.keras.Sequential()
+    model.add(tf.keras.layers.Input(shape=INPUT_DIMS, name="Input")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense1")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm1")),
+    model.add(tf.keras.layers.Dense(units=12, name="Dense2")),
+    model.add(tf.keras.layers.Activation("relu")),
+    model.add(tf.keras.layers.BatchNormalization(name="BatchNorm2")),
+    model.add(tf.keras.layers.Dense(units=2, activation='softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adadelta(),
+                  # optimizer='adam',
+                  loss=macro_double_soft_f1)
+    return model
+
+# ======================================================================================================================
+# NN with batch normalization, now with two dense layers
 def get_nn_bn2_noBN(INPUT_DIMS):
     tf.keras.backend.clear_session()
     model = tf.keras.Sequential()
