@@ -7,7 +7,7 @@ import os
 import multiprocessing
 import time
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from sklearn.linear_model import LogisticRegression
 import h5py
 from scipy.ndimage import binary_dilation
@@ -30,23 +30,25 @@ print('Python Version:', sys.version)
 
 # ==================================================================================
 # Parameters
-batch = 'LR_buffer'
+batch = 'LR_buffer_noGSW'
 pctls = [30]
 buffer_iters = [5, 10, 20, 30, 40]
-NUM_PARALLEL_EXEC_UNITS = os.cpu_count()
 
 try:
     (data_path / batch).mkdir()
 except FileExistsError:
     pass
 
-# To get list of all folders (images) in directory
+# Get all images in image directory
 img_list = os.listdir(data_path / 'images')
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
-                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
-
+feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'developed', 'elevation',
+                 'forest', 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm',
+                 'flooded']
 viz_params = {'img_list': img_list,
               'pctls': pctls,
               'buffer_iters': buffer_iters,
@@ -54,16 +56,6 @@ viz_params = {'img_list': img_list,
               'batch': batch,
               'feat_list_new': feat_list_new,
               'buffer_iters': buffer_iters}
-
-# Set some optimized config parameters
-tf.config.threading.set_intra_op_parallelism_threads(NUM_PARALLEL_EXEC_UNITS)
-tf.config.threading.set_inter_op_parallelism_threads(4)
-tf.config.set_soft_device_placement(True)
-# tf.config.experimental.set_visible_devices(NUM_PARALLEL_EXEC_UNITS, 'CPU')
-os.environ["OMP_NUM_THREADS"] = str(NUM_PARALLEL_EXEC_UNITS)
-os.environ["KMP_BLOCKTIME"] = "30"
-os.environ["KMP_SETTINGS"] = "1"
-os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 
 # ======================================================================================================================
@@ -73,7 +65,7 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
     for img in img_list:
         print(img + ': stacking tif, generating clouds')
         times = []
-        tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
+        tif_stacker(data_path, img, feat_list_new, features=True, overwrite=True)
         cloud_generator(img, data_path, overwrite=False)
 
         for pctl in pctls:
@@ -133,7 +125,7 @@ def log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, bu
 def prediction_buffer(img_list, pctls, feat_list_new, data_path, batch, remove_perm, buffer_iters):
     for img in img_list:
         times = []
-        accuracy, precision, recall, f1 = [], [], [], []
+        accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
         preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
         metrics_path = data_path / batch / 'metrics' / 'testing' / img
@@ -184,12 +176,13 @@ def prediction_buffer(img_list, pctls, feat_list_new, data_path, batch, remove_p
                 precision.append(precision_score(y_test, preds))
                 recall.append(recall_score(y_test, preds))
                 f1.append(f1_score(y_test, preds))
+                roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
             del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
 
         metrics = pd.DataFrame(np.column_stack([np.repeat(pctls, len(buffer_iters)),
-                                                np.tile(buffer_iters, len(pctls)), accuracy, precision, recall, f1]),
-                               columns=['cloud_cover', 'buffer_iters', 'accuracy', 'precision', 'recall', 'f1'])
+                                                np.tile(buffer_iters, len(pctls)), accuracy, precision, recall, f1, roc_auc]),
+                               columns=['cloud_cover', 'buffer_iters', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(
@@ -697,7 +690,6 @@ class VizFuncsBuffer:
 
 
 # ======================================================================================================================
-
 log_reg_training_buffer(img_list, pctls, feat_list_new, data_path, batch, buffer_iters, buffer_flood_only=True)
 prediction_buffer(img_list, pctls, feat_list_new, data_path, batch, True, buffer_iters)
 viz = VizFuncsBuffer(viz_params)
