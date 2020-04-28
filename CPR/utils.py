@@ -7,8 +7,389 @@ import rasterio
 from noise import snoise3
 import numpy as np
 from math import sqrt
+import os
+from sklearn.preprocessing import KBinsDiscretizer
 
 # ======================================================================================================================
+def gdrive_unstack(data_path, img, feat_list):
+    """
+    feat_list must be the order that the tifs are stacked in originally from GEE
+    """
+
+    img_path = data_path / 'images' / img
+    stack_path = img_path / 'stack' / '{}'.format(img + '.tif')
+    img_zip = img_path / '{}'.format(img + '.zip')
+
+    # Write each band as a new tif, add to zip, delete
+    temp_tifs = []
+    with rasterio.open(str(stack_path), 'r') as ds:
+        for i, feat in enumerate(feat_list):
+            data = ds.read(i + 1)
+            meta = ds.meta
+            meta.update(count=1)
+            name = str(img + '.' + feat + '.tif')
+            temp_tif = img_path / name
+            temp_tifs.append(temp_tif)
+            with rasterio.open(temp_tif, 'w', **meta) as tmp:
+                tmp.write_band(1, data)
+        with zipfile.ZipFile(str(img_zip), 'w') as dst:
+            for temp_tif in temp_tifs:
+                dst.write(temp_tif, os.path.basename(temp_tif))
+                os.remove(temp_tif)
+
+
+def preprocessing_discrete(data_path, img, pctl, feat_list_all, batch, test):
+    img_path = data_path / 'images' / img
+    stack_path = img_path / 'stack' / 'stack.tif'
+
+    # load cloudmasks
+    clouds_dir = data_path / 'clouds'
+
+    with rasterio.open(str(stack_path), 'r') as ds:
+        data = ds.read()
+        data = data.transpose((1, -1, 0))
+        data[data == -999999] = np.nan
+        data[np.isneginf(data)] = np.nan
+        data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+        data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+
+    # Get indices of non-nan values
+    nans = np.sum(data, axis=2)
+    data_ind = np.where(~np.isnan(nans))
+    rows, cols = zip(data_ind)
+
+    # Discretize continuous features
+    cts_feats = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
+                 'twi', 'sti']
+    non_cts_feats = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate',
+                     'akl_intrusive', 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed',
+                     'glacial_till_clay', 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine',
+                     'glacial_outwash_coarse', 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed',
+                     'alluv_coastal_sed_fine', 'coastal_sed_coarse', 'GSW_perm', 'flooded']
+
+    feats_disc = []
+    all_edges = pd.DataFrame([])
+
+    # GSW_distSeasonal
+    bins = 5
+    discretizer = KBinsDiscretizer(n_bins=bins, encode='onehot-dense', strategy='quantile')
+    GSW_distSeasonal_disc = discretizer.fit_transform(
+        data_vector[:, feat_list_all.index('GSW_distSeasonal')].reshape(-1, 1))
+    for i in range(bins):
+        feats_disc.append('GSW_distSeasonal_' + str(i + 1))
+
+    disc_nan = np.zeros(data[:, :, 0:bins].shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = GSW_distSeasonal_disc[:, bin]
+
+    GSW_distSeasonal_disc = disc_nan
+    del disc_nan
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # Elevation
+    bins = 5
+    discretizer = KBinsDiscretizer(n_bins=bins, encode='onehot-dense', strategy='quantile')
+    elevation_disc = discretizer.fit_transform(data_vector[:, feat_list_all.index('elevation')].reshape(-1, 1))
+    for i in range(bins):
+        feats_disc.append('elevation' + str(i + 1))
+
+    disc_nan = np.zeros(data[:, :, 0:bins].shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = elevation_disc[:, bin]
+
+    elevation_disc = disc_nan
+    del disc_nan
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # Slope
+    bins = 5
+    discretizer = KBinsDiscretizer(n_bins=bins, encode='onehot-dense', strategy='quantile')
+    slope_disc = discretizer.fit_transform(data_vector[:, feat_list_all.index('slope')].reshape(-1, 1))
+    for i in range(bins):
+        feats_disc.append('slope' + str(i + 1))
+
+    disc_nan = np.zeros(data[:, :, 0:bins].shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = slope_disc[:, bin]
+
+    slope_disc = disc_nan
+    del disc_nan
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # TWI
+    bins = 5
+    discretizer = KBinsDiscretizer(n_bins=bins, encode='onehot-dense', strategy='quantile')
+    twi_disc = discretizer.fit_transform(data_vector[:, feat_list_all.index('twi')].reshape(-1, 1))
+    for i in range(bins):
+        feats_disc.append('twi' + str(i + 1))
+
+    disc_nan = np.zeros(data[:, :, 0:bins].shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = twi_disc[:, bin]
+
+    twi_disc = disc_nan
+    del disc_nan
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # SPI
+    bins = 5
+    discretizer = KBinsDiscretizer(n_bins=bins, encode='onehot-dense', strategy='quantile')
+    spi_disc = discretizer.fit_transform(data_vector[:, feat_list_all.index('spi')].reshape(-1, 1))
+    for i in range(bins):
+        feats_disc.append('spi' + str(i + 1))
+
+    disc_nan = np.zeros(data[:, :, 0:bins].shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = spi_disc[:, bin]
+
+    spi_disc = disc_nan
+    del disc_nan
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # STI
+    bins = 2
+    discretizer = KBinsDiscretizer(n_bins=bins, encode='onehot-dense', strategy='quantile')
+    sti_disc = discretizer.fit_transform(data_vector[:, feat_list_all.index('sti')].reshape(-1, 1))
+    for i in range(bins):
+        feats_disc.append('sti' + str(i + 1))
+
+    disc_nan = np.zeros(data[:, :, 0:bins].shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = sti_disc[:, bin]
+
+    sti_disc = disc_nan
+    del disc_nan
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # Curve (flat, convex, concave)
+    convex = np.zeros((data_vector.shape[0],))
+    concave = np.zeros((data_vector.shape[0],))
+    flat = np.zeros((data_vector.shape[0],))
+    convex[np.where(data_vector[:, feat_list_all.index('curve')] < 0)] = 1
+    concave[np.where(data_vector[:, feat_list_all.index('curve')] > 0)] = 1
+    flat[np.where(data_vector[:, feat_list_all.index('curve')] == 0)] = 1
+    names = ['convex', 'concave', 'flat']
+    bins = len(names)
+    for name in names:
+        feats_disc.append(name)
+
+    curve = np.column_stack([convex, concave, flat])
+
+    shape = data[:, :, 0:curve.shape[1]].shape
+    disc_nan = np.zeros(shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = curve[:, bin]
+
+    curve = disc_nan
+
+    del disc_nan, convex, concave, flat
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # Aspect (north, northeast, northwest, south, southeast, southwest, east, west)
+    north = np.zeros((data_vector.shape[0],))
+    northeast = np.zeros((data_vector.shape[0],))
+    east = np.zeros((data_vector.shape[0],))
+    southeast = np.zeros((data_vector.shape[0],))
+    south = np.zeros((data_vector.shape[0],))
+    southwest = np.zeros((data_vector.shape[0],))
+    west = np.zeros((data_vector.shape[0],))
+    northwest = np.zeros((data_vector.shape[0],))
+
+    north[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 337.5,
+                                          data_vector[:, feat_list_all.index('aspect')] < 22.5)))] = 1
+    northeast[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 22.5,
+                                              data_vector[:, feat_list_all.index('aspect')] < 67.5)))] = 1
+    east[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 67.5,
+                                         data_vector[:, feat_list_all.index('aspect')] < 112.5)))] = 1
+    southeast[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 157.5,
+                                              data_vector[:, feat_list_all.index('aspect')] < 157.5)))] = 1
+    south[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 202.5,
+                                          data_vector[:, feat_list_all.index('aspect')] < 202.5)))] = 1
+    southwest[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 247.5,
+                                              data_vector[:, feat_list_all.index('aspect')] < 247.5)))] = 1
+    west[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 292.5,
+                                         data_vector[:, feat_list_all.index('aspect')] < 337.5)))] = 1
+    northwest[np.where(np.logical_and.reduce((data_vector[:, feat_list_all.index('aspect')] >= 337.5,
+                                              data_vector[:, feat_list_all.index('aspect')] < 360.5)))] = 1
+    names = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest']
+    bins = len(names)
+    for name in names:
+        feats_disc.append(name)
+
+    aspect = np.column_stack([north, northeast, east, southeast, south, southwest, west, northwest])
+
+    shape = data[:, :, 0:aspect.shape[1]].shape
+    disc_nan = np.zeros(shape)
+    disc_nan[~np.isnan(disc_nan)] = np.nan
+    for bin in range(bins):
+        disc_nan[rows, cols, bin] = aspect[:, bin]
+
+    aspect = disc_nan
+
+    del disc_nan, north, northeast, east, southeast, south, southwest, west, northwest
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # Get original discrete features
+    orig_disc_inds = []
+    for feat in non_cts_feats:
+        orig_disc_inds.append(feat_list_all.index(feat))
+    orig_disc_data = data[:, :, orig_disc_inds]
+
+    # Combine with new discrete features
+    new_disc_data = np.dstack([GSW_distSeasonal_disc, elevation_disc, slope_disc, twi_disc,
+                               spi_disc, sti_disc, curve, aspect])
+    data = np.dstack([new_disc_data, orig_disc_data])
+
+    del orig_disc_data, new_disc_data
+
+    edges = []
+    for arr in discretizer.bin_edges_:
+        for edge in arr[:-1]:
+            edges.append(edge)
+
+    all_edges = pd.concat([all_edges, pd.DataFrame(edges)], axis=0)
+
+    # Combine all edges and features
+    feature_edges = pd.concat([all_edges, pd.DataFrame(data=feats_disc)], axis=1)
+    feature_edges.columns = ['edge', 'feature']
+
+    # If a feat has only zeros or 1s in test OR train set, it is removed from both
+    # Check train set
+    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+    clouds[np.isnan(data[:, :, 0])] = np.nan
+    cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+    data_train = data.copy()
+    data_train[cloudmask] = -999999
+    data_train[data_train == -999999] = np.nan
+    data_vector_train = data_train.reshape([data.shape[0] * data_train.shape[1], data_train.shape[2]])
+    data_vector_train = data_vector_train[~np.isnan(data_vector_train).any(axis=1)]
+    train_std = data_vector_train[:, 0:data_vector_train.shape[1] - 2].std(0)
+    del data_train, data_vector_train
+
+    # Check test set
+    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+    clouds[np.isnan(data[:, :, 0])] = np.nan
+    cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+    data_test = data.copy()
+    data_test[cloudmask] = -999999
+    data_test[data_test == -999999] = np.nan
+    data_vector_test = data_test.reshape([data.shape[0] * data_test.shape[1], data_test.shape[2]])
+    data_vector_test = data_vector_test[~np.isnan(data_vector_test).any(axis=1)]
+    test_std = data_vector_test[:, 0:data_vector_test.shape[1] - 2].std(0)
+    del data_test, data_vector_test
+
+    remove_inds = []
+    if 0 in train_std.tolist():
+        zero_inds = np.where(train_std == 0)[0].tolist()
+        for ind in zero_inds:
+            remove_inds.append(ind)
+
+    if 0 in test_std.tolist():
+        zero_inds = np.where(test_std == 0)[0].tolist()
+        for ind in zero_inds:
+            remove_inds.append(ind)
+
+    remove_inds = np.unique(remove_inds).tolist()
+
+    # Mask clouds
+    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+    clouds[np.isnan(data[:, :, 0])] = np.nan
+    if test:
+        cloudmask = np.greater(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+    if not test:
+        cloudmask = np.less(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+
+    # And mask clouds
+    data[cloudmask] = -999999
+    data[data == -999999] = np.nan
+
+    # Get indices of non-nan values. These are the indices of the original image array
+    nans = np.sum(data, axis=2)
+    data_ind = np.where(~np.isnan(nans))
+
+    # Create data vector
+    data_vector = data.reshape([data.shape[0] * data.shape[1], data.shape[2]])
+    data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+
+    feat_list_stack = feats_disc + feat_list_all
+    remove_feats = [feat_list_stack[ind] for ind in remove_inds]
+    data_vector = np.delete(data_vector, remove_inds, axis=1)
+    feat_keep = [x for x in feat_list_all if x not in remove_feats]
+
+    feature_edges_keep = feature_edges[~feature_edges.feature.isin(remove_feats)]
+
+    # Save feature class bin edges
+    if test:
+        filedir = data_path / batch / 'class_bins' / 'test'
+    else:
+        filedir = data_path / batch / 'class_bins' / 'train'
+
+    try:
+        filedir.mkdir()
+    except FileExistsError:
+        pass
+
+    filename = filedir / '{}'.format('feature_edges_' + str(pctl) + '.csv')
+    feature_edges_keep.to_csv(filename, index=False)
+
+    return data, data_vector, data_ind, feat_keep, feature_edges_keep
+
+
 def lithology_dummy(data_path, img):
     img_path = data_path / 'images' / img
     img_file = img_path / img
@@ -130,7 +511,18 @@ def landcover_dummy(data_path, img):
     return lulc_list, lulc_feat_list
 
 
-def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
+def truncate_values(data_vector, feat_list_all):
+    """
+    Some features have erroneously high values, e.g. SPI = 1e9
+    These values get truncated in this function before normalization in preprocessing()
+    Other possible solutions might be removal of outliers, or winsorizing
+    See: https://stats.stackexchange.com/questions/90443/what-are-the-relative-merits-of-winsorizing-vs-trimming-data
+    """
+
+    data_vector[:, feat_list_all.index('spi')]
+
+
+def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     """
     Reorders the tifs (i.e. individual bands) downloaded from GEE according to feature order in feat_list_new,
     then stacks them all into one multiband image called 'stack.tif' located in input path. Requires rasterio,
@@ -146,8 +538,6 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
         Name of image file (without file extension)
     feat_list_new : list
         List of feature names (str) to be the desired order of the output stacked .tif - target feature must be last
-    features : Bool
-        Whether stacking feature layers (True) or spectra layers (False)
     overwrite : Bool
         Whether existing stacked image should be overwritten (True)
 
@@ -162,12 +552,8 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
     file_list = []
     img_path = data_path / 'images' / img
 
-    if features:
-        stack_path = img_path / 'stack' / 'stack.tif'
-        img_file = img_path / img
-    else:
-        stack_path = img_path / 'stack' / 'spectra_stack.tif'
-        img_file = img_path / '{}'.format('spectra_' + img)
+    stack_path = img_path / 'stack' / 'stack.tif'
+    img_file = img_path / img
 
     # This gets the name of all files in the zip folder, and formats them into a full path readable by rasterio.open()
     with zipfile.ZipFile(str(img_file.with_suffix('.zip')), 'r') as f:
@@ -243,7 +629,95 @@ def tif_stacker(data_path, img, feat_list_new, features, overwrite=False):
         for ind, layer in enumerate(layers):
             dst.write_band(ind + 1, layer.astype('float32'))
 
-    return feat_list_files
+    return feat_list
+
+
+def tif_stacker_spectra(data_path, img, band_list, overwrite=False):
+    """
+    Reorders the tifs (i.e. individual bands) downloaded from GEE according to feature order in feat_list_new,
+    then stacks them all into one multiband image called 'stack.tif' located in input path. Requires rasterio,
+    os, from zipfile import *
+
+    Reqs: zipfile, Path from pathlib
+
+    Parameters
+    ----------
+    data_path : str
+        Path to image folder
+    img :str
+        Name of image file (without file extension)
+    band_list : list
+        List of spectral bands (str) to be the desired order of the output stacked .tif
+    overwrite : Bool
+        Whether existing stacked image should be overwritten (True)
+
+    Returns
+    ----------
+    "spectra_stack.tif" in 'path' location
+
+    """
+
+    file_list = []
+    img_path = data_path / 'images' / img
+
+    stack_path = img_path / 'stack' / 'spectra_stack.tif'
+    img_file = img_path / '{}'.format('spectra_' + img)
+
+    # This gets the name of all files in the zip folder, and formats them into a full path readable by rasterio.open()
+    with zipfile.ZipFile(str(img_file.with_suffix('.zip')), 'r') as f:
+        names = f.namelist()
+        names = [str(img_file.with_suffix('.zip!')) + name for name in names]
+        names = ['zip://' + name for name in names]
+        for file in names:
+            if file.endswith('.tif'):
+                file_list.append(file)
+
+    feat_list_files = list(map(lambda x: x.split('.')[-2], file_list))  # Grabs a list of features in file order
+
+    if not overwrite:
+        if stack_path.exists():
+            print('Stack already exists for ' + img)
+            return
+        else:
+            print('No existing stack for ' + img + ', creating one')
+
+    if overwrite:
+        # Remove stack file if already exists
+        try:
+            stack_path.unlink()
+            print('Removing existing stack and creating new one')
+        except FileNotFoundError:
+            print('No existing stack for ' + img + ', creating one')
+
+    # Create 1 row df of file names where each col is a feature name, in the order files are stored locally
+    file_arr = pd.DataFrame(data=[file_list], columns=feat_list_files)
+
+    # Then index the file list by the ordered list of feature names used in training
+    file_arr = file_arr.loc[:, band_list]
+
+    # The take this re-ordered row as a list - the new file_list
+    file_list = list(file_arr.iloc[0, :])
+
+    # Read metadata of first file.
+    # This needs to be a band in float32 dtype, because it sets the metadata for the entire stack
+    # and we are converting the other bands to float64
+    with rasterio.open(file_list[0]) as src0:
+        meta = src0.meta
+        meta['dtype'] = 'float32'
+
+    # Update meta to reflect the number of layers
+    meta.update(count=len(file_list))
+
+    # Make new directory for stacked tif if it doesn't already exist
+    try:
+        (img_path / 'stack').mkdir()
+    except FileExistsError:
+        print('Stack directory already exists')
+
+    with rasterio.open(stack_path, 'w', **meta) as dst:
+        for id, layer in enumerate(file_list, start=0):
+            with rasterio.open(layer) as src1:
+                dst.write_band(id + 1, src1.read(1).astype('float32'))
 
 
 # ======================================================================================================================
