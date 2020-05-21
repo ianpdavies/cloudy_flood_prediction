@@ -13,8 +13,9 @@ from CPR.configs import data_path
 from zipfile import ZipFile
 
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1'}
+# removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
+#            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1'}
+removed = {'new'}
 img_list = [x for x in img_list if x not in removed]
 
 # for img in img_list:
@@ -65,13 +66,29 @@ img_list = [x for x in img_list if x not in removed]
 #     for file in [src_feat, src_spec, str(src_feat) + '.zip', str(src_spec) + '.zip']:
 #         shutil.rmtree(str(file))
 
-# =====================================================================
-# Replacing files in existing zip folders with newly downloaded files (in zip folders)
+# ==============================================================================================
+# Have to download images separately from drive with latest GEE update.
+# This puts them into zip folders, then runs the script below
 
-remove_these = ['developed', 'forest', 'other_landcover', 'planted', 'wetlands']
+new_features = ['landcover', 'spi', 'sti', 'twi']
+
 for img in img_list:
     print(img)
-    downloads = Path('C:/Users/ipdavies/Downloads')
+    downloads = data_path / 'images' / 'new'
+    image_dir = Path('D:/Workspace/ipdavies/CPR/data/images')
+    zip_dir = str(downloads / '{}'.format(img + '.zip'))
+    with ZipFile(zip_dir, 'w') as dst:
+        files = [Path(downloads / '{}'.format(img + '_' + feat + '.tif')) for feat in new_features]
+        for file in files:
+            dst.write(file, os.path.basename(file))
+
+# ==============================================================================================
+# Replacing files in existing zip folders with newly downloaded files (in zip folders)
+
+remove_these = ['sti', 'spi', 'twi', 'developed', 'forest', 'other_landcover', 'planted', 'wetlands']
+for img in img_list:
+    print(img)
+    downloads = data_path / 'images' / 'new'
     image_dir1 = Path('D:/Workspace/ipdavies/CPR/data/images')
     image_dir1 = image_dir1 / img
     image_dst = image_dir1 / img
@@ -113,5 +130,4 @@ for img in img_list:
 
     # Remove unzipped folder with files
     shutil.rmtree(str(image_dst))
-
 
