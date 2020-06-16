@@ -13,6 +13,7 @@ learning/
 # Ignore (files)#
 *.txt
 CPR/configs.py
+CPR/keys.py
 
 to_learn.txt
 
