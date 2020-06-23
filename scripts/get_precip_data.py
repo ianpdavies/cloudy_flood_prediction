@@ -30,27 +30,20 @@ removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
 img_list = [x for x in img_list if x not in removed]
 
-for img in img_list:
+for i, img in enumerate(img_list):
+    print('Image {}/{}, ({})'.format(i+1, len(img_list), img))
     stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
     # Grabbing a random tif file from zipped files. Can use stack.tif instead but will need to amend the code below
     tif_file = 'zip://' + str(data_path / 'images' / img / img) + '.zip!' + img + '.aspect.tif'
     # with rasterio.open(str(stack_path), 'r', crs='EPSG:4326') as ds:
     with rasterio.open(tif_file, 'r', crs='EPSG:4326') as ds:
-        print(ds.crs)
-        print(ds.transform)
         img_bounds = ds.bounds
         rasterio.plot.plotting_extent(ds)
         fig, ax = plt.subplots(figsize=(8, 8))
-        rasterio.plot.show(ds.read(1), ax=ax, transform=ds.transform, with_bounds=True)
-        # stations.plot(ax=ax, facecolor='none', edgecolor='red')
+        rasterio.plot.show(ds, ax=ax, with_bounds=True)
 
     # Can't intepolate all points without hitting memory cap, so buffer raster and interpolate only the points within
     left, bottom, right, top = img_bounds[0], img_bounds[1], img_bounds[2], img_bounds[3]
-    img_extent = [[left, bottom], [right, bottom], [right, top], [left, top]]
-    img_extent = Polygon(img_extent)
-    x, y = img_extent.exterior.xy
-    plt.plot(x, y)
-
     buffer_size = 0.1  # degrees
     leftb = left - buffer_size
     bottomb = bottom - buffer_size
@@ -58,8 +51,11 @@ for img in img_list:
     topb = top + buffer_size
     buffer_extent = [[leftb, bottomb], [rightb, bottomb], [rightb, topb], [leftb, topb]]
     buffer_extent = Polygon(buffer_extent)
-    xb, yb = buffer_extent.exterior.xy
-    plt.plot(xb, yb)
+
+    # Rasterize buffer polygon
+    out_file = data_path / 'images' / img / '{}'.format(img + '_buffer.tif')
+    output_options = gdal.WarpOptions(outputBounds=[leftb, topb, rightb, bottomb], multithread=True)
+    gdal.Warp(out_file, tif_file, options=output_options)
 
     # Find US counties that intersect flood event
     counties = geopandas.read_file(county_shp_path)
@@ -109,12 +105,22 @@ for img in img_list:
     stations = df_prcp.merge(station_list, on='station_id', how='left')
 
     # Save precip data
-    precip_path = data_path / 'precip' / img
+    precip_path = data_path / 'precip' / 'station_data' / img
+    precip_path_shp = precip_path / 'shp'
     try:
-        precip_path.mkdir(parents=True)
+        precip_path_shp.mkdir(parents=True)
     except FileExistsError:
         pass
     stations.to_csv(precip_path / '{}'.format(img + '_precip.csv', index=False))
+
+    # Sum daily measurements and save as shapefile
+    stations = gdf(stations, geometry=geopandas.points_from_xy(stations.long, stations.lat))
+    stations = stations.groupby(['station_id', 'name', 'elevation', 'lat', 'long']).sum().reset_index()
+    stations = gdf(stations, geometry=geopandas.points_from_xy(stations.long, stations.lat))
+    stations.crs = 'EPSG:4269'
+    stations = stations.to_crs('EPSG:4326')
+    stations.to_file(str(precip_path_shp / '{}'.format(img + '_precip.shp')))
+
 
 
 
