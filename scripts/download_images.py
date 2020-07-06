@@ -18,53 +18,53 @@ img_list = os.listdir(data_path / 'images')
 removed = {'new'}
 img_list = [x for x in img_list if x not in removed]
 
-# for img in img_list:
-#     downloads = data_path.parents[1] / 'Downloads'
-#     dst_file = downloads / img
-#     try:
-#         dst_file.mkdir()
-#     except FileExistsError:
-#         pass
-#     src_feat = downloads / '{}'.format(img+' (1)')
-#     # Extract feature files
-#     with ZipFile(str(src_feat) + '.zip', 'r') as src:
-#         try:
-#             src_feat.mkdir()
-#         except FileExistsError:
-#             pass
-#         src.extractall(str(src_feat))
-#     # Add extracted files to other zipped feat directory
-#     with ZipFile(str(dst_file) + '.zip', 'a') as dst:
-#         extracted_files = [x for x in src_feat.glob('**/*') if x.is_file()]
-#         for file in extracted_files:
-#             dst.write(file, os.path.basename(file))
-#
-#     # Same thing for spectral files
-#     dst_file_spec = downloads / '{}'.format('spectra_' + img)
-#     src_spec = downloads / '{}'.format('spectra_' + img + ' (1)')
-#     # Extract feature files
-#     with ZipFile(str(src_spec) + '.zip', 'r') as src:
-#         try:
-#             src_spec.mkdir()
-#         except FileExistsError:
-#             pass
-#         src.extractall(str(src_spec))
-#     # Add extracted files to other zipped feat directory
-#     with ZipFile(str(dst_file_spec) + '.zip', 'a') as dst:
-#         extracted_files = [x for x in src_spec.glob('**/*') if x.is_file()]
-#         for file in extracted_files:
-#             dst.write(file, os.path.basename(file))
-#
-#     # Move zip folders to image folder
-#     geom_file = downloads / '{}'.format('clip_geometry_' + img + '.csv')
-#     shutil.move(str(dst_file) + '.zip', dst_file)
-#     shutil.move(str(dst_file_spec) + '.zip', dst_file)
-#     shutil.move(str(geom_file), dst_file)
-#     shutil.move(str(dst_file), data_path / 'images')
-#
-#     # Delete unneeded folders
-#     for file in [src_feat, src_spec, str(src_feat) + '.zip', str(src_spec) + '.zip']:
-#         shutil.rmtree(str(file))
+for img in img_list:
+    downloads = data_path.parents[1] / 'Downloads'
+    dst_file = downloads / img
+    try:
+        dst_file.mkdir()
+    except FileExistsError:
+        pass
+    src_feat = downloads / '{}'.format(img+' (1)')
+    # Extract feature files
+    with ZipFile(str(src_feat) + '.zip', 'r') as src:
+        try:
+            src_feat.mkdir()
+        except FileExistsError:
+            pass
+        src.extractall(str(src_feat))
+    # Add extracted files to other zipped feat directory
+    with ZipFile(str(dst_file) + '.zip', 'a') as dst:
+        extracted_files = [x for x in src_feat.glob('**/*') if x.is_file()]
+        for file in extracted_files:
+            dst.write(file, os.path.basename(file))
+
+    # Same thing for spectral files
+    dst_file_spec = downloads / '{}'.format('spectra_' + img)
+    src_spec = downloads / '{}'.format('spectra_' + img + ' (1)')
+    # Extract feature files
+    with ZipFile(str(src_spec) + '.zip', 'r') as src:
+        try:
+            src_spec.mkdir()
+        except FileExistsError:
+            pass
+        src.extractall(str(src_spec))
+    # Add extracted files to other zipped feat directory
+    with ZipFile(str(dst_file_spec) + '.zip', 'a') as dst:
+        extracted_files = [x for x in src_spec.glob('**/*') if x.is_file()]
+        for file in extracted_files:
+            dst.write(file, os.path.basename(file))
+
+    # Move zip folders to image folder
+    geom_file = downloads / '{}'.format('clip_geometry_' + img + '.csv')
+    shutil.move(str(dst_file) + '.zip', dst_file)
+    shutil.move(str(dst_file_spec) + '.zip', dst_file)
+    shutil.move(str(geom_file), dst_file)
+    shutil.move(str(dst_file), data_path / 'images')
+
+    # Delete unneeded folders
+    for file in [src_feat, src_spec, str(src_feat) + '.zip', str(src_spec) + '.zip']:
+        shutil.rmtree(str(file))
 
 # ==============================================================================================
 # Have to download images separately from drive with latest GEE update.
@@ -131,3 +131,18 @@ for img in img_list:
     # Remove unzipped folder with files
     shutil.rmtree(str(image_dst))
 
+# ==============================================================================================
+# Renaming zipped files with individual .tifs downloaded from GDrive
+# Get list of folders
+# Get list of contents
+# Rename folder
+
+image_dir = data_path / 'images'
+zip_list = os.listdir(image_dir)
+for zip_name_old in zip_list:
+    zip_dir = ZipFile(image_dir / zip_name_old)
+    names = ZipFile.namelist(zip_dir)
+    name = names[0].split('_')[:-1]
+    zip_name_new = '_'.join(name) + '.zip'
+    zip_dir.close()
+    os.rename(str(image_dir / zip_name_old), str(image_dir / zip_name_new))
