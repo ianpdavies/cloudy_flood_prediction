@@ -8,7 +8,7 @@ from noise import snoise3
 import numpy as np
 from math import sqrt
 import os
-from sklearn.preprocessing import KBinsDiscretizer
+from sklearn.preprocessing import KBinsDiscretizer, OneHotEncoder
 
 # ======================================================================================================================
 def gdrive_unstack(data_path, img, feat_list):
@@ -390,6 +390,51 @@ def preprocessing_discrete(data_path, img, pctl, feat_list_all, batch, test):
     return data, data_vector, data_ind, feat_keep, feature_edges_keep
 
 
+def soil_dummy(data_path, img):
+    # Discretizes soil image into discrete hydrological groups
+    img_path = data_path / 'images' / img
+    img_file = img_path / img
+
+    soil_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '.soil.tif'
+
+    with rasterio.open(soil_file, 'r') as src:
+        soil = src.read().squeeze()
+        soil[soil == -999999] = np.nan
+        soil[np.isneginf(soil)] = np.nan
+
+    hydgrp_a = np.zeros(soil.shape)
+    hydgrp_ad = np.zeros(soil.shape)
+    hydgrp_b = np.zeros(soil.shape)
+    hydgrp_bd = np.zeros(soil.shape)
+    hydgrp_c = np.zeros(soil.shape)
+    hydgrp_cd = np.zeros(soil.shape)
+    hydgrp_d = np.zeros(soil.shape)
+
+    soil_feat_list = ['hydgrp_a', 'hydgrp_ad', 'hydgrp_b', 'hydgrp_bd', 'hydgrp_c', 'hydgrp_cd', 'hydgrp_d']
+
+    hydgrp_a[np.where(soil == 1)] = 1
+    hydgrp_ad[np.where(soil == 2)] = 1
+    hydgrp_b[np.where(soil == 3)] = 1
+    hydgrp_bd[np.where(soil == 4)] = 1
+    hydgrp_c[np.where(soil == 5)] = 1
+    hydgrp_cd[np.where(soil == 6)] = 1
+    hydgrp_d[np.where(soil == 7)] = 1
+
+    soil_list_all = [hydgrp_a, hydgrp_ad, hydgrp_b, hydgrp_bd, hydgrp_c, hydgrp_cd, hydgrp_d]
+
+    soil_list = soil_list_all
+
+    # Add NaNs, convert to -999999
+    nan_mask = soil.copy()
+    nan_mask = (nan_mask * 0) + 1
+
+    for soil_class in soil_list:
+        soil_class = np.multiply(soil_class, nan_mask)
+        soil_class[np.isnan(soil_class)] = -999999
+
+    return soil_list, soil_feat_list
+
+
 def lithology_dummy(data_path, img):
     img_path = data_path / 'images' / img
     img_file = img_path / img
@@ -599,14 +644,14 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     # Get LULC layers
     lulc_list, lulc_feat_list = landcover_dummy(data_path, img)
 
-    # Get lithology layers
-    lith_list, lith_feat_list = lithology_dummy(data_path, img)
+    # Get soil layers
+    soil_list, soil_feat_list = soil_dummy(data_path, img)
 
     # Combine
-    layers = lulc_list + lith_list + layers
+    layers = lulc_list + soil_list + layers
     layers = [layer.squeeze() for layer in layers]
 
-    feat_list = lulc_feat_list + lith_feat_list + feat_list_new
+    feat_list = lulc_feat_list + soil_feat_list + feat_list_new
 
     # Make new directory for stacked tif if it doesn't already exist
     try:
