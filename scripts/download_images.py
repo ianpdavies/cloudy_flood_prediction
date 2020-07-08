@@ -101,11 +101,11 @@ for img in img_list:
         dst.extractall(str(image_dst))
     for file in remove_these:
         try:
-            os.remove(str(image_dst / '{}'.format(img + '.' + file + '.tif')))
+            os.remove(str(image_dst / '{}'.format(img + '_' + file + '.tif')))
         except FileNotFoundError:
             pass
         try:
-            os.remove(str(image_dst / '{}'.format(img + '.' + file + '.tfw')))
+            os.remove(str(image_dst / '{}'.format(img + '_' + file + '.tfw')))
         except FileNotFoundError:
             pass
 
@@ -146,3 +146,56 @@ for zip_name_old in zip_list:
     zip_name_new = '_'.join(name) + '.zip'
     zip_dir.close()
     os.rename(str(image_dir / zip_name_old), str(image_dir / zip_name_new))
+
+# Putting zip files into directories
+image_dir = data_path / 'images'
+zip_list = os.listdir(image_dir)
+for zip_file in zip_list:
+    name = zip_file.split('.')[0]
+    Path(image_dir / name).mkdir()
+    shutil.move(str(image_dir / zip_file), str(image_dir / name))
+
+
+# ==============================================================================================
+# Swapping out a .tif in a zip folder with a new .tif
+remove_these = ['curve']
+for img in img_list:
+    # Unzip zip folder
+    print(img)
+    image_dir1 = Path('D:/Workspace/ipdavies/CPR/data/images')  # Directory of zip folder containing old .tif
+    image_dir1 = data_path / 'images'
+    image_dir1 = image_dir1 / img
+    image_dst = image_dir1 / img
+    image_dir2 = data_path / 'new'  # Directory containing new .tifs
+    try:
+        image_dst.mkdir()
+    except FileExistsError:
+        pass
+    zip_dir1 = str(image_dir1 / '{}'.format(img + '.zip'))
+    with ZipFile(zip_dir1, 'r') as dst:
+        dst.extractall(str(image_dst))
+    # Remove old .tif
+    for file in remove_these:
+        try:
+            os.remove(str(image_dst / '{}'.format(img + '_' + file + '.tif')))
+        except FileNotFoundError:
+            pass
+        try:
+            os.remove(str(image_dst / '{}'.format(img + '_' + file + '.tfw')))
+        except FileNotFoundError:
+            pass
+        # Move new .tif to the unzipped folder that held the old .tif
+        new_tif = str(image_dir2 / '{}_{}.tif'.format(img, file))
+        shutil.move(new_tif, image_dst)
+
+    # Delete old zip folder
+    os.remove(str(zip_dir1))
+
+    # Now zip up files with new .tif
+    with ZipFile(zip_dir1, 'w') as dst:
+        files = [x for x in image_dst.glob('**/*') if x.is_file()]
+        for file in files:
+            dst.write(file, os.path.basename(file))
+
+    # Remove unzipped folder with files
+    shutil.rmtree(str(image_dst))
