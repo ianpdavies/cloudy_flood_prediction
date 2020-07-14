@@ -10,6 +10,7 @@ from math import sqrt
 import os
 from sklearn.preprocessing import KBinsDiscretizer, OneHotEncoder
 
+
 # ======================================================================================================================
 def gdrive_unstack(data_path, img, feat_list):
     """
@@ -395,38 +396,34 @@ def soil_dummy(data_path, img):
     img_path = data_path / 'images' / img
     img_file = img_path / img
 
-    soil_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '.soil.tif'
+    soil_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '_soil.tif'
 
     with rasterio.open(soil_file, 'r') as src:
         soil = src.read().squeeze()
         soil[soil == -999999] = np.nan
         soil[np.isneginf(soil)] = np.nan
 
-    hydgrp_a = np.zeros(soil.shape)
-    hydgrp_ad = np.zeros(soil.shape)
-    hydgrp_b = np.zeros(soil.shape)
-    hydgrp_bd = np.zeros(soil.shape)
-    hydgrp_c = np.zeros(soil.shape)
-    hydgrp_cd = np.zeros(soil.shape)
-    hydgrp_d = np.zeros(soil.shape)
+    hydgrpA = np.zeros(soil.shape)
+    hydgrpAD = np.zeros(soil.shape)
+    hydgrpB = np.zeros(soil.shape)
+    hydgrpBD = np.zeros(soil.shape)
+    hydgrpC = np.zeros(soil.shape)
+    hydgrpCD = np.zeros(soil.shape)
+    hydgrpD = np.zeros(soil.shape)
 
-    soil_feat_list = ['hydgrp_a', 'hydgrp_ad', 'hydgrp_b', 'hydgrp_bd', 'hydgrp_c', 'hydgrp_cd', 'hydgrp_d']
-
-    hydgrp_a[np.where(soil == 1)] = 1
-    hydgrp_ad[np.where(soil == 2)] = 1
-    hydgrp_b[np.where(soil == 3)] = 1
-    hydgrp_bd[np.where(soil == 4)] = 1
-    hydgrp_c[np.where(soil == 5)] = 1
-    hydgrp_cd[np.where(soil == 6)] = 1
-    hydgrp_d[np.where(soil == 7)] = 1
-
-    soil_list_all = [hydgrp_a, hydgrp_ad, hydgrp_b, hydgrp_bd, hydgrp_c, hydgrp_cd, hydgrp_d]
-
-    soil_list = soil_list_all
+    hydgrpA[np.where(soil == 1)] = 1
+    hydgrpAD[np.where(soil == 2)] = 1
+    hydgrpB[np.where(soil == 3)] = 1
+    hydgrpBD[np.where(soil == 4)] = 1
+    hydgrpC[np.where(soil == 5)] = 1
+    hydgrpCD[np.where(soil == 6)] = 1
+    hydgrpD[np.where(soil == 7)] = 1
 
     # Add NaNs, convert to -999999
     nan_mask = soil.copy()
     nan_mask = (nan_mask * 0) + 1
+    soil_feat_list = ['hydgrpA', 'hydgrpCD', 'hydgrpB', 'hydgrpBD', 'hydgrpC', 'hydgrpCD', 'hydgrpD']
+    soil_list = [hydgrpA, hydgrpAD, hydgrpB, hydgrpBD, hydgrpC, hydgrpCD, hydgrpD]
 
     for soil_class in soil_list:
         soil_class = np.multiply(soil_class, nan_mask)
@@ -489,10 +486,10 @@ def lithology_dummy(data_path, img):
     coastal_sed_coarse[np.where(lith == 20)] = 1
 
     lith_list_all = [carbonate, noncarbonate, akl_intrusive, silicic_resid, silicic_resid,
-                        extrusive_volcanic, colluvial_sed, glacial_till_clay, glacial_till_loam,
-                        glacial_till_coarse, glacial_lake_sed_fine, glacial_outwash_coarse, hydric,
-                        eolian_sed_coarse, eolian_sed_fine, saline_lake_sed, alluv_coastal_sed_fine,
-                        coastal_sed_coarse]
+                     extrusive_volcanic, colluvial_sed, glacial_till_clay, glacial_till_loam,
+                     glacial_till_coarse, glacial_lake_sed_fine, glacial_outwash_coarse, hydric,
+                     eolian_sed_coarse, eolian_sed_fine, saline_lake_sed, alluv_coastal_sed_fine,
+                     coastal_sed_coarse]
 
     # # This removes features that aren't here, but would require some tweaking of feat_list_new in other scripts
     # # Can do that later, for now preprocessing will remove feats if they have all zeroes
@@ -524,7 +521,7 @@ def landcover_dummy(data_path, img):
     img_path = data_path / 'images' / img
     img_file = img_path / img
 
-    lulc_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '.landcover.tif'
+    lulc_file = 'zip://' + str(img_file.with_suffix('.zip!')) + img + '_landcover.tif'
 
     with rasterio.open(lulc_file, 'r') as src:
         lulc = src.read()
@@ -609,7 +606,8 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
             if file.endswith('.tif'):
                 file_list.append(file)
 
-    feat_list_files = list(map(lambda x: x.split('.')[-2], file_list))  # Grabs a list of features in file order
+    feat_list_files = list(
+        map(lambda x: x.split('_')[-1].split('.')[0], file_list))  # Grabs a list of features in file order
 
     if not overwrite:
         if stack_path.exists():
@@ -650,7 +648,6 @@ def tif_stacker(data_path, img, feat_list_new, overwrite=False):
     # Combine
     layers = lulc_list + soil_list + layers
     layers = [layer.squeeze() for layer in layers]
-
     feat_list = lulc_feat_list + soil_feat_list + feat_list_new
 
     # Make new directory for stacked tif if it doesn't already exist
@@ -717,7 +714,8 @@ def tif_stacker_spectra(data_path, img, band_list, overwrite=False):
             if file.endswith('.tif'):
                 file_list.append(file)
 
-    feat_list_files = list(map(lambda x: x.split('.')[-2], file_list))  # Grabs a list of features in file order
+    feat_list_files = list(
+        map(lambda x: x.split('_')[-1].split('.')[0], file_list))  # Grabs a list of features in file order
 
     if not overwrite:
         if stack_path.exists():
@@ -881,7 +879,6 @@ def preprocessing(data_path, img, pctl, feat_list_all, test):
 
     # Remove NaNs
     data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-
     data_mean = data_vector[:, 0:shape[1] - 2].mean(0)
     data_std = data_vector[:, 0:shape[1] - 2].std(0)
 
@@ -930,14 +927,14 @@ def preprocessing_gen_model(data_path, img_list_train):
 def train_val(data_vector, holdout):
     """
     Splits data into train/validation sets after standardizing and removing NaNs
-    
+
     Parameters
     ----------
-    data_vector : np.arr 
-        Output of preprocessing(). 
+    data_vector : np.arr
+        Output of preprocessing().
     holdout : float
-        Fraction of data to be used for validation (e.g. 0.3)   
-        
+        Fraction of data to be used for validation (e.g. 0.3)
+
     Returns
     ----------
     data_vector : np.array
@@ -948,7 +945,7 @@ def train_val(data_vector, holdout):
         2D array of validation data, standardized, with NaNs removed
     training_size : int
         Number of observations in training data
-        
+
     """
     HOLDOUT_FRACTION = holdout
 
@@ -968,32 +965,32 @@ def cloud_generator(img, data_path, seed=None, octaves=10, overwrite=False):
     Creates a random cloud image using Simplex noise, and saves that as a numpy binary file.
     The cloud image can then be thresholded by varying % cloud cover to create a binary cloud mask.
     See example.
-    
+
     Reqs: random, rasterio, os, snoise3 from noise, numpy, sqrt from math
-    
+
     Parameters
     ----------
-    seed : int 
+    seed : int
         If no seed provided, a random integer between 1-10000 is used.
-    data_path :str 
+    data_path :str
         pathlib.Path pointing to data directory
     img : str
         Image name that will be used to name cloudmask
     overwrite: true/false
         Whether existing cloud image should be overwritten
-    
+
     Returns
     ----------
     clouds : array
         Cloud image as a numpy array; also saved as a numpy binary file
-        
+
     Example
     ----------
     data_path = Path('C:/Users/ipdavies/CPR/data')
     img = '4337_LC08_026038_20160325_1'
-    
+
     myClouds = cloudGenerator(img = img, path = path)
-    
+
     # Create cloudmask with 90% cloud cover
     cloudmask_20 = myClouds < np.percentile(clouds, 90)
     """
