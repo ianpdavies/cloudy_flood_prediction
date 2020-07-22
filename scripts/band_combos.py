@@ -1,5 +1,7 @@
+import __init__
 import os
 import sys
+
 sys.path.append('../')
 from CPR.configs import data_path
 from results_viz import VizFuncs
@@ -13,18 +15,20 @@ pctls = [10, 30, 50, 70, 90]
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test', '4101_LC08_027038_20131103_2',
+           '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+
 img_list = [x for x in img_list if x not in removed]
 
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
-                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+feat_list_new = ['GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
               'data_path': data_path,
               'batch': None,
               'feat_list_new': feat_list_new}
+
 
 # ======================================================================================================================
 # viz = VizFuncs(viz_params)
@@ -36,6 +40,7 @@ def linear_stretch(input, percent):
     p_low, p_high = np.percentile(input[~np.isnan(input)], (percent, 100 - percent))
     img_rescale = exposure.rescale_intensity(input, in_range=(p_low, p_high))
     return img_rescale
+
 
 # RGB images that are too bright after linear stretch
 # img_list = ['4080_LC08_028034_20130806_1',
@@ -106,17 +111,12 @@ def hist_equalize_rgb(img, view_hist=False, view_img=False, std_low=1.75, std_hi
 
     return rgb_enhanced
 
+
 from skimage import exposure
+
 band_combo_dir = data_path / 'band_combos'
 for img in img_list:
     hist_equalize_rgb(img, view_hist=False, std_low=1.75, std_high=1.75, save=True)
-
-img = '4444_LC08_044033_20170222_3'
-rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.1, std_high=2.1, save=False)
-rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1, gain=1)
-rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=7)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4444_LC08_045032_20170301_1'
 rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.5, std_high=2.5, save=False)
@@ -128,31 +128,10 @@ rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 
 img = '4468_LC08_022035_20170503_1'
 hist_equalize_rgb(img, view_hist=False, std_low=2.5, std_high=2.7, save=True)
 
-img = '4516_LC08_017038_20170921_1'
-rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.7, std_high=2.7, save=False)
-rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1, gain=1)
-rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=8)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
-
 img = '4594_LC08_022034_20180404_1'
 rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=False)
 rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
 rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=7)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
-
-img = '4444_LC08_043035_20170303_1'
-rgb = hist_equalize_rgb(img, view_hist=False, std_low=1.75, std_high=1.75, save=False)
-rgb_enhanced = exposure.adjust_sigmoid(rgb, cutoff=0.55, gain=6)
-rgb_enhanced = exposure.adjust_gamma(rgb_enhanced, gamma=1.1, gain=1)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
-
-img = '4594_LC08_022035_20180404_1'
-rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=False)
-rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
-rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=10)
 rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
 rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
@@ -173,27 +152,8 @@ rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 
 img = '4444_LC08_044034_20170222_1'
 hist_equalize_rgb(img, view_hist=False, std_low=2.4, std_high=2.4, save=True)
 
-img = '4444_LC08_044033_20170222_4'
-hist_equalize_rgb(img, view_hist=False, std_low=2.7, std_high=2.7, save=True)
-
-img = '4444_LC08_044032_20170222_1'
-hist_equalize_rgb(img, view_hist=False, std_low=2.6, std_high=2.6, save=True)
-
 img = '4444_LC08_044033_20170222_2'
 hist_equalize_rgb(img, view_hist=False, std_low=2.6, std_high=2.6, save=True)
-
-img = '4080_LC08_028033_20130806_1'
-rgb = hist_equalize_rgb(img, view_hist=False, std_low=2.6, std_high=2.6, save=False)
-rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.1, gain=1)
-rgb_enhanced = exposure.adjust_sigmoid(rgb_enhanced, cutoff=0.5, gain=10)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
-
-img = '4101_LC08_027038_20131103_2'
-rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
-rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4101_LC08_027038_20131103_1'
 rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
@@ -202,12 +162,6 @@ rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
 rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
 
 img = '4101_LC08_027039_20131103_1'
-rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
-rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
-rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
-rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 300))
-
-img = '4468_LC08_024036_20170501_2'
 rgb = hist_equalize_rgb(img, view_hist=False, view_img=True, std_low=2.6, std_high=2.6, save=False)
 rgb_enhanced = exposure.adjust_gamma(rgb, gamma=1.2, gain=1)
 rgb_img = Image.fromarray((rgb_enhanced * 255).astype(np.uint8()))
@@ -244,11 +198,12 @@ rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 
 
 plt.close('all')
 
-batch=None
+batch = None
 feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
                  'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
 
-feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate',
+                 'akl_intrusive',
                  'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
                  'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
                  'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
@@ -264,6 +219,7 @@ viz_params = {'img_list': img_list,
               'feat_list_new': feat_list_new}
 viz = VizFuncs(viz_params)
 viz.cir_image(overwrite=True)
+
 
 # Doesn't work very well for CIR images - water and dry earth are both turqoise.
 def hist_equalize_cir(img, view_hist=False, view_img=False, std_low=1.75, std_high=1.75, save=False):
