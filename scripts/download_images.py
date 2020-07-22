@@ -15,56 +15,8 @@ from zipfile import ZipFile
 img_list = os.listdir(data_path / 'images')
 # removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
 #            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1'}
-removed = {'new'}
+removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
-
-for img in img_list:
-    downloads = data_path.parents[1] / 'Downloads'
-    dst_file = downloads / img
-    try:
-        dst_file.mkdir()
-    except FileExistsError:
-        pass
-    src_feat = downloads / '{}'.format(img+' (1)')
-    # Extract feature files
-    with ZipFile(str(src_feat) + '.zip', 'r') as src:
-        try:
-            src_feat.mkdir()
-        except FileExistsError:
-            pass
-        src.extractall(str(src_feat))
-    # Add extracted files to other zipped feat directory
-    with ZipFile(str(dst_file) + '.zip', 'a') as dst:
-        extracted_files = [x for x in src_feat.glob('**/*') if x.is_file()]
-        for file in extracted_files:
-            dst.write(file, os.path.basename(file))
-
-    # Same thing for spectral files
-    dst_file_spec = downloads / '{}'.format('spectra_' + img)
-    src_spec = downloads / '{}'.format('spectra_' + img + ' (1)')
-    # Extract feature files
-    with ZipFile(str(src_spec) + '.zip', 'r') as src:
-        try:
-            src_spec.mkdir()
-        except FileExistsError:
-            pass
-        src.extractall(str(src_spec))
-    # Add extracted files to other zipped feat directory
-    with ZipFile(str(dst_file_spec) + '.zip', 'a') as dst:
-        extracted_files = [x for x in src_spec.glob('**/*') if x.is_file()]
-        for file in extracted_files:
-            dst.write(file, os.path.basename(file))
-
-    # Move zip folders to image folder
-    geom_file = downloads / '{}'.format('clip_geometry_' + img + '.csv')
-    shutil.move(str(dst_file) + '.zip', dst_file)
-    shutil.move(str(dst_file_spec) + '.zip', dst_file)
-    shutil.move(str(geom_file), dst_file)
-    shutil.move(str(dst_file), data_path / 'images')
-
-    # Delete unneeded folders
-    for file in [src_feat, src_spec, str(src_feat) + '.zip', str(src_spec) + '.zip']:
-        shutil.rmtree(str(file))
 
 # ==============================================================================================
 # Have to download images separately from drive with latest GEE update.
@@ -101,11 +53,11 @@ for img in img_list:
         dst.extractall(str(image_dst))
     for file in remove_these:
         try:
-            os.remove(str(image_dst / '{}'.format(img + '_' + file + '.tif')))
+            os.remove(str(image_dst / '{}'.format(img + '.' + file + '.tif')))
         except FileNotFoundError:
             pass
         try:
-            os.remove(str(image_dst / '{}'.format(img + '_' + file + '.tfw')))
+            os.remove(str(image_dst / '{}'.format(img + '.' + file + '.tfw')))
         except FileNotFoundError:
             pass
 
@@ -158,7 +110,10 @@ for zip_file in zip_list:
 
 # ==============================================================================================
 # Swapping out a .tif in a zip folder with a new .tif
-remove_these = ['curve']
+
+img_list = ['4061_LC08_025031_20130529_3', '4101_LC08_027038_20131103_1', '4101_LC08_027039_20131103_1']
+
+remove_these = ['twi', 'sti', 'spi']
 for img in img_list:
     # Unzip zip folder
     print(img)
@@ -199,3 +154,32 @@ for img in img_list:
 
     # Remove unzipped folder with files
     shutil.rmtree(str(image_dst))
+
+# ==============================================================================================
+# Make empty stack file
+import rasterio
+
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'hydgrp_a',
+                'hydgrp_ad', 'hydgrp_b', 'hydgrp_bd', 'hydgrp_c', 'hydgrp_cd', 'hydgrp_d' 
+                'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+
+feat = feat_list_all.index('GSW_perm')
+
+for img in img_list:
+    img_path = data_path / 'images' / img
+    stack_path = img_path / 'stack' / 'stack.tif'
+    with rasterio.open(str(stack_path), 'r') as ds:
+        stack = ds.read(feat+1)
+        stack = stack*0
+        meta = ds.meta
+        meta['dtype'] = 'int32'
+    new_image_path = data_path / 'empty_images' / img / 'stack'
+
+    try:
+        new_image_path.mkdir(parents=True)
+    except FileExistsError:
+        pass
+    new_image_path = new_image_path / 'stack.tif'
+    with rasterio.open(str(new_image_path), 'w', **meta) as dst:
+        dst.write_band(1, stack.astype('int32'))
