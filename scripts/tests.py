@@ -32,21 +32,18 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
 img_list = [img_list[0]]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
-                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+feat_list_new = ['GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
-feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
-                 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
-                 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
-                 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
-                 'coastal_sed_coarse', 'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
-                 'twi', 'sti', 'GSW_perm', 'flooded']
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'hydgrpA',
+                 'hydgrpAD', 'hydgrpB', 'hydgrpBD', 'hydgrpC', 'hydgrpCD', 'hydgrpD',
+                 'GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,

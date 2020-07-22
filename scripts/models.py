@@ -132,7 +132,7 @@ def get_nn_bn2_f1(INPUT_DIMS):
     return model
 
 # ======================================================================================================================
-# NN with batch normalization, now with two dense layers
+# NN without batch normalization, now with two dense layers
 def get_nn_bn2_noBN(INPUT_DIMS):
     tf.keras.backend.clear_session()
     model = tf.keras.Sequential()

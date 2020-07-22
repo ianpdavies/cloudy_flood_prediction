@@ -1,31 +1,25 @@
 import __init__
+from models import get_nn_bn2 as model_func
 import tensorflow as tf
 import os
-import pathlib
-import joblib
-from zipfile import ZipFile
-from sklearn.linear_model import LogisticRegression
+from training import training4
+from prediction import prediction
+from results_viz import VizFuncs
 import sys
-from tensorflow.keras.callbacks import CSVLogger
-from models import get_nn_bn2 as model_func
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from training import LrRangeFinder, SGDRScheduler, lr_plots
-from CPR.utils import tif_stacker, preprocessing, cloud_generator, timer
-import numpy as np
-import pandas as pd
-import time
-import h5py
-
-sys.path.append('../../')
+sys.path.append('../')
 from CPR.configs import data_path
+from CPR.utils import gdrive_unstack, preprocessing_discrete
 
 # Version numbers
+print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
 # Parameters
-batch = 'RCTs_NN'
-pctls = [10, 30, 50, 70, 90]
+
+batch = 'NN_discrete'
+# pctls = [10, 30, 50, 70, 90]
+pctls = [10]
 BATCH_SIZE = 8192
 EPOCHS = 100
 
@@ -38,18 +32,40 @@ except FileExistsError:
 img_list = os.listdir(data_path / 'images')
 removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
+img_list = ['4050_LC08_023036_20130429_1']
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_maxExtent', 'GSW_distExtent', 'aspect', 'curve', 'developed', 'elevation', 'forest',
-                 'hand', 'other_landcover', 'planted', 'slope', 'spi', 'twi', 'wetlands', 'GSW_perm', 'flooded']
+feat_list_new = ['elevation', 'slope', 'curve', 'aspect', 'hand', 'spi', 'twi', 'sti', 'lith',
+                 'landcover', 'GSW_perm', 'GSW_distSeasonal', 'flooded']
+
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'hydgrpA',
+                 'hydgrpAD', 'hydgrpB', 'hydgrpBD', 'hydgrpC', 'hydgrpCD', 'hydgrpD',
+                 'GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
 model_params = {'batch_size': BATCH_SIZE,
                 'epochs': EPOCHS,
                 'verbose': 2,
                 'use_multiprocessing': True}
 
+viz_params = {'img_list': img_list,
+              'pctls': pctls,
+              'data_path': data_path,
+              'batch': batch,
+              'feat_list_new': feat_list_new}
+
 # ======================================================================================================================
-def NN_training_RCTs(img_list, pctls, model_func, feat_list_new, data_path, batch, trial, **model_params):
+from tensorflow.keras.callbacks import CSVLogger
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
+from training import LrRangeFinder, SGDRScheduler, lr_plots
+from CPR.utils import tif_stacker, preprocessing, cloud_generator, timer
+import numpy as np
+import pandas as pd
+import time
+import h5py
+
+
+def NN_training(img_list, pctls, model_func, feat_list_new, feat_list_all, data_path, batch, **model_params):
     get_model = model_func
     for j, img in enumerate(img_list):
         print(img + ': stacking tif, generating clouds')
@@ -57,14 +73,14 @@ def NN_training_RCTs(img_list, pctls, model_func, feat_list_new, data_path, batc
         lr_mins = []
         lr_maxes = []
         tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
-        # cloud_generator(img, data_path, overwrite=False)
+        cloud_generator(img, data_path, overwrite=False)
 
         for i, pctl in enumerate(pctls):
             print(img, pctl, '% CLOUD COVER')
             print('Preprocessing')
             tf.keras.backend.clear_session()
-            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
-                                                                                     feat_list_new, test=False)
+            data_train, data_vector_train, data_ind_train, feat_keep = preprocessing_discrete(data_path, img, pctl,
+                                                                                     feat_list_all, test=False)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
@@ -73,8 +89,8 @@ def NN_training_RCTs(img_list, pctls, model_func, feat_list_new, data_path, batc
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
             INPUT_DIMS = X_train.shape[1]
 
-            model_path = data_path / batch / trial / 'models' / img
-            metrics_path = data_path / batch / trial / 'metrics' / 'training' / img / '{}'.format(
+            model_path = data_path / batch / 'models' / img
+            metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
 
             lr_plots_path = metrics_path.parents[1] / 'lr_plots'
@@ -147,13 +163,13 @@ def NN_training_RCTs(img_list, pctls, model_func, feat_list_new, data_path, batc
         lr_losses.to_csv(losses_path, index=False)
 
 
-def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, trial, **model_params):
+def NN_prediction(img_list, pctls, feat_list_all, data_path, batch, **model_params):
     for j, img in enumerate(img_list):
         times = []
-        accuracy, precision, recall, f1 = [], [], [], []
-        preds_path = data_path / batch / trial / 'predictions' / img
+        accuracy, precision, recall, f1, roc_auc = [], [], [], [], []
+        preds_path = data_path / batch / 'predictions' / img
         bin_file = preds_path / 'predictions.h5'
-        metrics_path = data_path / batch / trial / 'metrics' / 'testing' / img
+        metrics_path = data_path / batch / 'metrics' / 'testing' / img
 
         try:
             metrics_path.mkdir(parents=True)
@@ -162,7 +178,7 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, trial, **mod
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_new, test=True)
+            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing_discrete(data_path, img, pctl, feat_list_all, test=True)
             perm_index = feat_keep.index('GSW_perm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0  # Remove flood water that is perm water
@@ -172,10 +188,10 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, trial, **mod
 
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
             start_time = time.time()
-            model_path = data_path / batch / trial / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
+            model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.h5')
             trained_model = tf.keras.models.load_model(model_path)
-            preds = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
-            preds = np.argmax(preds, axis=1)  # Display most probable value
+            pred_probs = trained_model.predict(X_test, batch_size=model_params['batch_size'], use_multiprocessing=True)
+            preds = np.argmax(pred_probs, axis=1)  # Display most probable value
 
             try:
                 preds_path.mkdir(parents=True)
@@ -190,22 +206,23 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, trial, **mod
 
             times.append(timer(start_time, time.time(), False))  # Elapsed time for MC simulations
 
+            print('Evaluating predictions')
             perm_mask = data_test[:, :, perm_index]
             perm_mask = perm_mask.reshape([perm_mask.shape[0] * perm_mask.shape[1]])
             perm_mask = perm_mask[~np.isnan(perm_mask)]
             preds[perm_mask.astype('bool')] = 0
             y_test[perm_mask.astype('bool')] = 0
 
-            print('Evaluating predictions')
             accuracy.append(accuracy_score(y_test, preds))
             precision.append(precision_score(y_test, preds))
             recall.append(recall_score(y_test, preds))
             f1.append(f1_score(y_test, preds))
+            roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
-            del preds, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
+            del preds, pred_probs, X_test, y_test, trained_model, data_test, data_vector_test, data_ind_test
 
-        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1]),
-                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1'])
+        metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, roc_auc]),
+                               columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
         metrics.to_csv(metrics_path / 'metrics.csv', index=False)
         times = [float(i) for i in times]  # Convert time objects to float, otherwise valMetrics will be non-numeric
         times_df = pd.DataFrame(np.column_stack([pctls, times]),
@@ -214,34 +231,17 @@ def NN_prediction(img_list, pctls, feat_list_new, data_path, batch, trial, **mod
 
 
 # ======================================================================================================================
-# Training and prediction with random batches of clouds
+# for img in img_list:
+#     gdrive_unstack(data_path, img, feat_list_new)
 
-cloud_dir = data_path / 'clouds'
-try:
-    (cloud_dir / 'random').mkdir()
-except FileExistsError:
-    pass
+NN_training(img_list, pctls, model_func, feat_list_new, feat_list_all, data_path, batch, **model_params)
+NN_prediction(img_list, pctls, feat_list_all, data_path, batch, **model_params)
+viz = VizFuncs(viz_params)
+viz.metric_plots()
+# viz.metric_plots_multi()
+# viz.median_highlight()
+# viz.time_plot()
+# viz.false_map(probs=False, save=False)
+# viz.false_map_borders()
 
-# Move existing cloud files so they don't get overwritten on accident
-zip_dir = str(cloud_dir / 'random' / 'saved.zip')
-try:
-    with ZipFile(zip_dir, 'w') as dst:
-        for img in img_list:
-            cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-            dst.write(str(cloud_img), os.path.basename(str(cloud_img)))
-            os.remove(cloud_img)
-except FileNotFoundError:
-    pass
 
-trial_nums = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-for trial_num in trial_nums:
-    trial = 'trial' + str(trial_num)
-    print('RUNNING', trial, '################################################################')
-    zip_dir = str(cloud_dir / 'random' / '{}'.format(trial + '.zip'))
-    with ZipFile(zip_dir, 'r') as dst:
-        dst.extractall(str(cloud_dir))
-    NN_training_RCTs(img_list, pctls, model_func, feat_list_new, data_path, batch, trial, **model_params)
-    NN_prediction(img_list, pctls, feat_list_new, data_path, batch, trial)
-    for img in img_list:
-        cloud_img = cloud_dir / '{}'.format(img + '_clouds.npy')
-        os.remove(str(cloud_img))

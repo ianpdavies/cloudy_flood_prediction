@@ -214,6 +214,49 @@ https://www.spiedigitallibrary.org/conference-proceedings-of-spie/11139/111390E/
 - 4101_LC08_027038_20131103_2 (removed, no flooding)
 - 4594_LC08_022035_20180404_1 (not much flooding, tons of clouds and some FPs)
 
+
+### Interpolation of rainfall
+- 4516_LC08_017038_20170921_1 has a funny
+
+### Soil Data
+- https://websoilsurvey.sc.egov.usda.gov/App/WebSoilSurvey.aspx
+    - Vector of soil types by county - pretty fine resolution
+- Gridded gSSURGO https://gdg.sc.egov.usda.gov/GDGOrder.aspx?order=QuickState
+- Easy download of gSSURGO by state or CONUS https://nrcs.app.box.com/v/soils/folder/17971946225
+
+
+### Taking sample points of some images
+'4050_LC08_023036_20130429_1', Yes
+'4050_LC08_023036_20130429_2', No
+'4050_LC08_023036_20130429_3', No1
+'4061_LC08_025031_20130529_1', Maybe
+'4061_LC08_025031_20130529_2', Yes
+'4061_LC08_025031_20130529_3', Maybe
+'4080_LC08_028034_20130806_1', Yes
+'4089_LC08_034032_20130917_1', Maybe
+'4101_LC08_027038_20131103_1', No
+'4101_LC08_027039_20131103_1', No - CONSIDER REMOVING, NOT MUCH F LOODING JUST A FEW LAKES
+'4115_LC08_021033_20131227_1', Yes
+'4115_LC08_021033_20131227_2', Removed
+'4337_LC08_026038_20160325_1', No
+'4337_LC08_026038_20160325_2', No
+'4337_LC08_026038_20160325_3', Maybe
+'4444_LC08_043034_20170303_1', Yes
+'4444_LC08_044033_20170222_1', Yes/Maybe
+'4444_LC08_044033_20170222_2', Yes
+'4444_LC08_044034_20170222_1', Yes
+'4444_LC08_045032_20170301_1', Yes
+'4444_LC08_045032_20170301_2', No
+'4468_LC08_022035_20170503_1', No
+'4468_LC08_024036_20170501_1', Maybe
+'4468_LC08_024036_20170501_2', Yes
+'4468_LC08_024036_20170501_3', Maybe
+'4469_LC08_015035_20170502_1', No
+'4477_LC08_022033_20170519_1', Maybe
+'4514_LC08_027033_20170826_1', No
+'4594_LC08_022034_20180404_1', Maybe
+
+
 ------
  
 ### How to set up QERM servers

@@ -199,8 +199,8 @@ rgb_img.save(band_combo_dir / '{}'.format(img + '_rgb_img' + '.png'), dpi=(300, 
 plt.close('all')
 
 batch = None
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
-                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+feat_list_new = ['GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
 feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate',
                  'akl_intrusive',

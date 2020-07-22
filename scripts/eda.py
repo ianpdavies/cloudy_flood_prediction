@@ -22,8 +22,7 @@ dtypes = ['float32', 'float32', 'float32', 'float32', 'int', 'float32', 'int', '
 
 
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
 
 # # ======================================================================================================================
@@ -190,8 +189,7 @@ import rasterio
 import matplotlib.pyplot as plt
 
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
 
 figure_path = data_path / 'corr_matrices'

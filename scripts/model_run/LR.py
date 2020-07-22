@@ -32,27 +32,24 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
-img_list = [img_list[0]]
 
 # Order in which features should be stacked to create stacked tif
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
-                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+feat_list_new = ['GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
-feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate', 'akl_intrusive',
-                 'silicic_resid', 'silicic_resid', 'extrusive_volcanic', 'colluvial_sed', 'glacial_till_clay',
-                 'glacial_till_loam', 'glacial_till_coarse', 'glacial_lake_sed_fine', 'glacial_outwash_coarse',
-                 'hydric', 'eolian_sed_coarse', 'eolian_sed_fine', 'saline_lake_sed', 'alluv_coastal_sed_fine',
-                 'coastal_sed_coarse', 'GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope', 'spi',
-                 'twi', 'sti', 'GSW_perm', 'flooded']
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'hydgrpA',
+                'hydgrpAD', 'hydgrpB', 'hydgrpBD', 'hydgrpC', 'hydgrpCD', 'hydgrpD',
+                'GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
 viz_params = {'img_list': img_list,
               'pctls': pctls,
               'data_path': data_path,
               'batch': batch,
-              'feat_list_new': feat_list_new}
+              'feat_list_new': feat_list_new,
+              'feat_list_all': feat_list_all}
 
 # ======================================================================================================================
 
@@ -61,7 +58,7 @@ def log_reg_training(img_list, pctls, feat_list_new, feat_list_all, data_path, b
     for j, img in enumerate(img_list):
         print(img + ': stacking tif, generating clouds')
         times = []
-        tif_stacker(data_path, img, feat_list_new, features=True, overwrite=False)
+        tif_stacker(data_path, img, feat_list_new, overwrite=True)
         cloud_generator(img, data_path, overwrite=False)
 
         for i, pctl in enumerate(pctls):
@@ -70,7 +67,7 @@ def log_reg_training(img_list, pctls, feat_list_new, feat_list_all, data_path, b
             data_train, data_vector_train, data_ind_train, feat_keep = preprocessing(data_path, img, pctl,
                                                                                      feat_list_all,
                                                                                      test=False)
-            perm_index = feat_keep.index('GSW_perm')
+            perm_index = feat_keep.index('GSWPerm')
             flood_index = feat_keep.index('flooded')
             # data_vector_train[data_vector_train[:, perm_index] == 1, flood_index] = 0
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)
@@ -123,7 +120,7 @@ def log_reg_prediction(img_list, pctls, feat_list_all, data_path, batch):
             print('Preprocessing', img, pctl, '% cloud cover')
             data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_all,
                                                                                   test=True)
-            perm_index = feat_keep.index('GSW_perm')
+            perm_index = feat_keep.index('GSWPerm')
             flood_index = feat_keep.index('flooded')
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
             data_vector_test = np.delete(data_vector_test, perm_index, axis=1)
@@ -208,4 +205,5 @@ viz.false_map_borders()
 viz.fpfn_map(probs=True)
 viz.uncertainty_map_LR()
 
-import uncertainty_analysis
+# import uncertainty_analysis
+

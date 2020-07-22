@@ -40,12 +40,11 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test'}
 img_list = [x for x in img_list if x not in removed]
 
-feat_list_new = ['GSW_distSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
-                 'spi', 'twi', 'sti', 'GSW_perm', 'flooded']
+feat_list_new = ['GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                 'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
 
 feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'carbonate', 'noncarbonate',
                  'akl_intrusive',
