@@ -311,7 +311,7 @@ class VizFuncs:
                 prediction_img[rows, cols] = predictions
 
                 # Remove perm water from predictions and actual
-                perm_index = feat_keep.index('GSW_perm')
+                perm_index = feat_keep.index('GSWPerm')
                 flood_index = feat_keep.index('flooded')
                 data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
                 data_shape = data_vector_test.shape
@@ -722,7 +722,7 @@ class VizFuncs:
 
                 uncertainties = upper - lower
 
-                perm_index = feat_keep.index('GSW_perm')
+                perm_index = feat_keep.index('GSWPerm')
                 perm = data_test[:, :, perm_index]
 
                 unc_image = np.zeros(shape)
@@ -783,7 +783,7 @@ class VizFuncs:
                 uncertainties = aleatoric + epistemic
                 data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, self.feat_list_all, test=True)
 
-                perm_index = feat_keep.index('GSW_perm')
+                perm_index = feat_keep.index('GSWPerm')
                 perm = data_test[:, :, perm_index]
 
                 # Aleatoric + epistemic
@@ -876,7 +876,7 @@ class VizFuncs:
                 rows, cols = zip(data_ind_test)
                 prediction_img[rows, cols] = predictions
 
-                perm_index = feat_keep.index('GSW_perm')
+                perm_index = feat_keep.index('GSWPerm')
                 flood_index = feat_keep.index('flooded')
                 floods = data_test[:, :, flood_index]
                 perm_water = (data_test[:, :, perm_index] == 1)
