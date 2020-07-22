@@ -1,10 +1,12 @@
 # This script is for examining images, features, and predictions to visually identify patterns
+import __init__
 import numpy as np
 import sys
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import rasterio
+import rasterio.plot
 from PIL import Image
 from rasterio.windows import Window
 import os
@@ -21,9 +23,14 @@ feat_list_fancy = ['Dist from Perm', 'Aspect', 'Curve', 'Developed', 'Elevation'
                  'HAND', 'Other LULC', 'Planted', 'Slope', 'SPI', 'TWI', 'Wetlands', 'Permanent water', 'Flooded']
 
 
+feat_list_all = ['developed', 'forest', 'planted', 'wetlands', 'openspace', 'hydgrpA',
+                'hydgrpAD', 'hydgrpB', 'hydgrpBD', 'hydgrpC', 'hydgrpCD', 'hydgrpD',
+                'GSWDistSeasonal', 'aspect', 'curve', 'elevation', 'hand', 'slope',
+                'spi', 'twi', 'sti', 'precip', 'GSWPerm', 'flooded']
+
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-           '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
+removed = {'4115_LC08_021033_20131227_test', '4101_LC08_027038_20131103_2',
+           '4594_LC08_022035_20180404_1', '4444_LC08_043035_20170303_1'}
 img_list = [x for x in img_list if x not in removed]
 
 pctls = [10, 30, 50, 70, 90]
@@ -42,6 +49,70 @@ plt.rc('ytick', labelsize=SMALL_SIZE)    # fontsize of the tick labels
 plt.rc('legend', fontsize=SMALL_SIZE)    # legend fontsize
 plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
 
+# ======================================================================================================================
+# View a given feature in all images.
+# Requires clicking image to close window and continue with script
+# Closing image window instead of clicking image will cause program to crash.
+
+feat = 'curve'
+img_list = [img_list[0]]
+
+for i, img in enumerate(img_list):
+    print('Image {}/{}, ({})'.format(i + 1, len(img_list), img))
+    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+    with rasterio.open(stack_path, 'r', crs='EPSG:4326') as ds:
+        image = ds.read(feat_list_new.index(feat)+1)
+        image[image == -999999] = np.nan
+        image[np.isneginf(image)] = np.nan
+        bounds = rasterio.plot.plotting_extent(ds)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.imshow(image, extent=bounds)
+        plt.waitforbuttonpress()
+        plt.close()
+
+# ======================================================================================================================
+# Plot all features for one image
+img = '4050_LC08_023036_20130429_1'
+for i, feat in enumerate(feat_list_all):
+    print(feat)
+    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+    with rasterio.open(stack_path, 'r', crs='EPSG:4326') as ds:
+        image = ds.read(i+1)
+        image[image == -999999] = np.nan
+        image[np.isneginf(image)] = np.nan
+        bounds = rasterio.plot.plotting_extent(ds)
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.imshow(image, extent=bounds)
+        plt.waitforbuttonpress()
+        plt.close()
+
+# ======================================================================================================================
+# Plot flooding on top of RGB, all images
+flood_index = feat_list_all.index('flooded')
+perm_index = feat_list_all.index('GSWPerm')
+for img in img_list:
+    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
+    band_combo_dir = data_path / 'band_combos'
+    rgb_file = band_combo_dir / '{}'.format(img + '_rgb_img' + '.png')
+    rgb_img = Image.open(rgb_file)
+
+    with rasterio.open(stack_path, 'r') as src:
+        flood = src.read(src.count - 1)
+        perm = src.read(src.count - 2)
+        bounds = rasterio.plot.plotting_extent(src)
+        flood[flood == -999999] = np.nan
+        flood[flood == 0] = np.nan
+        flood[perm == 1] = 0
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.imshow(rgb_img, extent=bounds)
+    ax.imshow(flood, cmap='autumn', extent=bounds)
+
+    plt.waitforbuttonpress()
+    while True:
+        if plt.waitforbuttonpress():
+            break
+    plt.close()
 # ======================================================================================================================
 # Plot entire RGB image to get bounding box
 img = '4444_LC08_043034_20170303_1'
@@ -72,12 +143,20 @@ plt.imshow(perm, cmap='autumn')
 
 
 # Overlay flooding
+with rasterio.open('C:/Users/ipdavies/Downloads/drive-download-20200702T191806Z-001/4050_LC08_023036_20130429_1_curve.tif', 'r') as ds:
+    img = ds.read(1)
+    img[img == -999999] = np.nan
+    img[img == -0] = 0
+    plt.imshow(img>100)
+    # rasterio.plot.plotting_extent(ds)
+    # fig, ax = plt.subplots(figsize=(8, 8))
+    # rasterio.plot.show(ds, ax=ax, with_bounds=True)
 
 # ======================================================================================================================
 # View all features in bounding box
 y_top = 950
 x_left = 1250
-y_bottom =
+y_bottom = 650
 x_right = 900
 
 # Read only a portion of the image
