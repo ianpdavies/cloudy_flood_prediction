@@ -32,15 +32,9 @@ img_list = [x for x in img_list if x not in removed]
 
 for i, img in enumerate(img_list):
     print('Image {}/{}, ({})'.format(i+1, len(img_list), img))
-    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
-    # Grabbing a random tif file from zipped files. Can use stack.tif instead but will need to amend the code below
     tif_file = 'zip://' + str(data_path / 'images' / img / img) + '.zip!' + img + '.aspect.tif'
-    # with rasterio.open(str(stack_path), 'r', crs='EPSG:4326') as ds:
     with rasterio.open(tif_file, 'r', crs='EPSG:4326') as ds:
         img_bounds = ds.bounds
-        rasterio.plot.plotting_extent(ds)
-        fig, ax = plt.subplots(figsize=(8, 8))
-        rasterio.plot.show(ds, ax=ax, with_bounds=True)
 
     # Can't intepolate all points without hitting memory cap, so buffer raster and interpolate only the points within
     left, bottom, right, top = img_bounds[0], img_bounds[1], img_bounds[2], img_bounds[3]
@@ -52,14 +46,8 @@ for i, img in enumerate(img_list):
     buffer_extent = [[leftb, bottomb], [rightb, bottomb], [rightb, topb], [leftb, topb]]
     buffer_extent = Polygon(buffer_extent)
 
-    # Rasterize buffer polygon
-    out_file = data_path / 'images' / img / '{}'.format(img + '_buffer.tif')
-    output_options = gdal.WarpOptions(outputBounds=[leftb, topb, rightb, bottomb], multithread=True)
-    gdal.Warp(out_file, tif_file, options=output_options)
-
     # Find US counties that intersect flood event
     counties = geopandas.read_file(county_shp_path)
-    counties['COUNTYFP'] = counties.STATEFP + counties.COUNTYFP
     counties_select = counties[counties.intersects(buffer_extent)].COUNTYFP.to_list()
     counties_select = ['FIPS:'+county for county in counties_select]
 
