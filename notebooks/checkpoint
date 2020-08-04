@@ -1,2 +1,0 @@
-model_checkpoint_path: "mnist_combined.ckpt"
-all_model_checkpoint_paths: "mnist_combined.ckpt"
