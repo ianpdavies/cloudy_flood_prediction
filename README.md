@@ -1,9 +1,3 @@
-[//]: # (Image References)
-[image1]: https://github.com/ianpdavies/CPR/blob/master/figs/features.png
-[image2]: https://github.com/ianpdavies/CPR/blob/master/figs/model_comparison_plot.png
-[image3]: https://github.com/ianpdavies/CPR/blob/master/figs/BNN_uncertainty.png
-[image4]: https://github.com/ianpdavies/CPR/blob/master/figs/aleatoric_epistemic_uncertainty.png
-
 Predictive flood mapping in cloud-obscured satellite imagery 
 ==============================
 Uses Python, TensorFlow, Google Earth Engine
@@ -49,15 +43,18 @@ Overall, the logistic regression and neural network models had consistently high
 Although the models were generally robust to cloud coverage (no difference in performance with 10% cloud cover vs. 90%), the placement of those clouds had a significant impact on performance, with a recall variance as high as 0.20 between runs with different cloud masks. 
 
 <img src="https://github.com/ianpdavies/CPR/blob/master/figs/model_comparison_plot.png" width="70%" height="70%">
+ 
 > Mean performance of different models. Each point represents the average score for that model at a given percent of cloud cover. Average across all cloud covers is noted in the corner.
   
 With such variability in predictions, it was crucial that the models provide some measure of their uncertainty. The Bayesian neural network tracked with prediction errors much better than logistic regression confidence intervals. Uncertainty measures are glaringly absent from most flood prediction research, and their inclusion could be a useful tool to bolster user confidence in the results.
 
 <img src="https://github.com/ianpdavies/CPR/blob/master/figs/aleatoric_epistemic_uncertainty.png" width="80%" height="80%">
+ 
 >Uncertainty measures (top) and predictions (bottom) for the BNN (left) and LR confidence intervals (right) models in a segment of a sample image. While uncertainty is high for all predictions of flooding in the BNN, it is highest for false positives and false negatives. The LR confidence intervals were not able to discriminate error types as well.
-
-<img src="https://github.com/ianpdavies/CPR/blob/master/figs/BNN_uncertainty.png" width="80%" height="80%">
-> Histograms of relative prediction type binned by uncertainty of BNN (left) and LR confidence interval (right) 
+  
+<img src="https://github.com/ianpdavies/CPR/blob/master/figs/BNN_uncertainty.png" width="80%" height="80%">.
+  
+>Histograms of relative prediction type binned by uncertainty of BNN (left) and LR confidence interval (right) 
 
 -----------
 
