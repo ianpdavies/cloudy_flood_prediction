@@ -47,55 +47,60 @@ for i, img in enumerate(img_list):
 
     del counties
 
-    soil_maps = []
-    for state in states_select:
-        file_name = 'gSSURGO_{}.gdb'.format(state)
-        mupolygon = gpd.read_file(soil_path / file_name, layer='MUPOLYGON', crs='ESRI:102039')
-        muaggatt = gpd.read_file(soil_path / file_name, layer='muaggatt')
-        muaggatt = pd.DataFrame(muaggatt)
-        muaggatt.drop(muaggatt.columns.difference(['mukey', 'hydgrpdcd']), 1, inplace=True)
-        # Map alpha hydro group codes to numeric
-        alpha_map = {'A': 1, 'A/D': 2, 'B': 3, 'B/D': 4, 'C': 5, 'C/D': 6, 'D': 7, '0': 0}
-        muaggatt['hydgrpdcd'] = muaggatt['hydgrpdcd'].fillna('0')
-        muaggatt = muaggatt.replace({'hydgrpdcd': alpha_map})
-        muaggatt.rename(columns={'mukey': 'MUKEY'}, inplace=True)
-        soil_map = mupolygon.merge(muaggatt, on='MUKEY')
-        soil_map.crs = 'ESRI:102039'
-        soil_map = soil_map.to_crs('EPSG:4326')
-        soil_maps.append(soil_map)
-    soil_merge = soil_maps[0]
-    if len(soil_maps) > 1:
-        soil_merge.append(soil_maps[1:])
-    soil_merge['MUKEY'] = soil_merge['MUKEY'].astype('int64')
-    soil_merge['hydgrpdcd'] = soil_merge['hydgrpdcd'].astype('int64')
-    del soil_maps, soil_map
+#     # After running the above code, go and download the appropriate statewide gSSURGO geodatabases from:
+#     # https://nrcs.app.box.com/v/soils/folder/17971946225
+#
 
-    # Burn soil map vector into raster
 
-    try:
-        Path(soil_path / 'rasters').mkdir(parents=True)
-    except FileExistsError:
-        pass
-    out_file = soil_path / 'rasters' / '{}'.format(img + '_soil.tif')
-    with rasterio.open(tif_file, 'r') as src:
-        in_arr = src.read(1)
-        in_arr[:] = np.nan
-        meta = src.meta.copy()
-        meta.update(compress='lzw')
-        with rasterio.open(out_file, 'w+', **meta) as out:
-            shapes = ((geom, value) for geom, value in zip(soil_merge.geometry, soil_merge.hydgrpdcd))
-            del soil_merge
-            burned = features.rasterize(shapes=shapes, fill=np.nan, out=in_arr, transform=out.transform)
-            out.write_band(1, burned)
-            del shapes
-
-# # Examine images - requires clicking image to close window and continue with script
-# # Closing image window instead of clicking image will cause program to crash.
-# for i, img in enumerate(img_list):
-#     print('Image {}/{}, ({})'.format(i + 1, len(img_list), img))
-#     with rasterio.open(out_file, 'r', crs='EPSG:4326') as ds:
-#         rasterio.plot.plotting_extent(ds)
-#         fig, ax = plt.subplots(figsize=(8, 8))
-#         rasterio.plot.show(ds, ax=ax, with_bounds=True)
-#         plt.waitforbuttonpress()
-#         plt.close()
+#     soil_maps = []
+#     for state in states_select:
+#         file_name = 'gSSURGO_{}.gdb'.format(state)
+#         mupolygon = gpd.read_file(soil_path / file_name, layer='MUPOLYGON', crs='ESRI:102039')
+#         muaggatt = gpd.read_file(soil_path / file_name, layer='muaggatt')
+#         muaggatt = pd.DataFrame(muaggatt)
+#         muaggatt.drop(muaggatt.columns.difference(['mukey', 'hydgrpdcd']), 1, inplace=True)
+#         # Map alpha hydro group codes to numeric
+#         alpha_map = {'A': 1, 'A/D': 2, 'B': 3, 'B/D': 4, 'C': 5, 'C/D': 6, 'D': 7, '0': 0}
+#         muaggatt['hydgrpdcd'] = muaggatt['hydgrpdcd'].fillna('0')
+#         muaggatt = muaggatt.replace({'hydgrpdcd': alpha_map})
+#         muaggatt.rename(columns={'mukey': 'MUKEY'}, inplace=True)
+#         soil_map = mupolygon.merge(muaggatt, on='MUKEY')
+#         soil_map.crs = 'ESRI:102039'
+#         soil_map = soil_map.to_crs('EPSG:4326')
+#         soil_maps.append(soil_map)
+#     soil_merge = soil_maps[0]
+#     if len(soil_maps) > 1:
+#         soil_merge.append(soil_maps[1:])
+#     soil_merge['MUKEY'] = soil_merge['MUKEY'].astype('int64')
+#     soil_merge['hydgrpdcd'] = soil_merge['hydgrpdcd'].astype('int64')
+#     del soil_maps, soil_map
+#
+#     # Burn soil map vector into raster
+#
+#     try:
+#         Path(soil_path / 'rasters').mkdir(parents=True)
+#     except FileExistsError:
+#         pass
+#     out_file = soil_path / 'rasters' / '{}'.format(img + '_soil.tif')
+#     with rasterio.open(tif_file, 'r') as src:
+#         in_arr = src.read(1)
+#         in_arr[:] = np.nan
+#         meta = src.meta.copy()
+#         meta.update(compress='lzw')
+#         with rasterio.open(out_file, 'w+', **meta) as out:
+#             shapes = ((geom, value) for geom, value in zip(soil_merge.geometry, soil_merge.hydgrpdcd))
+#             del soil_merge
+#             burned = features.rasterize(shapes=shapes, fill=np.nan, out=in_arr, transform=out.transform)
+#             out.write_band(1, burned)
+#             del shapes
+# #
+# # # Examine images - requires clicking image to close window and continue with script
+# # # Closing image window instead of clicking image will cause program to crash.
+# # for i, img in enumerate(img_list):
+# #     print('Image {}/{}, ({})'.format(i + 1, len(img_list), img))
+# #     with rasterio.open(out_file, 'r', crs='EPSG:4326') as ds:
+# #         rasterio.plot.plotting_extent(ds)
+# #         fig, ax = plt.subplots(figsize=(8, 8))
+# #         rasterio.plot.show(ds, ax=ax, with_bounds=True)
+# #         plt.waitforbuttonpress()
+# #         plt.close()

@@ -14,6 +14,7 @@ import datetime
 import requests
 import json
 import sys
+import zipfile
 sys.path.append('../')
 from CPR.configs import data_path
 from CPR.keys import noaa_key
@@ -31,9 +32,14 @@ img_list = [x for x in img_list if x not in removed]
 
 for i, img in enumerate(img_list):
     print('Image {}/{}, ({})'.format(i+1, len(img_list), img))
-    tif_file = 'zip://' + str(data_path / 'images' / img / img) + '.zip!' + img + '.aspect.tif'
+    tif_file = 'zip://' + str(data_path / 'images' / img / img) + '.zip!' + img + '_aspect.tif'
     with rasterio.open(tif_file, 'r', crs='EPSG:4326') as ds:
         img_bounds = ds.bounds
+
+    # Need to temporarily extract this image so the arcpy script in precip_interpolation_arcpy.py can access it
+    with zipfile.ZipFile(str(data_path / 'images' / img / img) + '.zip') as z:
+        # extract /res/drawable/icon.png from apk to /temp/...
+        z.extract(str(img + '_aspect.tif'), str(data_path / 'images' / img))
 
     # Can't intepolate all points without hitting memory cap, so buffer raster and interpolate only the points within
     left, bottom, right, top = img_bounds[0], img_bounds[1], img_bounds[2], img_bounds[3]

@@ -46,7 +46,7 @@ for i, img in enumerate(img_list):
         pass
 
     # Get buffer raster information
-    img_path = str(data_path / 'images' / img / 'stack' / 'stack.tif')
+    img_path = str(data_path / 'images' / img / img) + '_aspect.tif'
     raster = arcpy.Raster(img_path)
     description = arcpy.Describe(raster)
     cellsize1 = description.children[0].meanCellHeight  # Cell size y
@@ -116,6 +116,7 @@ for i, img in enumerate(img_list):
                                         classification_type=class_type,
                                         classes_count=classes_count)
 
+    arcpy.Delete_management(img_path)
 
 
 

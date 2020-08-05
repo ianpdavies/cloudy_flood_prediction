@@ -26,9 +26,8 @@ for i, img in enumerate(img_list):
     contour_vector = contour_vector[~contour_vector.isna().geometry]  # Remove any empty geometry artifacts
 
     out_file = raster_path / '{}'.format(img + '_precip.tif')
-    tif_file = 'zip://' + str(data_path / 'images' / img / img) + '.zip!' + img + '.aspect.tif'
-    stack_path = data_path / 'images' / img / 'stack' / 'stack.tif'
-    with rasterio.open(str(stack_path), 'r') as src:
+    tif_file = 'zip://' + str(data_path / 'images' / img / img) + '.zip!' + img + '_aspect.tif'
+    with rasterio.open(str(tif_file), 'r') as src:
         in_arr = src.read(1).astype('float32')
         in_arr[:] = np.nan
         meta = src.meta.copy()
