@@ -4,8 +4,8 @@ Uses Python, TensorFlow, Google Earth Engine
 
 Set up notes
 ------------
- - A small test image (with flood conditioning features) is available for download [here](https://drive.google.com/drive/folders/1gACNKEvGl90Npgwi-NpwSVqOifPDIAQD?usp=sharing). The image should be extracted into `CPR/data/images`. 
-    - Additional Landsat 8 images can be downloaded from Google Earth Engine (GEE) using the JavaScript API scripts in _____.
+ - A small test image (with flood conditioning features) is available for download [here](https://drive.google.com/drive/folders/1gACNKEvGl90Npgwi-NpwSVqOifPDIAQD?usp=sharing). The image should be extracted into `data/images`. 
+    - Additional Landsat 8 images can be downloaded from Google Earth Engine (GEE) using the JavaScript API scripts in `scripts/gee`.
     - Precipitation and soil classification layers are unavailable on GEE and must be downloaded separately. 
         - For soil, use the `soil.py` script to find US states that intersect your images, then download the corresponding geodatabases from the [USDA NRCS Box](https://nrcs.app.box.com/v/soils/folder/17971946225) under "2020 gSSURGO by State". Then run `soil.py` to burn the soil class vectors into rasters.
         - For precipitation, run `get_precip_data.py` to download and aggregate daily station data using the NOAA
