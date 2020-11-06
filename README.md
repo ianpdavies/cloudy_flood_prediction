@@ -1,17 +1,11 @@
-[//]: # (Image References)
-[image1]: https://github.com/ianpdavies/CPR/blob/master/figs/features.png
-[image2]: https://github.com/ianpdavies/CPR/blob/master/figs/model_comparison_plot.png
-[image3]: https://github.com/ianpdavies/CPR/blob/master/figs/BNN_uncertainty.png
-[image4]: https://github.com/ianpdavies/CPR/blob/master/figs/aleatoric_epistemic_uncertainty.png
-
 Predictive flood mapping in cloud-obscured satellite imagery 
 ==============================
 Uses Python, TensorFlow, Google Earth Engine
 
 Set up notes
 ------------
- - A small test image (with flood conditioning features) is available for download [here](https://drive.google.com/drive/folders/1gACNKEvGl90Npgwi-NpwSVqOifPDIAQD?usp=sharing). The image should be extracted into `CPR/data/images`. 
-    - Additional Landsat 8 images can be downloaded from Google Earth Engine (GEE) using the JavaScript API scripts in _____.
+ - A small test image (with flood conditioning features) is available for download [here](https://drive.google.com/drive/folders/1gACNKEvGl90Npgwi-NpwSVqOifPDIAQD?usp=sharing). The image should be extracted into `data/images`. 
+    - Additional Landsat 8 images can be downloaded from Google Earth Engine (GEE) using the JavaScript API scripts in `scripts/gee`.
     - Precipitation and soil classification layers are unavailable on GEE and must be downloaded separately. 
         - For soil, use the `soil.py` script to find US states that intersect your images, then download the corresponding geodatabases from the [USDA NRCS Box](https://nrcs.app.box.com/v/soils/folder/17971946225) under "2020 gSSURGO by State". Then run `soil.py` to burn the soil class vectors into rasters.
         - For precipitation, run `get_precip_data.py` to download and aggregate daily station data using the NOAA
@@ -31,7 +25,7 @@ Relatively clear images from flood events were located with the Dartmouth Flood 
 
 For an obscured image, models were trained on the visible pixels using 30m flood conditioning features. These flood conditioning features have been used extensively in data-driven flood modeling research (Tehrany et al. 2014 and 2017, Choubin et al. 2019, Mojaddadi et al. 2017). The trained models then predicted flooding in the cloud-covered pixels of that same image. Logistic regression (LR), random forest (RF), and neural networks (NN) were evaluated. To obtain uncertainty estimates associated with flood predictions, a Bayesian neural network (BNN) using Monte Carlo dropout was trained and compared to LR confidence intervals. 
 
-![alt image][image1]
+![alt image](https://github.com/ianpdavies/CPR/blob/master/figs/features.png)
 > Flood conditioning features used to predict flooding in cloud-covered pixels
 
 A number of experiments were run using this framework:
@@ -48,16 +42,19 @@ Overall, the logistic regression and neural network models had consistently high
 
 Although the models were generally robust to cloud coverage (no difference in performance with 10% cloud cover vs. 90%), the placement of those clouds had a significant impact on performance, with a recall variance as high as 0.20 between runs with different cloud masks. 
 
-![alt image][image2]
+<img src="https://github.com/ianpdavies/CPR/blob/master/figs/model_comparison_plot.png" width="70%" height="70%">
+ 
 > Mean performance of different models. Each point represents the average score for that model at a given percent of cloud cover. Average across all cloud covers is noted in the corner.
   
 With such variability in predictions, it was crucial that the models provide some measure of their uncertainty. The Bayesian neural network tracked with prediction errors much better than logistic regression confidence intervals. Uncertainty measures are glaringly absent from most flood prediction research, and their inclusion could be a useful tool to bolster user confidence in the results.
 
-![alt image][image 3]
+<img src="https://github.com/ianpdavies/CPR/blob/master/figs/aleatoric_epistemic_uncertainty.png" width="80%" height="80%">
+ 
 >Uncertainty measures (top) and predictions (bottom) for the BNN (left) and LR confidence intervals (right) models in a segment of a sample image. While uncertainty is high for all predictions of flooding in the BNN, it is highest for false positives and false negatives. The LR confidence intervals were not able to discriminate error types as well.
-
-![alt image][image 4]
-> Histograms of relative prediction type binned by uncertainty of BNN (left) and LR confidence interval (right) 
+  
+<img src="https://github.com/ianpdavies/CPR/blob/master/figs/BNN_uncertainty.png" width="80%" height="80%">.
+  
+>Histograms of relative prediction type binned by uncertainty of BNN (left) and LR confidence interval (right) 
 
 -----------
 
