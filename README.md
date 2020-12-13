@@ -12,7 +12,47 @@ Set up notes
          API. These data need to be interpolated into a raster — I did this using Empirical Bayesian Kriging in
          ArcGIS with `precip_interpolation.arcpy` but this is not open-source and another method might be required.
  - Cloud masks in `CPR/data/images` were procedurally generated using the Perlin noise algorithm in `utils.py`
+ - Train and predict using the scripts in `scripts/model_run` (see Directory, below, for which model iterations were the most successful)
  
+Directory:
+------------
+<details>
+  <summary>Description of scripts</summary>
+  This is a description of all the useful scripts in this project. The unlisted scripts were only used during exploration and testing but are kept in the repository in case I need to borrow code in the future.
+
+  1. scripts
+     * **models.py:** Model architecture
+     * **loss_functions.py:** Loss functions for Bayesian neural network
+     * **training.py:** Functions to train models
+     * **prediction.py:** Functions for prediction using trained models
+     * **LR_conf_intervals.py:** Generates confidence intervals for logistic regression models
+     * **figures.py:** Creates figures for presentation
+     * **RCTS_viz.py:** Creates figures for random cloud trials
+     * **band_combos.py:** Generates histogram-equalized RGB .png files of Landsat images
+     * **examine_images.py:** Examines ROIs of Landsat band combos or flood conditioning features
+     * **get_precip_data.py:** Downloads precipitation station data for the extent of image using NOAA API
+     * **precip_interpolation_arcpy.py:** ArcPy (Python 2.7) script that interpolates precipitation station data
+     * **soil.py:** Finds states that image intersects, downloads gSSURGO soil data, and creates soil texture raster
+  2. random_cloud_trials
+     * **dissimilarity.py:** For each random cloud trial, computes mean, var, entropy of train/test sets
+     * **dissimilarity_viz.py:** Visualizes dissimilarity of train/test sets
+     * **random_cloud_analysis.py:** Visualizes prediction metrics and statistics ofrandom cloud trials
+  3. model_run
+     * **BNN_kwon.py:** Trains, predicts, and estimates uncertainty using Bayesian neural network from Kwon et al. (2018)
+     * **LR.py:** Trains, predicts, and estimates uncertainty using logistic regression model
+     * **NN.py:** Trains, predicts, and estimates uncertainty using neural network model (not Bayesian)
+     * **RF.py:** Trains and predicts using random forest classification
+  4. gee
+     * **image_ledger.js:** List of all the Landsat 8 images used in this project
+     * **flood_search.js:** Finds and examines Landsat images that cover a given Dartmouth Flood Observatory event
+     * **image_batching.js:** Examine images from flood_search.js to identify visible flooding and subset for export.
+     * **features.js:** Visualization of all flood conditioning features
+     * **export_to_drive.js:** Stacks image and features and exports to Google Drive
+     * **utils.js:** All utilities for processing image and calculating flood conditioning features
+     
+     
+</details>
+
 Background:
 ------------
 Maps of flood inundation derived from satellite imagery during and after a flood event are critical tools for disaster management. Their utility, however, is often limited by optically thick cloud cover that obscures many spaceborne sensors. This study, which was completed for my master's thesis at the University of Washington, explores a data-driven method to predict flooding in cloud-obscured Landsat 8 images using flood conditioning features, like topography and land use. 
