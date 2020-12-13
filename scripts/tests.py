@@ -2,12 +2,11 @@
 # But trained on all water, tested on perm=0, preds=0 for metrics
 # Based on batch LR_perm_3 in LR_perm script
 
-import __init__
 import os
 import time
 from sklearn.linear_model import LogisticRegression
 import joblib
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 from CPR.utils import tif_stacker, cloud_generator, preprocessing, timer
 import pandas as pd
 from results_viz import VizFuncs
@@ -205,10 +204,6 @@ viz.false_map(probs=True, save=False)
 viz.false_map_borders()
 viz.fpfn_map(probs=True)
 viz.uncertainty_map_LR()
-
-import uncertainty_analysis
-
-
 
 # =================================================================================
 

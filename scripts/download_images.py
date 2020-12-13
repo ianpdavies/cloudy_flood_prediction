@@ -12,23 +12,33 @@ from CPR.configs import data_path
 
 from zipfile import ZipFile
 
-img_list = os.listdir(data_path / 'images')
-# removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1',
-#            '4101_LC08_027038_20131103_2', '4594_LC08_022035_20180404_1'}
-removed = {'4115_LC08_021033_20131227_test'}
-img_list = [x for x in img_list if x not in removed]
+# img_list = os.listdir(data_path / 'images')
+# removed = {'4115_LC08_021033_20131227_test'}
+# img_list = [x for x in img_list if x not in removed]
 
 # ==============================================================================================
 # Have to download images separately from drive with latest GEE update.
-# This puts them into zip folders, then runs the script below
+# This puts them into zip folders
 
-new_features = ['landcover', 'spi', 'sti', 'twi']
+img_list = os.listdir(data_path / 'new')
+names = [x.split('_')[:-1] for x in img_list]
+img_list = ['_'.join(x) for x in names]
+removed = {'4115_LC08_021033_20131227_test'}
+img_list = [x for x in img_list if x not in removed]
+
+new_features = ['elevation', 'slope', 'curve', 'aspect', 'hand', 'spi', 'twi', 'sti',
+                'landcover', 'GSWPerm', 'GSWDistSeasonal', 'flooded']
 
 for img in img_list:
     print(img)
-    downloads = data_path / 'images' / 'new'
+    downloads = data_path / 'new'
     image_dir = Path('D:/Workspace/ipdavies/CPR/data/images')
-    zip_dir = str(downloads / '{}'.format(img + '.zip'))
+    img_dst_dir = data_path / 'images' / img
+    try:
+        img_dst_dir.mkdir(parents=True)
+    except FileExistsError:
+        pass
+    zip_dir = str(img_dst_dir / '{}.zip'.format(img))
     with ZipFile(zip_dir, 'w') as dst:
         files = [Path(downloads / '{}'.format(img + '_' + feat + '.tif')) for feat in new_features]
         for file in files:

@@ -4,10 +4,9 @@ from models import get_nn_mcd1 as model_func
 import tensorflow as tf
 import os
 from training import training4
-from prediction_uncertainty import prediction_with_uncertainty
+from archived.prediction_uncertainty import prediction_with_uncertainty
 from results_viz import VizFuncs
 import sys
-import shutil
 
 sys.path.append('../../')
 from CPR.configs import data_path

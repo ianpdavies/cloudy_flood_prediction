@@ -166,7 +166,7 @@ try:
 except FileExistsError:
     pass
 
-# Create cloud covers for trials
+# # Create cloud covers for trials
 # trial_nums = [1, 2, 3, 4, 5]
 # for trial_num in trial_nums:
 #     print('Making clouds')

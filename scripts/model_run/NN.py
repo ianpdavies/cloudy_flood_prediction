@@ -28,7 +28,7 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test'}
+removed = {'4115_LC08_021033_20131227_test', '4080_LC08_028034_20130806_test', '4444_LC08_044034_20170222_1'}
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif

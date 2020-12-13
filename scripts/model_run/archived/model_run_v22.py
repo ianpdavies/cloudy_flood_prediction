@@ -1,11 +1,6 @@
-from models import get_nn_mcd1 as model_func
 import tensorflow as tf
 import os
-from training import training3
-from prediction_uncertainty import prediction_with_uncertainty
 from results_viz import VizFuncs
-import sys
-import shutil
 import sys
 sys.path.append('../')
 from CPR.configs import data_path
@@ -15,13 +10,13 @@ print('Tensorflow version:', tf.__version__)
 print('Python Version:', sys.version)
 
 # ==================================================================================
-# Training on half of images WITH validation data + MCD uncertainty estimation. Compare with v22
+# Training on half of images WITHOUT validation data + MCD uncertainty estimation. Compare with v21
 # Batch size = 8192
 # ==================================================================================
 # Parameters
 
 uncertainty = True
-batch = 'v21'
+batch = 'v22'
 # pctls = [10, 20, 30, 40, 50, 60, 70, 80, 90]
 pctls = [40]
 BATCH_SIZE = 8192
@@ -90,11 +85,11 @@ os.environ["KMP_AFFINITY"] = "granularity=fine,verbose,compact,1,0"
 
 # ==================================================================================
 # Training and prediction with random batches of clouds
-
+#
 cloud_dir = data_path / 'clouds'
-
-# training3(img_list, pctls, model_func, feat_list_new, uncertainty,
-#           data_path, batch, DROPOUT_RATE, HOLDOUT, **model_params)
+#
+# training4(img_list, pctls, model_func, feat_list_new, uncertainty,
+#           data_path, batch, DROPOUT_RATE, **model_params)
 #
 # prediction_with_uncertainty(img_list, pctls, feat_list_new, data_path, batch, DROPOUT_RATE, MC_PASSES=MC_PASSES,
 #                             weight_decay=0.005, length_scale=0.00001, remove_perm=True, **model_params)
@@ -104,4 +99,3 @@ viz.metric_plots()
 viz.time_plot()
 # viz.false_map()
 viz.metric_plots_multi()
-# viz.time_size()

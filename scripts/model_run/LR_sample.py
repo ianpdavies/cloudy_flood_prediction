@@ -37,7 +37,7 @@ except FileExistsError:
 
 # Get all images in image directory
 img_list = os.listdir(data_path / 'images')
-removed = {'4115_LC08_021033_20131227_test'}
+removed = {'4115_LC08_021033_20131227_test', '4444_LC08_044034_20170222_1'}
 img_list = [x for x in img_list if x not in removed]
 
 # Order in which features should be stacked to create stacked tif
@@ -57,6 +57,7 @@ viz_params = {'img_list': img_list,
               'feat_list_all': feat_list_all}
 
 n_flood, n_nonflood = 250, 250
+
 
 # ======================================================================================================================
 def get_sample_coords(img, pctl, n_flood, n_nonflood):
@@ -160,6 +161,44 @@ def standardize_data(data_vector):
     return data_vector_train, scaler
 
 
+def standardize_data(data_vector):
+    data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
+    shape = data_vector.shape
+    mins = np.min(data_vector[:, 0:shape[1] - 2], axis=0)
+    maxes = np.max(data_vector[:, 0:shape[1] - 2], axis=0)
+    scaler = np.column_stack([mins, maxes])
+    # Adjust scaler for binary classes not present in training data that may be present in test
+    scaler[:12, 0] = 0
+    scaler[:12, 1] = 1
+    data_vector_train = data_vector
+    data_vector_train[:, 0:shape[1] - 2] = (data_vector_train[:, 0:shape[1] - 2] - scaler[:, 0]) / (scaler[:, 1] - scaler[:, 0])
+    scaler = pd.DataFrame(scaler)
+    return data_vector_train, scaler
+
+
+def preprocessing_test(data_path, img, pctl):
+    img_path = data_path / 'images' / img
+    stack_path = img_path / 'stack' / 'stack.tif'
+    clouds_dir = data_path / 'clouds'
+
+    with rasterio.open(str(stack_path), 'r') as ds:
+        data = ds.read()
+        data = data.transpose((1, -1, 0))
+        data[data == -999999] = np.nan
+        data[np.isneginf(data)] = np.nan
+
+    # Mask out clouds
+    clouds = np.load(clouds_dir / '{0}'.format(img + '_clouds.npy'))
+    clouds[np.isnan(data[:, :, 0])] = np.nan
+    cloudmask = np.greater(clouds, np.nanpercentile(clouds, pctl), where=~np.isnan(clouds))
+    data[cloudmask] = -999999
+    data[data == -999999] = np.nan
+    mask = np.sum(data, axis=2)
+    data[np.isnan(mask)] = np.nan
+
+    return data
+
+
 def log_reg_training_sample(img_list, pctls, feat_list_new, feat_list_all, data_path, batch, n_flood, n_nonflood):
     for img in img_list:
         print(img + ': stacking tif, generating clouds')
@@ -179,7 +218,6 @@ def log_reg_training_sample(img_list, pctls, feat_list_new, feat_list_all, data_
             data_vector_train = np.delete(data_vector_train, perm_index, axis=1)  # Remove perm water column
             shape = data_vector_train.shape
             X_train, y_train = data_vector_train[:, 0:shape[1] - 1], data_vector_train[:, shape[1] - 1]
-
             model_path = data_path / batch / 'models' / img
             metrics_path = data_path / batch / 'metrics' / 'training' / img / '{}'.format(
                 img + '_clouds_' + str(pctl))
@@ -193,8 +231,10 @@ def log_reg_training_sample(img_list, pctls, feat_list_new, feat_list_all, data_
                 scaler_dir.mkdir(parents=True)
 
             model_path = data_path / batch / 'models' / img / '{}'.format(img + '_clouds_' + str(pctl) + '.sav')
-            scaler_path = scaler_dir / '{}_clouds_{}_scaler_.sav'.format(img, str(pctl))
-            joblib.dump(scaler, scaler_path)
+            # scaler_path = scaler_dir / '{}_clouds_{}_scaler_.sav'.format(img, str(pctl))
+            # joblib.dump(scaler, scaler_path)
+            scaler_path = scaler_dir / '{}_clouds_{}_scaler_.csv'.format(img, str(pctl))
+            scaler.to_csv(scaler_path, index=False)
 
             print('Training')
             start_time = time.time()
@@ -231,20 +271,25 @@ def log_reg_prediction_sample(img_list, pctls, feat_list_all, data_path, batch):
 
         for i, pctl in enumerate(pctls):
             print('Preprocessing', img, pctl, '% cloud cover')
-            data_test, data_vector_test, data_ind_test, feat_keep = preprocessing(data_path, img, pctl, feat_list_all,
-                                                                                  test=True)
+            data_test = preprocessing_test(data_path, img, pctl)
             scaler_dir = data_path / 'scalers' / img
-            scaler_path = scaler_dir / '{}_clouds_{}_scaler_.sav'.format(img, str(pctl))
-            scaler = joblib.load(scaler_path)
+            # scaler_path = scaler_dir / '{}_clouds_{}_scaler_.sav'.format(img, str(pctl))
+            scaler_path = scaler_dir / '{}_clouds_{}_scaler_.csv'.format(img, str(pctl))
+            # scaler = joblib.load(scaler_path)
+            scaler = np.array(pd.read_csv(scaler_path))
 
-            perm_index = feat_keep.index('GSWPerm')
-            flood_index = feat_keep.index('flooded')
+            perm_index = feat_list_all.index('GSWPerm')
+            flood_index = feat_list_all.index('flooded')
             data_vector = data_test.reshape([data_test.shape[0] * data_test.shape[1], data_test.shape[2]])
             data_vector = data_vector[~np.isnan(data_vector).any(axis=1)]
-            data_vector_test = scaler.transform(data_vector)
+            shape = data_vector.shape
+            data_vector_test = data_vector
+            data_vector_test[:, 0:shape[1] - 2] = (data_vector_test[:, 0:shape[1] - 2] - scaler[:, 0]) / (
+                        scaler[:, 1] - scaler[:, 0])
             data_vector_test[data_vector_test[:, perm_index] == 1, flood_index] = 0
-            data_shape = data_vector_test.shape
-            X_test, y_test = data_vector_test[:, 0:data_shape[1] - 1], data_vector_test[:, data_shape[1] - 1]
+            data_vector_test = np.delete(data_vector_test, perm_index, axis=1)  # Remove perm water column
+            shape = data_vector_test.shape
+            X_test, y_test = data_vector_test[:, 0:shape[1] - 1], data_vector_test[:, shape[1] - 1]
 
             print('Predicting for {} at {}% cloud cover'.format(img, pctl))
             start_time = time.time()
@@ -302,7 +347,7 @@ def log_reg_prediction_sample(img_list, pctls, feat_list_all, data_path, batch):
             roc_auc.append(roc_auc_score(y_test, pred_probs[:, 1]))
 
             del preds, probs, pred_probs, upper, lower, X_test, y_test, \
-                trained_model, data_test, data_vector_test, data_ind_test
+                trained_model, data_test, data_vector_test
 
         metrics = pd.DataFrame(np.column_stack([pctls, accuracy, precision, recall, f1, roc_auc]),
                                columns=['cloud_cover', 'accuracy', 'precision', 'recall', 'f1', 'auc'])
@@ -324,3 +369,4 @@ viz.false_map(probs=True, save=False)
 viz.false_map_borders()
 viz.uncertainty_map_LR()
 viz.fpfn_map(probs=True)
+
